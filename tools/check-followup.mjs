@@ -1,9 +1,9 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 const base = process.argv[2] || readFileSync(new URL('./.serve-url', import.meta.url), 'utf8').trim();
 const out = 'tools/.check/followup'; mkdirSync(out, { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await launchBrowser();
 const report = { checks: [], errors: [] };
 async function check(name, action) {
   try { report.checks.push({ name, passed: true, detail: await action() }); console.log(`PASS: ${name}`); }

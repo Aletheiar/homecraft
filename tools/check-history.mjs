@@ -1,11 +1,11 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const base = process.argv[2] || readFileSync(new URL('./.serve-url', import.meta.url), 'utf8').trim();
 const out = 'tools/.check/followup'; mkdirSync(out, { recursive: true });
 const results = [];
 for (const cached of [false, true]) {
-  const browser = await chromium.launch({ channel: 'chrome', ...(cached ? { ignoreDefaultArgs: ['--disable-back-forward-cache'] } : {}), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const browser = await launchBrowser(cached ? { ignoreDefaultArgs: ['--disable-back-forward-cache'] } : {});
   try {
     const page = await browser.newPage();
     await page.addInitScript(() => { window.__historyToken = Math.random(); addEventListener('pageshow', e => { window.__historyPersisted = e.persisted; }); });

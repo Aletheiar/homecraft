@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const url = process.argv[2] || 'http://127.0.0.1:8765/';
 const output = resolve('tools/.check/camera');
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await launchBrowser();
 const report = { views: [], failures: [] };
 try {
   for (const view of [

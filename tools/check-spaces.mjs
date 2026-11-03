@@ -1,9 +1,9 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
 const out = 'tools/.check/pyramid'; mkdirSync(out, { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
 const errors = [], results = [];
 page.on('pageerror', e => errors.push(e.message));

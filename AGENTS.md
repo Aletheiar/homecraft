@@ -53,6 +53,7 @@ The import map in `index.html` defines module paths: `@world/` maps to `world/`,
 python3 tools/serve.py          # Start local preview; use python on Windows
 npm run check:site              # Check site metadata, skin, and engine drift — no dependencies or running server needed
 npm install && npm run check    # Install dependencies and run site + browser checks
+npm run check:all -- http://127.0.0.1:8765/  # Full standalone acceptance, with the preview running
 ```
 
 - The preview server automatically picks a free port, opens the browser, and prints the address in the terminal. Responses have caching disabled — just refresh after changes. `npm run check` connects to this address.
@@ -97,6 +98,7 @@ One block = 1 meter. x points east, z points south, y points up; the opening sho
 | `HOUSE` | | `{ x0, x1, z0, z1, height }`: enterable house. When the character enters, walls blocking the camera (`wallN/S/E/W` groups) and the roof (`roof` group) auto-hide. The roof is walkable; doorways need 2 blocks wide and 3 blocks tall; when taking off indoors, the character exits via the `EXIT` / `DOORWAY` defined exits |
 | `POOL` | | `{ x0, x1, z0, z1, water, bed }`: swimmable pool (loads pool.js). See also `POOL_LADDER`, `POOL_LAMPS` |
 | `floorAt(x, z)` | | Returns the floor height at the given position, used for stairs and upper floors. Defaults to 0 if undefined |
+| `blockedAt(x, z, feet)` | | Optional walking-grid obstruction test for imported geometry absent from the voxel grid. Evaluated when the navigation grid is built; defaults to false. Does not replace outside-surface collision or roof climbing |
 | `INTRO` | | `{ pos, portrait, look }`: opening camera shot, defaults to starting from above the island at an angle |
 | `LIGHT_VOLUME`, `SHELTER` | | Bounds for baked lighting and rain/snow occlusion maps, calculated from `ISLAND` by default |
 

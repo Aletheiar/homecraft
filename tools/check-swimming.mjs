@@ -1,7 +1,7 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));

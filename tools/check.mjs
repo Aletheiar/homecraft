@@ -13,7 +13,7 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const { chromium } = await import('playwright').catch(() => {
+const { launchBrowser } = await import('./browser.mjs').catch(() => {
   console.log('The browser check needs Playwright: run npm install once, then try again. (npm run check:site needs nothing installed.)');
   process.exit(1);
 });
@@ -23,17 +23,12 @@ if (!url) { console.log('Nothing is being served. Run python3 tools/serve.py fir
 if (!(await fetch(url).catch(() => null))) { console.log(`Nothing answers at ${url}: start the site first (python3 tools/serve.py).`); process.exit(1); }
 const out = fileURLToPath(new URL('./.check/', import.meta.url));
 mkdirSync(out, { recursive: true });
-const gpu = process.platform === 'darwin'
-  ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist']
-  : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
 const VIEWS = [
   { name: 'computer', viewport: { width: 1280, height: 800 } },
   { name: 'phone', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 },
 ];
 
-let browser;
-try { browser = await chromium.launch({ channel: 'chrome', args: gpu }); }
-catch { browser = await chromium.launch({ args: gpu }); }
+const browser = await launchBrowser();
 
 let failed = false;
 for (const view of VIEWS) {

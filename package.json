@@ -20,6 +20,7 @@
     "serve": "python3 tools/serve.py",
     "check:site": "node tools/check-site.mjs",
     "check": "node tools/check-site.mjs && node tools/check.mjs",
+    "check:all": "node tools/check-all.mjs",
     "build": "bash tools/build.sh"
   },
   "devDependencies": {

@@ -7,36 +7,29 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
 permissions:
   contents: read
-  pull-requests: read
 concurrency:
   group: checks-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   checks:
-    name: Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_CHANNEL: chromium
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/github-script@v9
-        id: source
-        with:
-          result-encoding: string
-          script: |
-            const { resolveCheckBase } = await import(`${process.env.GITHUB_WORKSPACE}/tools/pr-check.mjs`);
-            return await resolveCheckBase({ github, context });
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
-      - run: node tools/pr-check.mjs
-        env:
-          PR_BASE: ${{ steps.source.outputs.result }}
+      - name: Start local preview
+        run: python3 tools/serve.py 8765 > "$RUNNER_TEMP/homecraft-preview.log" 2>&1 &
+      - run: npm run check:all -- http://127.0.0.1:8765/
+      - run: bash tools/build.sh
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

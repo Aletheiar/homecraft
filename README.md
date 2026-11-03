@@ -43,6 +43,6 @@ npm run check        # check:site + 无头浏览器启动检查，截图落在 t
 ## 状态
 
 - 上游已冻结：远程 `import/upstream-0.1.1` tag 指向模板基线，不再跟随官方更新，引擎改动自己修自己测。
-- 尚未上线：没有部署配置，也没有做公网部署。
+- 尚未上线：保留可选 Pages 配置；本轮没有启用部署。完整检查与待办见 [项目状态](docs/project-status.md)。
 - 内容是占位的：3 篇示例文章、3 个示例友链、关于页简介待填。
 - 已知超预算：场景约 65 万三角面（预算 20 万），主要来自外景 `assets/models/newheaven-scenery.glb`（12.5 MB）。

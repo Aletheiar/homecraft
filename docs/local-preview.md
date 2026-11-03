@@ -1,6 +1,6 @@
 # Glass Pyramid Local Preview
 
-This local prototype adapts `Aletheiar/homecraft` on branch `feat/pyramid-local-preview`. It has not been pushed or deployed.
+This local prototype adapts the standalone `Aletheiar/homecraft` repository. Current acceptance, Git synchronization boundaries and next-stage requests are tracked in [project-status.md](project-status.md). Hosting has not been enabled by this closeout.
 
 ## Start
 

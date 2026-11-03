@@ -11,6 +11,10 @@ The build script minifies JavaScript modules when `npx` is available locally, an
 3. **Settings → Secrets and variables → Actions → Variables** — create a variable `DEPLOY_PAGES` with value `true`.
 4. Push to `main`. Once deployment completes, find the site URL in the Pages settings.
 
+The `DEPLOY_PAGES=true` variable is also required for manual dispatch. The
+closeout only synchronizes source and checks; it does not enable this variable
+or hosting. See [Project status](project-status.md) for remaining release limits.
+
 To use a custom domain, enter it in the Pages settings and configure DNS as instructed.
 
 ## Cloudflare Pages / Vercel / Netlify
@@ -65,7 +69,9 @@ location / {
 
 The engine is maintained in this repository; there is no upstream update path. After changing it, preview and test the source, then redeploy through your existing hosting setup.
 
-Deployed websites serve their own JavaScript copies. Publishing the shared directory updates their listings, while engine improvements take effect after each website updates and redeploys its code. The portal protocol remains compatible with older websites.
+Deployed websites serve their own JavaScript copies. Changes take effect only
+after their code is redeployed. This repository does not publish the shared
+Homecraft directory or engine releases.
 
 ## Post-Deployment Checklist
 
