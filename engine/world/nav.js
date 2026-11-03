@@ -6,6 +6,7 @@ import * as L from '@world/layout.js';
 import { poolContains } from './pool-regions.js';
 
 const ISLAND = L.ISLAND, POOL = L.POOL || null, floorAt = L.floorAt || (() => 0);
+const blockedAt = L.blockedAt || (() => false);
 const inPool = (x, z) => poolContains(POOL, x, z);
 
 const RES = 4; // cells per metre
@@ -36,6 +37,8 @@ export function createNav(grid, obstacles) {
     if (inPool(x, z)) { floor[k] = 0; blocked[k] = 1; continue; }
     const f = floorAt(x, z);
     floor[k] = f;
+    // Imported surfaces may block walking without occupying voxel cells.
+    if (blockedAt(x, z, f)) { blocked[k] = 1; continue; }
     const by = Math.floor(f + 0.01);
     if (!solid(bx, by - 1, bz) && f === 0) { blocked[k] = 1; continue; }
     if (f % 1 === 0 && (solid(bx, by, bz) || solid(bx, by + 1, bz))) { blocked[k] = 1; continue; }

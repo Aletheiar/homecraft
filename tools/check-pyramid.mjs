@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const url = process.argv[2] || 'http://127.0.0.1:8765/';
 const output = resolve('tools/.check/pyramid');
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await launchBrowser();
 const report = { views: [], failures: [] };
 for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } }, { name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }]) {
   const context = await browser.newContext(view);
@@ -135,7 +135,9 @@ for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } },
       let off = top;
       for (let i = 0; i < 45; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: true }, 0); h.extras.update(); off = Math.min(off, h.player.y); }
       const mid = { y: h.player.y, island: h.player.island, mode: h.player.mode };
-      for (let i = 0; i < 240; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: true }, 0); h.extras.update(); }
+      // Stop on the lower slope: continuing past the apron now correctly
+      // enters the pool, which check-shore verifies as a separate behavior.
+      for (let i = 0; i < 240 && h.player.y >= 5; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: true }, 0); h.extras.update(); }
       return { top, off, mid, y: h.player.y, z: h.player.pos.z, island: h.player.island, mode: h.player.mode };
     });
     assert.ok(down.top > 24, JSON.stringify(down));

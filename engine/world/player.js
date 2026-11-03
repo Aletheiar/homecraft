@@ -592,7 +592,11 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
       // Walking (or jumping) off the deck into the pool dives in.
       const l = Math.hypot(dx, dz);
       const approach = POOL?.polygons ? 1.2 : .7;
-      if (!island && inPool(pos.x + dx / l * approach, pos.z + dz / l * approach) &&
+      // A low outside surface can meet a shore too (for example a stone
+      // apron). Keep high ledges and airborne outside movement out of this
+      // short walking dive, while allowing a ground-level handoff to water.
+      const shoreHeight = !island || (!airborne && Math.max(y, level) <= WATER + .7);
+      if (shoreHeight && inPool(pos.x + dx / l * approach, pos.z + dz / l * approach) &&
         pos.x > POOL.x0 - 1.2 && pos.x < POOL.x1 + 1.2 && pos.z > POOL.z0 - 1.2 && pos.z < POOL.z1 + 1.2) { diveIn(dx / l, dz / l); return; }
     } else if (path?.length) {
       // Consume reached waypoints in this frame so a turn does not insert a

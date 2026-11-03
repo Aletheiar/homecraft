@@ -1,5 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+// The world's navigation predicate now imports the real shell collision
+// source; resolve its Three.js import the same way as the browser import map.
+registerHooks({ resolve(specifier, context, nextResolve) {
+  if (specifier === 'three') return { url: new URL('../vendor/three/three.module.min.js', import.meta.url).href, shortCircuit: true };
+  return nextResolve(specifier, context);
+} });
 const { ENTRANCE_YAW, HUB_PORTALS } = await import('../world/space-config.js');
 const { STATIONS } = await import('../world/layout.js');
 
