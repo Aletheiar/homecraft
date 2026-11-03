@@ -1,10 +1,20 @@
-// 1 block = 1 m. x east, z south, y up.
-export const ISLAND = { x0: -36, x1: 38, z0: -26, z1: 31 };
-export const SPAWN = { x: 0.5, z: 18, heading: Math.PI };
+import polygons from '../assets/models/pool-regions.js';
+// The .4 scale increases linear dimensions by 25% over the first preview.
+export const ISLAND = { x0: -45, x1: 45, z0: -45, z1: 45 };
+export const SPAWN = { x: -29, z: 0, heading: Math.PI / 2 };
+export const INTRO = { pos: [-83, 53, 88], portrait: [-70, 95, 170], look: [0, 5, 0] };
+export const POOL = { x0: -39, x1: 39, z0: -39, z1: 39, water: -.015, bed: -3, polygons };
 export const STATIONS = [
-  { id: 'mailbox', name: '留言', en: 'Mailbox', icon: 'mail', at: [0.5, 23.9], look: [0.5, 25.5] },
-  { id: 'portal', name: '传送门', en: 'Portal', icon: 'portal', at: [8, 23.1], look: [8, 25.5] },
-];
-export const MAILBOX = { x: 0.5, z: 25.5, yaw: Math.PI };
-export const PORTAL = { x: 8, z: 25.5, yaw: Math.PI };
-export const TREES = [[30, -12]];
+  // Welcome and Articles remain Dock cards without physical hall fixtures.
+  // All four doors face the west opening, so each station stands in
+  // front of its door and looks east at it.
+  { id: 'works', page: false, name: '项目研究', en: 'Projects', icon: 'works', at: [5.2, -5.6], look: [7.2, -5.6] },
+  { id: 'writing', page: false, name: '随笔图书室', en: 'Journal', icon: 'writing', at: [-5.6, -5.6], look: [-4, -5.6] },
+  { id: 'friends', page: false, name: '博客传送', en: 'Friends', icon: 'about', at: [5.2, 5.6], look: [7.2, 5.6] },
+  { id: 'about', page: false, name: '关于本站', en: 'About', icon: 'about', at: [-5.6, 5.6], look: [-4, 5.6] },
+  // The fan artwork hangs above the hall, so this station stands on the floor
+  // below it: the card is what the visitor reads, the painting is what they see.
+  { id: 'miku', name: '玻璃之下', en: 'Miku', icon: 'about', at: [-2.4, .4], look: [1, 0] },
+  { id: 'plaza', name: '风中的晶体', en: 'Crystal', icon: 'map', at: [-20, -6.4], look: [-22.4, -6.4] },
+  { id: 'observatory', name: '庭院观测台', en: 'Observatory', icon: 'map', at: [-20, 7.2], look: [-22.4, 7.2] },
+].map(s => ({ ...s, at: s.at.map(n => n * 1.25), look: s.look.map(n => n * 1.25) }));

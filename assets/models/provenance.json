@@ -1,0 +1,62 @@
+{
+  "author": "NewHeaven",
+  "source_url": "https://www.minecraft.net/en-us/article/louvre-craft",
+  "source_sha256": "912dfd8e14407586787b47855671e62a407a6a2e007d2c74db5ca5b666db9bdc",
+  "source_bytes": 39037312,
+  "source_triangles": 814226,
+  "output_bytes": 1986816,
+  "output_triangles": 41609,
+  "scenery_bytes": 12761876,
+  "scenery_triangles": 579388,
+  "output_sha256": "80b16bb6fa0dc847a8ded88f1ac1ee7df7db8a075410d492ae656b3214c8cc80",
+  "bounds": [
+    [
+      -39.800000000000004,
+      -0.4,
+      -39.800000000000004
+    ],
+    [
+      40.6,
+      24.8,
+      39.800000000000004
+    ]
+  ],
+  "transform": {
+    "center_x": -17,
+    "center_z": 2,
+    "ground_y": 0.5,
+    "scale": 0.4
+  },
+  "entrance": "Original west-side opening; no new doorway cut",
+  "changes": [
+    "Recenter and uniform scale",
+    "Original scenery: coplanar unions preserve covered surfaces; five distant material colors",
+    "Original west opening retained",
+    "Seven polygon basins replace shallow decorative water",
+    "Small pyramids restored to original bases; fence inset to 39.5m; individual pools scaled to 88% with new coping"
+  ],
+  "pool_scale": 0.88,
+  "courtyard_fence_half": 39.5,
+  "water_regions": 7,
+  "decorative_pyramid_placements": [
+    {
+      "side": "east",
+      "outward_shift": 0,
+      "courtyard_fence": 39.5,
+      "original_base_nearest": 41.4
+    },
+    {
+      "side": "north",
+      "outward_shift": 0,
+      "courtyard_fence": 39.5,
+      "original_base_nearest": 41.4
+    },
+    {
+      "side": "south",
+      "outward_shift": 0,
+      "courtyard_fence": 39.5,
+      "original_base_nearest": 41.4
+    }
+  ],
+  "publication_status": "Local preview only; third-party redistribution permissions remain unestablished."
+}

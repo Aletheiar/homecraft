@@ -1,0 +1,16 @@
+{
+  "id": "angel-monument",
+  "source": "Procedural boxes authored for this local project; no external mesh, texture or sprite bundled",
+  "inspiration": "The Binding of Isaac Angel Room statue: the stationary room prop, not the Isaac boss or an ordinary praying angel",
+  "status": "Original voxel fan interpretation after visual inspection of an in-game screenshot; not an official asset; local preview",
+  "reference_checked": "2026-11-03",
+  "visual_reference": "https://playerassist.com/binding-isaac-get-angel-rooms/",
+  "reference_image": "https://i0.wp.com/playerassist.com/wp-content/uploads/2021/09/Binding-of-Isaac-How-to-Get-Angel-Rooms.jpg?ssl=1&w=1080",
+  "recognition_features": ["large featureless pale oval face", "gray head rim", "compact white seated robe", "separate upturned palms", "long folded wings pointing down"],
+  "placement": { "x": -62.6, "z": -19.2, "facing": "east toward the glass pyramid" },
+  "original_horse": "Preserved at its original imported coordinates near (-62.6, +19.2)",
+  "construction": "0.2 metre stepped voxel sculpture with solid rounded head, original simplified wing contours, and runs merged along all three axes; 292 boxes and 3504 triangles in one opaque batch",
+  "research_log": "docs/research/2026-11-03-isaac-room-statue.md",
+  "asset_search_result": "Existing projects and model listings were checked; no verified ready-to-use complete 3D Angel Room statue was found in the inspected results. Partial character models, sprite mods and a combined flat Joy-Con holder were not imported.",
+  "attribution_note": "The Binding of Isaac is associated with Edmund McMillen and Nicalis; no ownership of the underlying character design is claimed"
+}
