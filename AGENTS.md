@@ -2,17 +2,25 @@
 
 ## Purpose
 
-Homecraft is a Minecraft-style 3D personal website template. The project uses Three.js and native ES modules, and runs without a build step.
+This repository is a standalone personal site built from the Homecraft template: Three.js, native ES modules, no build step. It no longer tracks the template it came from; see "Repository Status".
+
+## Repository Status
+
+- **Upstream is frozen.** The template was imported from `terryHu7/homecraft` `main` at commit `db4b7f4` (engine 0.1.1) and recorded as the annotated tag `import/upstream-0.1.1`. `git diff import/upstream-0.1.1 main` is the complete list of changes made for this site.
+- **The engine updater is retired here.** Do not run `npm run update`, the standalone updater, or the procedure in [engine/UPDATING.md](engine/UPDATING.md). `engine/manifest.json` records the 0.1.1 baseline; it is not a target to return to, and its drift report is expected rather than a problem.
+- **The engine is maintained in this repository now.** Upstream fixes do not arrive on their own. Bugs in `engine/` are fixed here, and engine files may be changed when this site needs it. Keep engine code generic enough to run any site built on it, and keep site-specific layout, content, and data in `world/`.
+- **Attribution is required.** `LICENSE` keeps the upstream MIT copyright line. Never remove the `terryHu7` line; add your own below it.
 
 ## Contribution Workflow
 
-- Keep one purpose per PR. Use `type(scope): description` for PR titles and final commits, with English descriptions and original website names. Listing data belongs in its own PR.
-- Always run `npm run check:pr` locally and ensure all tests pass before pushing or opening PRs. Never push unverified code.
+This repository has a single owner. Work on a topic branch and merge into `main`; pull requests are optional.
+
+- Keep one purpose per commit. Use `type(scope): description` for final commit messages, with English descriptions and original website names.
+- Before committing, run `npm run check:site` and the relevant `tools/*.test.mjs` suites. Do not run `npm run check:pr`: its assertions describe the upstream template's pages and world, not this site.
 - Do not include `Co-authored-by` trailers in commits or PR merges.
-- Write technical documentation, Agent and skill instructions, workflow descriptions, release notes, PR descriptions, and CLI output in English. Use concise, professional language and describe concrete behavior. Avoid metaphors, colloquialisms, and promotional phrasing.
-- Public forms and bot replies use English first, followed by Chinese. Keep both complete and use consistent product terms.
-- Changes to public wording require the maintainer's confirmation before publication, including generated issue replies and PR descriptions. Prepare the exact text for review.
-- Wait for PR title, Listing request and Checks to pass before merging. Use Squash and merge with the PR title. Verify the published result before reporting completion.
+- Write technical documentation, Agent and skill instructions, workflow descriptions, and CLI output in English. Use concise, professional language and describe concrete behavior. Avoid metaphors, colloquialisms, and promotional phrasing.
+- User-facing wording changes require the owner's confirmation before publication. Prepare the exact text for review. Where the site is bilingual, English comes first and Chinese follows, both complete.
+- Verify before reporting completion: run the checks, open the preview, and inspect a screenshot after visual changes.
 
 ## Development Principles
 
@@ -29,15 +37,15 @@ world/            The user's world
   layout.js       Data: island bounds, spawn point, stations, prefab positions
   build.js        Building: build(ctx) creates blocks and furniture; setup(app) defines dynamic behavior (optional)
 assets/           Images (project screenshots, skins, icons)
-engine/           Shared engine (use the official updater; preserve local customizations)
+engine/           Engine imported from template 0.1.1 and maintained in this repository
 examples/terry-home/   Showcase home: reference implementation for buildings, furniture, landscaping, and pets
 backend/mailbox/  Optional: Cloudflare Worker that forwards guestbook messages to email
 tools/            serve.py (local preview), check.mjs (self-check), build.sh (build & deploy)
 plugin/           Portal plugin for regular websites and blogs (homecraft-door.js)
-directory/        Public directory data
+directory/        Upstream public directory data (unused by this site)
 ```
 
-Site customization primarily involves modifying `world/`, `index.html`, `home.config.js`, `homecraft.json`, and `assets/`. Only modify `engine/` when fixing engine bugs or when the user explicitly requests it; if a requirement can only be fulfilled by changing the engine, inform the user first. See "Running and Self-Check" for how to check engine diffs.
+Site customization lives in `world/`, `index.html`, `home.config.js`, `homecraft.json`, and `assets/`. `engine/` is the shared engine: keep it free of content specific to this site so that a change there stays a change to the engine, and put layout, content, and per-site data in `world/`. Engine changes are allowed now that upstream is frozen; test them like any other change.
 
 The import map in `index.html` defines module paths: `@world/` maps to `world/`, `@config` maps to `home.config.js`, and `@engine/` maps to `engine/`.
 
@@ -45,24 +53,21 @@ The import map in `index.html` defines module paths: `@world/` maps to `world/`,
 
 ```sh
 python3 tools/serve.py          # Start local preview; use python on Windows
-npm run check:site              # Check site metadata, skin, and engine diffs — no dependencies or running server needed
+npm run check:site              # Check site metadata, skin, and engine drift — no dependencies or running server needed
 npm install && npm run check    # Install dependencies and run site + browser checks
 ```
 
 - The preview server automatically picks a free port, opens the browser, and prints the address in the terminal. Responses have caching disabled — just refresh after changes. `npm run check` connects to this address.
 - `npm run check` first runs `check:site`, then uses a headless browser to verify startup and page opening at desktop and mobile sizes, reports errors, and outputs draw stats. Screenshots are saved in `tools/.check/`; check at least one screenshot after visual changes.
 - Appending `?debug` to the URL displays draw calls, triangle count, and frame time at the top of the page; values exceeding the budget are highlighted in red.
-- When `check:site` reports a missing tagline or logo, ask the user to provide them. For engine diffs in the check report, only revert engine changes unrelated to the current task and keep changes the user already had. `engine/manifest.json` is only updated by maintainers at release time.
+- `check:site` reports three findings here that are expected and stable: no `intro` line, the template logo, and `engine/` drifting from the 0.1.1 manifest. None of them should be cleared by inventing metadata or reverting engine work; the drift line only means this site has customizations. Ask the owner before filling `intro` or replacing the logo.
 - Local frame time only reflects the current machine's performance. Before publishing, ask the user to check the actual experience on their phone. See [docs/deploy.md](docs/deploy.md) for deployment steps.
 
-<!-- homecraft-updates:start -->
-## Homecraft Engine Updates
+## Upstream Updates
 
-- Follow [engine/UPDATING.md](engine/UPDATING.md) when asked to upgrade Homecraft or apply upstream fixes. Use releases from `terryHu7/homecraft`, not the fork's own releases.
-- When diagnosing a shared engine issue, check once for a relevant fix in the latest stable release. Report relevant updates without changing project files. Do not repeat notices for an unchanged release or apply unrelated upgrades.
-- Use the official updater. Preserve site layouts, content, configuration, assets, deployment files, and existing project rules. Resolve reported conflicts with the supplied files and continuation command.
-- Inspect the diff, test, and redeploy through the existing hosting setup. Directory listing does not update deployed code.
-<!-- homecraft-updates:end -->
+Upstream is frozen for this repository; see "Repository Status". Do not run `npm run update`, the standalone updater, or the procedure in [engine/UPDATING.md](engine/UPDATING.md).
+
+If the owner asks for a specific fix from `terryHu7/homecraft`, treat it as targeted reading rather than an upgrade: inspect that upstream commit, apply the smallest equivalent change to `engine/` here, cite the upstream commit in the message, and test it like any other engine change.
 
 The browser console provides the following debug APIs:
 
@@ -227,4 +232,4 @@ The portal connects independently deployed websites; see [docs/protocol.md](docs
 
 - Link formats follow `engine/door-protocol.js`, `engine/portal.js`, and `engine/traveller.js`. The public directory URL follows `engine/config.js`.
 - `Referrer-Policy` preserves the origin. Links contain only public URLs — no account IDs, email addresses, or other identity information.
-- The listing entry point is the main repository's ["Request listing"](https://github.com/terryHu7/homecraft/issues/new/choose); see [docs/worlds.md](docs/worlds.md) for the process. `directory/` is only maintained in the main repository.
+- The listing entry point and the public directory belong to the upstream template repository and require a publicly deployed site. This site is not listed, and `directory/` is not maintained here; joining the directory later is a new decision for the owner, not routine maintenance.
