@@ -61,7 +61,12 @@ for (const view of VIEWS) {
     await page.evaluate(id => __home.go(id), id);
     await page.waitForTimeout(400);
     const open = await page.evaluate(() => document.querySelector('#panel')?.open);
-    if (!open) errors.push(`page "${id}" did not open`);
+    const expected = await page.evaluate(async id => {
+      const s = (await import('@world/layout.js')).STATIONS?.find(s => s.id === id);
+      return { opens: s?.page !== false, distance: s ? Math.hypot(__home.player.pos.x - s.at[0], __home.player.pos.z - s.at[1]) : 0 };
+    }, id);
+    if (open !== expected.opens) errors.push(`Dock action "${id}" has unexpected panel state`);
+    if (!expected.opens && expected.distance > .3) errors.push(`Dock action "${id}" did not reach its approach`);
     await page.screenshot({ path: `${out}${view.name}-${id}.png` });
     await page.evaluate(() => document.querySelector('#panel .close')?.click());
   }

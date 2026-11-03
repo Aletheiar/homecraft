@@ -12,7 +12,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 out="$root/dist"
 rm -rf "$out" && mkdir -p "$out"
-for item in index.html _headers home.config.js homecraft.json world assets engine vendor; do
+for item in index.html _headers home.config.js homecraft.json world assets engine vendor about articles; do
   [ -e "$root/$item" ] && cp -R "$root/$item" "$out/"
 done
 find "$out" -name .DS_Store -delete

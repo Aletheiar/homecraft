@@ -32,6 +32,7 @@ async function main() {
   run('node', ['--test', 'tools/listing-github.test.mjs', 'tools/listing-validation.test.mjs']);
   if (!mode.browser) return;
   run('node', ['--test', 'tools/update-engine.test.mjs']);
+  run('node', ['--test', 'tools/doors.test.mjs', 'tools/portals.test.mjs', 'tools/portal-journey.test.mjs', 'tools/hall-signs.test.mjs', 'tools/statues.test.mjs', 'tools/profile.test.mjs']);
   run('node', ['tools/check-site.mjs']);
   run('node', ['tools/check-metadata.mjs']);
   run('node', ['--test', 'tools/check-listing.test.mjs']);
