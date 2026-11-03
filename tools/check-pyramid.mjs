@@ -1,4 +1,4 @@
-import { launchBrowser } from './browser.mjs';
+import { finishOpening, launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -17,7 +17,7 @@ for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } },
   await page.goto(url);
   await page.waitForFunction(() => window.__home?.world.pyramid.sceneryReady || window.__home?.world.pyramid.error || window.__homeStartupError, null, { timeout: 60000 });
   assert.equal(await page.evaluate(() => window.__home?.world.pyramid.error || window.__homeStartupError || null), null);
-  await page.waitForFunction(() => !__home.rig.introActive, null, { timeout: 30000 });
+  await finishOpening(page);
   await page.waitForTimeout(1500);
   const result = { name: view.name, checks: [], errors };
   async function check(name, action) {

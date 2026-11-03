@@ -15,3 +15,18 @@ export async function launchBrowser(options = {}) {
     return chromium.launch({ ...rest, args: [...gpu, ...args] });
   }
 }
+
+// Functional checks advance the real opening controller on a fixed simulation
+// clock. A software renderer may need far more wall time than animation time;
+// its throughput must not decide whether the opening can reach its end state.
+export async function finishOpening(page) {
+  await page.evaluate(() => {
+    const h = window.__home;
+    if (!h?.rig) throw new Error('The camera is not initialized.');
+    for (let frame = 0; frame < 600 && h.rig.introActive; frame++) {
+      h.rig.update(1 / 60, h.player);
+      h.extras.update?.(1 / 60);
+    }
+    if (h.rig.introActive) throw new Error('The opening camera did not finish within ten simulated seconds.');
+  });
+}

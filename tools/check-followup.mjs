@@ -1,4 +1,4 @@
-import { launchBrowser } from './browser.mjs';
+import { finishOpening, launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 const base = process.argv[2] || readFileSync(new URL('./.serve-url', import.meta.url), 'utf8').trim();
@@ -12,7 +12,7 @@ async function check(name, action) {
 async function ready(page) {
   await page.waitForFunction(() => window.__homeStartupError || window.__home?.world.pyramid?.sceneryReady, null, { timeout: 60000 });
   assert.equal(await page.evaluate(() => window.__homeStartupError || null), null);
-  await page.waitForFunction(() => !__home.rig.introActive);
+  await finishOpening(page);
 }
 async function stand(page, id = 'about', fp = true) {
   await page.locator('#enter-button').click();

@@ -94,6 +94,12 @@ SwiftShader on Linux. `HOMECRAFT_SOFTWARE_GPU=1` selects SwiftShader locally;
 `PLAYWRIGHT_CHANNEL=chromium` selects the installed Playwright browser in CI.
 Desktop viewport emulation is not a physical-phone performance test.
 
+Opening-camera acceptance advances the actual camera controller at fixed
+simulation steps and asserts that it reaches its finished state. A slow Linux
+software renderer must not turn 3.5 seconds of animation into a 30-second
+functional timeout. This changes only the test harness, not production timing
+or the rendering budget; low rendering throughput remains a documented limit.
+
 `bash tools/build.sh` builds static files into `dist/`, including the new
 friend directory. It does not deploy unless `--deploy` is explicitly supplied.
 

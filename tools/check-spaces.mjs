@@ -1,4 +1,4 @@
-import { launchBrowser } from './browser.mjs';
+import { finishOpening, launchBrowser } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
@@ -10,7 +10,7 @@ page.on('pageerror', e => errors.push(e.message));
 async function ready(hub = false) {
   await page.waitForFunction(hub => window.__homeStartupError || (hub ? window.__home?.world.pyramid?.sceneryReady : window.__home?.world.roomReady), hub, { timeout: 60000 });
   assert.equal(await page.evaluate(() => window.__homeStartupError || null), null);
-  await page.waitForFunction(() => !__home.rig.introActive);
+  await finishOpening(page);
   await page.evaluate(() => __home.extras.update(1));
 }
 async function check(name, fn) {
