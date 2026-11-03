@@ -99,6 +99,8 @@ simulation steps and asserts that it reaches its finished state. A slow Linux
 software renderer must not turn 3.5 seconds of animation into a 30-second
 functional timeout. This changes only the test harness, not production timing
 or the rendering budget; low rendering throughput remains a documented limit.
+The desktop portal/profile page is closed before starting the mobile case, so
+completed worlds do not keep consuming the same software GPU during startup.
 
 `bash tools/build.sh` builds static files into `dist/`, including the new
 friend directory. It does not deploy unless `--deploy` is explicitly supplied.

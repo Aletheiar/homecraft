@@ -7,7 +7,7 @@ const browser = await launchBrowser();
 const report = { checks: [], errors: [] };
 async function check(name, action) {
   try { report.checks.push({ name, passed: true, detail: await action() }); console.log(`PASS: ${name}`); }
-  catch (e) { report.checks.push({ name, passed: false, error: e.message }); console.log(`FAIL: ${name}: ${e.message}`); }
+  catch (e) { report.checks.push({ name, passed: false, error: e.stack || e.message }); console.log(`FAIL: ${name}: ${e.stack || e.message}`); }
 }
 async function ready(page) {
   await page.waitForFunction(() => window.__homeStartupError || window.__home?.world.pyramid?.sceneryReady, null, { timeout: 60000 });
@@ -115,6 +115,10 @@ try {
       await page.locator('#panel .close').click();
     }
   });
+  // Keep one 3D viewport active at a time. A completed desktop world otherwise
+  // continues rendering while mobile shader/model startup competes for the
+  // same software GPU on CI.
+  await page.close();
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
   mobile.on('pageerror', e => report.errors.push(e.message));
   await check('mobile About entry, accounts and reduced-motion return work by touch', async () => {
