@@ -502,18 +502,6 @@ const SWITCH = {
     layer(ctx, (x, y) => x > 3 && x < 29 && y < 28 && y > top(x), (x, y) => y < top(x) + 3 ? '#8fd8f5' : y > 22 ? '#1f6fae' : '#3c9ad6');
     layer(ctx, (x, y) => x > 5 && x < 27 && Math.abs(y - (19 + Math.sin(x * .5 + 2.2) * 2)) < 1.1, () => '#e6f7fd');
   },
-  // A spider web: eight spokes and two sagging rings.
-  web: ctx => {
-    const k = Math.PI / 4;
-    layer(ctx, (x, y) => {
-      const dx = x - 16, dy = y - 16, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
-      if (d > 14.5) return false;
-      const off = a - Math.round(a / k) * k, mid = a - (Math.floor(a / k) + .5) * k;
-      if (d * Math.abs(Math.sin(off)) < .75 || d < 1.6) return true;
-      const p = d * Math.cos(mid), sag = 1 - (mid / (k / 2)) ** 2;
-      return [6.2, 12].some(r => Math.abs(p - (r * Math.cos(k / 2) - sag * r * .09)) < .75);
-    }, () => '#f6f6f6');
-  },
   sound: ctx => {
     speaker(ctx);
     layer(ctx, (x, y) => {

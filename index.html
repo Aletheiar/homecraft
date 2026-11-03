@@ -15,25 +15,7 @@
 </head>
 <body>
 <div id="portal-ripple" aria-hidden="true"></div>
-<script>
-(() => {
-  const root = document.documentElement, el = document.getElementById('portal-ripple');
-  if (!el) return;
-  let arriving = false, at = 0;
-  try { arriving = sessionStorage.getItem('homecraft.arriving.v1') === '1'; at = Number(sessionStorage.getItem('homecraft.arriving.at.v1')) || 0; } catch {}
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!arriving || !at || Date.now() - at > 30000 || reduced) {
-    el.remove();
-    try { sessionStorage.removeItem('homecraft.arriving.v1'); sessionStorage.removeItem('homecraft.arriving.at.v1'); } catch {}
-    return;
-  }
-  root.classList.add('arriving');
-  el.style.setProperty('--nether-delay', `-${Math.min(6000, Date.now() - at)}ms`);
-  setTimeout(() => {
-    if (root.classList.contains('arriving')) { root.classList.remove('arriving'); el.remove(); }
-  }, 15000);
-})();
-</script>
+<script src="/world/portal-boot.js"></script>
 <main id="world" aria-label="玻璃金字塔三维庭院"></main>
 <div id="loading"><div class="bar"><i></i></div></div>
 <header class="pyramid-brand"><span class="brand-mark" aria-hidden="true">△</span><div><span class="brand-eyebrow">A SPACE TO EXPLORE</span><h1>玻璃金字塔</h1><span id="model-status" role="status">正在载入金字塔…</span></div></header>
@@ -70,9 +52,9 @@
 <p class="preview-note">该版本仅用于本地体验；未连接留言服务，也没有发布到线上。</p>
 </article>
 <article class="page" data-station="friends" data-icon="about">
-<h2>博客传送客厅</h2><p class="card-kicker">FRIENDS / EXAMPLE LINKS</p><p>在一个小客厅里，通过不同的门前往其他人的博客。以下是体验用的示例站点，尚未填入你的真实友链。</p>
-<p><a class="space-link" href="/?space=friends" data-approach-portal="friends">前往博客客厅传送门 →</a></p>
-<ul><li><a href="https://terryhu.cn/">Terry</a></li><li><a href="https://m.134688.xyz/">134688</a></li><li><a href="https://rsliyu.com/">Rsliyu</a></li></ul>
+<h2>友链目录</h2><p class="card-kicker">FRIENDS / DIRECTORY</p><p>友链收进一张目录：从这扇门进入目录页，再选择要去的站点。新增友链只需在目录页的数据文件里加一行，不必在大厅里再开一扇门。</p>
+<p><a class="space-link" href="/friends/" data-approach-portal="friends">前往友链目录传送门 →</a></p>
+<p class="preview-note">目录中的站点为体验用示例，不代表真实好友。</p>
 </article>
 <article class="page" data-station="back" data-icon="map"><h2>返回中央大厅</h2><p>沿着绿色传送门回到玻璃金字塔，回到你离开的那扇门前。</p><p><a class="space-link" href="/?space=hub&amp;return=1">返回大厅 →</a></p></article>
 <article class="page" data-station="plaza" data-icon="map"><h2>风中的晶体</h2><p>庭院中的一件小型动态装置。可以暂停，观察它在不同光线下的形状。</p><button class="space-link" type="button" data-foyer-action="crystal" aria-pressed="false">暂停晶体旋转</button></article>

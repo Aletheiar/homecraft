@@ -254,7 +254,6 @@ async function boot() {
     else if (kind === 'exhale') { pool.exhale(x, y, z); if (pool.submerged) sound.play('bubbles'); }
   }
   const player = createPlayer({ avatar, nav, grid: world.grid, ground: world.ground, onWater });
-  stage.scene.add(player.web);
   const rig = createRig(stage.camera, world);
   // The world's own moving parts (a sailboat, a Vertec, …): build.js setup(app).
   const extras = W.setup?.({ stage, world, nav, player, avatar, sound, rig, quality, config }) || {};
@@ -507,77 +506,6 @@ async function boot() {
     return { block: island ? null : block, spot: best?.h || null, island, water };
   }
 
-  // ---------- Web-zip ----------
-  // Spider-Man's point launch, on demand: in web mode (toggled by the top-right
-  // web button), somewhere within 55 m and in sight, with room to stand, shows
-  // the spider marker, and a click shoots a web there and pulls the player straight
-  // over (onto roofs and tree tops as well). Otherwise a click walks or flies as before.
-  // Things in the house open only with F (or the Dock).
-  const REACH = 55, aim = $('#aim'), eye = new THREE.Vector3(), way = new THREE.Vector3();
-  // Where to land for an anchor: on top of what was hit (a top, or over a
-  // ledge up to 4 m above, so the upper wall of the house reaches the roof),
-  // or, for a low wall, the floor in front of it.
-  function landingNear(a, n) {
-    const ledge = !!n && Math.abs(n[1]) < 0.5, above = ledge ? 4 : 0.4;
-    const top = (x, z) => {
-      const g = world.ground.topAt(x, z, a.y + above);
-      const s = g && g.y > a.y - 2.5 ? world.ground.nearestStand(x, z, g.y) : null;
-      return s && { x: s.x, z: s.z, y: s.y, island: s.site };
-    };
-    const floor = (x, z) => {
-      const s = nav.nearestStand(x, z), h = nav.heightAt(s.x, s.z);
-      return nav.canStand(s.x, s.z) && h <= a.y + above && h > a.y - 2.5 ? { x: s.x, z: s.z, y: h, island: null } : null;
-    };
-    if (!ledge) return top(a.x, a.z) || floor(a.x, a.z);
-    // Behind the face only outside ground counts (never through a wall into the house).
-    return top(a.x - n[0] * 0.8, a.z - n[2] * 0.8) || floor(a.x + n[0] * 0.7, a.z + n[2] * 0.7);
-  }
-  function zipTarget(clientX, clientY) {
-    if (player.zipping || rig.introActive) return null;
-    const { block, island } = pick(clientX, clientY);
-    if (!block && !island) return null;
-    const anchor = island ? island.point : new THREE.Vector3(block.x, block.y, block.z), normal = island ? null : block.normal;
-    eye.set(player.pos.x, player.y + 1.7, player.pos.z);
-    const d = eye.distanceTo(anchor);
-    if (d > REACH || d < 1.5) return null;
-    // In sight: nothing solid, glass included, short of the anchor itself.
-    way.subVectors(anchor, eye).normalize();
-    const hit = world.grid.raycast(eye, way, d, () => true);
-    if (hit && hit.t < d - 0.7) return null;
-    const land = landingNear(anchor, normal);
-    return land && { ...land, anchor, normal };
-  }
-  function webTo(target) {
-    closePage(); minimap.toggleBig(false); input.clear();
-    if (!player.zipTo(target)) return false;
-    sound.play('web');
-    return true;
-  }
-
-  let webMode = false;
-  const webButton = $('#webButton');
-  webButton.querySelector('span').style.backgroundImage = `url(${icon('web').url})`;
-  function toggleWeb(on = !webMode) { webMode = on; webButton.setAttribute('aria-pressed', String(on)); refreshAim(); }
-  webButton.addEventListener('click', () => { toggleWeb(); sound.play('click'); });
-
-  // While in web mode, the spider marker follows the cursor wherever a zip is possible;
-  // checked as the pointer moves (at most every 60 ms) and as the camera turns.
-  const mouse = { x: -1, y: -1 };
-  let aimCheck = 0, aimOk = false;
-  function hover(x, y, fromPointer = false) {
-    if (fromPointer) { mouse.x = x; mouse.y = y; }
-    const now = performance.now();
-    if (x < 0 || rig.introActive || !webMode) aimOk = false;
-    else if (!fromPointer || now - aimCheck > 60) { aimCheck = now; aimOk = !!zipTarget(x, y); }
-    aim.hidden = !aimOk;
-    if (aimOk) aim.style.transform = `translate(${x}px, ${y}px)`;
-    stage.renderer.domElement.style.cursor = aimOk ? 'none' : x >= 0 && pick(x, y).spot ? 'pointer' : '';
-  }
-  function refreshAim() {
-    if (rig.firstPerson) hover(innerWidth / 2, innerHeight / 2);
-    else hover(mouse.x, mouse.y);
-  }
-
   function tap(x, y) {
     const target = pick(x, y);
     if (target.spot?.id === 'portal') { openPortal(); return; }
@@ -586,10 +514,6 @@ async function boot() {
     if (rig.introActive) { rig.skipIntro(); return; }
     // Lying on the pool's floor looking up, a tap only brings them up again.
     if (player.gazing) { player.toggleDive(); return; }
-    if (webMode) {
-      const target = zipTarget(x, y);
-      if (target) return webTo(target);
-    }
     // Ordinary signs use the same hotspots as proximity/F interaction.
     if (target.spot) { activate(target.spot.id); return; }
     const { block, island, water } = target;
@@ -782,7 +706,7 @@ async function boot() {
   const input = createInput(stage.renderer.domElement, {
     blocked: () => minimap.isBigOpen() || panel.open || weatherMenuOpen() || isTravelling() || !!portal?.busy,
     shortcutsBlocked: () => minimap.isBigOpen() || weatherMenuOpen() || isTravelling() || !!portal?.busy,
-    escape: () => { if (weatherMenuOpen()) toggleWeatherMenu(false, true); else if (minimap.isBigOpen()) minimap.toggleBig(false); else if (panel.open) closePage(); else if (phone.up) { if (!phone.back()) togglePhone(false); } else toggleWeb(false); },
+    escape: () => { if (weatherMenuOpen()) toggleWeatherMenu(false, true); else if (minimap.isBigOpen()) minimap.toggleBig(false); else if (panel.open) closePage(); else if (phone.up) { if (!phone.back()) togglePhone(false); } },
     interact: () => {
       if (config.keyboardInteraction === false) return;
       const s = nearestTarget();
@@ -803,7 +727,6 @@ async function boot() {
     orbit: (dx, dy) => { rig.skipIntro(); rig.orbit(dx, dy); },
     zoom: f => rig.zoom(f),
     tap,
-    hover: (x, y) => hover(x, y, true),
     anyKey: () => rig.skipIntro(),
     pad: () => flightPad?.state,
   });
@@ -816,9 +739,6 @@ async function boot() {
   // The same baked field lights furniture, printed artwork, the player and pets.
   // Bind it before warmup so night/day switches never compile another shader.
   world.lighting.apply(stage.scene);
-  // The web is normally hidden, so include it in warmup explicitly; otherwise
-  // its shader would compile on the first zip.
-  player.web.position.set(0, -30, 0); player.web.visible = true;
   atmosphere.warmup(true);
   weatherFx.warmup(true);
   pool.warmup(true);
@@ -846,7 +766,6 @@ async function boot() {
   stage.sun.visible = sunOn;
   stage.camera.layers.mask = cameraMask;
   for (const [object, culled] of warmObjects) object.frustumCulled = culled;
-  player.web.visible = false;
   atmosphere.warmup(false);
   weatherFx.warmup(false);
   pool.warmup(false);
@@ -904,7 +823,7 @@ async function boot() {
   let debugClock = 0;
   const weatherFocus = new THREE.Vector3();
   const governor = { t: 0, frames: 0, sum: 0, sq: 0, level: 0 };
-  let mapClock = 0, promptClock = 0, hoverClock = 0;
+  let mapClock = 0, promptClock = 0;
   let hudShown = false;
   let wasPaused = false;
   // Lying still on the pool's floor, looking up, the HUD fades away until the
@@ -971,12 +890,6 @@ async function boot() {
     else if (!still && quiet) { quiet = false; document.body.classList.remove('quiet'); }
     mapClock += elapsed;
     if (hudShown && mapClock >= 0.1) { mapClock = 0; minimap.draw(); }
-    hoverClock += elapsed;
-    if (hoverClock >= 0.1) {
-      hoverClock = 0;
-      if (fp) hover(innerWidth / 2, innerHeight / 2);
-      else if (mouse.x >= 0) hover(mouse.x, mouse.y);
-    }
     stage.render();
     frameTimes[frameIndex = (frameIndex + 1) % frameTimes.length] = elapsed * 1000;
     if (debugEl && (debugClock += elapsed) > 0.5) {

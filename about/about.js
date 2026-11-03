@@ -1,5 +1,5 @@
 import { PROFILE } from './profile.js';
-import { chargeAndLeave, markArrival, revealArrival } from '../world/portal-transition.js';
+import { chargeAndLeave, clearOverlay, markArrival, revealArrival } from '../world/portal-transition.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -113,8 +113,7 @@ function initialize() {
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
     leaving = false;
-    document.querySelector('#portal-ripple')?.remove();
-    document.documentElement.classList.remove('arriving');
+    clearOverlay();
   });
   for (const link of document.querySelectorAll('[data-return-hub]')) {
     link.addEventListener('click', event => {

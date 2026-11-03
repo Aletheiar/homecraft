@@ -22,6 +22,9 @@ test('every interior door faces the only opening, on the west glass face', () =>
 test('four identical portal frames form aligned pairs and About opens a reading page', () => {
   assert.deepEqual(HUB_PORTALS.map(g => [g.x, g.z]), [[-5, -7], [9, -7], [9, 7], [-5, 7]]);
   assert.equal(HUB_PORTALS.find(g => g.id === 'about').href, '/about/');
+  // Friend links live on one static directory page, so the door never gains a
+  // companion door when a friend is added.
+  assert.equal(HUB_PORTALS.find(g => g.id === 'friends').href, '/friends/');
 });
 
 test('each door station stands in front of its door and looks at it', () => {

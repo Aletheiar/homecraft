@@ -50,9 +50,15 @@ export function consumeHubReturn(search, store) {
     x = gate ? gate.x + Math.sin(gate.yaw) * CLEARANCE : 0;
     z = gate ? gate.z + Math.cos(gate.yaw) * CLEARANCE : 0;
   } else if (gate) {
-    // Keep any sideways offset, but step back out of the opening.
+    // The checkpoint is taken just after the crossing, so it sits on the
+    // face the visitor stepped onto. Step back out on the opposite face —
+    // the one they entered from — so a rear approach is not teleported
+    // through the veil to the front.
     const normal = normalAt(gate, x, z);
-    if (normal < CLEARANCE) { x += Math.sin(gate.yaw) * (CLEARANCE - normal); z += Math.cos(gate.yaw) * (CLEARANCE - normal); }
+    if (Math.abs(normal) < CLEARANCE) {
+      const side = normal < 0 ? 1 : -1, push = side * CLEARANCE - normal;
+      x += Math.sin(gate.yaw) * push; z += Math.cos(gate.yaw) * push;
+    }
   }
   const face = gate ? Math.atan2(gate.x - x, gate.z - z) : Number(saved.yaw);
   const yaw = Number.isFinite(saved.yaw) ? wrap(saved.yaw) : wrap(face + Math.PI);

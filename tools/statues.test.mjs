@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
-import { FENCE_HALF } from '../world/boundaries.js';
 
 registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier === 'three') return { url: new URL('../vendor/three/three.module.min.js', import.meta.url).href, shortCircuit: true };
@@ -9,6 +8,8 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier === '@world/layout.js') return { url: new URL('../world/layout.js', import.meta.url).href, shortCircuit: true };
   return nextResolve(specifier, context);
 } });
+// The bounds import three.js, so they load after the resolver is in place.
+const { FENCE_HALF } = await import('../world/boundaries.js');
 const data = await import('../world/statue-data.js').catch(() => ({}));
 
 test('the new monument mirrors the horse, faces the pyramid and stays wholly outside the fence', async () => {

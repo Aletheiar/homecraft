@@ -4,7 +4,9 @@ export function crossedPortal(gate, from, to) {
   const sn = Math.sin(gate.yaw), cs = Math.cos(gate.yaw);
   const a = (from.x - gate.x) * sn + (from.z - gate.z) * cs;
   const b = (to.x - gate.x) * sn + (to.z - gate.z) * cs;
-  if (!(a > 0 && b <= 0)) return false;
+  // Either face of the opening can be entered: only a true plane crossing
+  // counts, so walking up to the veil from behind works too.
+  if (a === b || a * b > 0) return false;
   const t = a / (a - b), y = from.y + (to.y - from.y) * t;
   const x = from.x + (to.x - from.x) * t - gate.x;
   const z = from.z + (to.z - from.z) * t - gate.z;

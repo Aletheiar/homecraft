@@ -37,6 +37,7 @@ for (const cached of [false, true]) {
     // clear the overlay and allow the same Return button to work again.
     await page.goBack({ waitUntil: 'commit' });
     await page.waitForURL('**/about/', { waitUntil: 'commit' });
+    await page.waitForFunction(() => typeof window.__historyPersisted !== 'undefined');
     assert.equal(await page.evaluate(() => window.__historyPersisted), cached);
     assert.equal(await page.locator('#portal-ripple.charging').count(), 0);
     await page.locator('[data-return-hub]').click();

@@ -1,7 +1,7 @@
 // Import-map selection happens before the engine's first module is evaluated.
 (() => {
   const space = new URLSearchParams(location.search).get('space');
-  const room = ['library', 'studio', 'friends'].includes(space);
+  const room = ['library', 'studio'].includes(space);
   const map = document.createElement('script');
   map.type = 'importmap';
   map.textContent = JSON.stringify({ imports: {

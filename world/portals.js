@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { canvasTexture } from '@engine/world/textures.js';
 import { crossedPortal, portalTarget } from './portal-rules.js';
-import { chargeAndLeave, markArrival } from './portal-transition.js';
+import { chargeAndLeave, clearOverlay, markArrival } from './portal-transition.js';
 
 export function buildPortals(layer, definitions) {
   const B = new BoxBatch(layer), planes = [], obstacles = [], hotspots = [], veils = [];
@@ -63,11 +63,14 @@ export function buildPortals(layer, definitions) {
 export function attachPortalControls({ player, rig, definitions, veils = [], onLeave }) {
   const previous = { x: player.pos.x, y: player.y, z: player.pos.z };
   const current = { ...previous };
-  let navigating = false, elapsed = 0, lastGate = null;
+  let navigating = false, elapsed = 0, lastGate = null, lastSide = 1;
   // Crossing the opening charges briefly, then changes the current space.
   function enter(gate) {
     const target = portalTarget(gate.href, location.href);
     if (!target || navigating) return;
+    // `previous` is the face the visitor stepped from; a Back restoration
+    // should put them back on that same face, not the opposite one.
+    lastSide = (previous.x - gate.x) * Math.sin(gate.yaw) + (previous.z - gate.z) * Math.cos(gate.yaw) < 0 ? -1 : 1;
     navigating = true; lastGate = gate; player.cancel(); onLeave?.(gate); markArrival();
     chargeAndLeave(() => location.assign(target));
   }
@@ -77,10 +80,9 @@ export function attachPortalControls({ player, rig, definitions, veils = [], onL
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
     navigating = false; elapsed = 0; player.cancel();
-    document.querySelector('#portal-ripple')?.remove();
-    document.documentElement.classList.remove('arriving');
+    clearOverlay();
     if (lastGate) {
-      player.teleport(lastGate.x + Math.sin(lastGate.yaw) * 1.5, lastGate.z + Math.cos(lastGate.yaw) * 1.5);
+      player.teleport(lastGate.x + Math.sin(lastGate.yaw) * 1.5 * lastSide, lastGate.z + Math.cos(lastGate.yaw) * 1.5 * lastSide);
       rig.recenter(player);
     }
     previous.x = current.x = player.pos.x; previous.y = current.y = player.y; previous.z = current.z = player.pos.z;

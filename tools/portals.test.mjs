@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 const api = await import('../world/portal-rules.js').catch(() => ({}));
 const gate = { x: 0, z: 0, yaw: 0 };
 
-test('entering a portal requires crossing its opening from the front', () => {
+test('entering a portal works from either face of its opening', () => {
   assert.equal(typeof api.crossedPortal, 'function');
   assert.equal(api.crossedPortal(gate, { x: 0, y: 0, z: .3 }, { x: 0, y: 0, z: -.2 }), true);
-  assert.equal(api.crossedPortal(gate, { x: 0, y: 0, z: -.2 }, { x: 0, y: 0, z: .3 }), false);
+  assert.equal(api.crossedPortal(gate, { x: 0, y: 0, z: -.2 }, { x: 0, y: 0, z: .3 }), true);
   assert.equal(api.crossedPortal(gate, { x: 3, y: 0, z: .3 }, { x: 3, y: 0, z: -.2 }), false);
   assert.equal(api.crossedPortal(gate, { x: 0, y: 5, z: .3 }, { x: 0, y: 5, z: -.2 }), false);
 });

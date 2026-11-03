@@ -95,7 +95,7 @@ try {
   await page.locator('#return-button').click();
   await page.evaluate(() => { __home.rig.showcase([-42, 12, 22], [-24, 1, 0]); for (let i = 0; i < 90; i++) __home.rig.update(1 / 60, __home.player); });
   await page.screenshot({ path: `${out}/interactive-foyer.png` });
-  for (const [id, space] of [['writing', 'library'], ['works', 'studio'], ['friends', 'friends']]) {
+  for (const [id, space] of [['writing', 'library'], ['works', 'studio']]) {
     await check(`${id} portal enters ${space} by crossing, and the enclosed room works`, async () => {
       await page.locator('#enter-button').click();
       await page.evaluate(async id => {
@@ -136,24 +136,6 @@ try {
       }
       await page.locator('#overview-button').click(); await page.waitForTimeout(500);
       await page.screenshot({ path: `${out}/${space}.png` });
-      if (space === 'friends') {
-        let external = '';
-        await page.route('https://terryhu.cn/**', async route => { external = route.request().url(); await route.abort(); });
-        await page.locator('#enter-button').click();
-        await page.evaluate(() => { __home.player.teleport(-7, -5.2); __home.rig.recenter(__home.player); });
-        await page.waitForTimeout(900);
-        // The glass charges for a moment before the visit starts: wait for the
-        // request itself instead of guessing how long the charge takes.
-        const visited = page.waitForRequest(r => r.url() === 'https://terryhu.cn/', { timeout: 6000 }).catch(() => null);
-        await page.evaluate(() => {
-          const h = __home;
-          for (let i = 0; i < 65; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: false }, 0); h.extras.update(1 / 60); }
-        });
-        await visited;
-        await page.waitForTimeout(400);
-        assert.equal(external, 'https://terryhu.cn/');
-        await page.goto(`${base}?space=friends`); await ready();
-      }
       // The room's return door carries the checkpoint flag, so match loosely.
       await Promise.all([page.waitForURL('**?space=hub**'), page.locator('#return-button').click()]); await ready(true);
       const arrival = await page.evaluate(() => ({ x: __home.player.pos.x, z: __home.player.pos.z, yaw: __home.rig.yaw, firstPerson: __home.rig.firstPerson }));
@@ -173,12 +155,61 @@ try {
     await page.locator('#enter-button').click();
     await page.evaluate(() => { __home.player.teleport(-7, -7); __home.rig.recenter(__home.player); });
     await page.waitForTimeout(800);
+    const nav = page.waitForURL(url => new URL(url).searchParams.get('space') === 'library', { timeout: 10000 });
     await page.evaluate(() => {
       const h = __home;
       // The writing door faces west: walk east from its front into the opening.
       for (let i = 0; i < 50; i++) { h.player.update(1 / 60, { x: 1, z: 0, run: false }, 0); h.extras.update(1 / 60); }
     }).catch(e => { if (!/context.*destroyed|navigation/i.test(e.message)) throw e; });
-    await page.waitForURL('**?space=library', { timeout: 10000 }); await ready();
+    await nav; await ready();
+  });
+  await check('walking through the back of a portal opening also routes into the library', async () => {
+    await page.goto(`${base}?space=hub`); await ready(true);
+    await page.locator('#enter-button').click();
+    await page.evaluate(async () => {
+      const { HUB_PORTALS } = await import('/world/space-config.js');
+      const gate = HUB_PORTALS.find(g => g.id === 'writing');
+      __home.player.teleport(gate.x - Math.sin(gate.yaw) * 2, gate.z - Math.cos(gate.yaw) * 2);
+      __home.rig.recenter(__home.player);
+    });
+    await page.waitForTimeout(800);
+    const nav = page.waitForURL(url => new URL(url).searchParams.get('space') === 'library', { timeout: 10000 });
+    await page.evaluate(() => {
+      const h = __home;
+      // Approach the same opening from behind: walk west through it.
+      for (let i = 0; i < 50; i++) { h.player.update(1 / 60, { x: -1, z: 0, run: false }, 0); h.extras.update(1 / 60); }
+    }).catch(e => { if (!/context.*destroyed|navigation/i.test(e.message)) throw e; });
+    await nav; await ready();
+  });
+  await check('the friends door opens the static link directory', async () => {
+    await page.goto(`${base}?space=hub`); await ready(true);
+    await page.locator('#enter-button').click();
+    await page.evaluate(async () => {
+      const { HUB_PORTALS } = await import('/world/space-config.js');
+      const gate = HUB_PORTALS.find(g => g.id === 'friends');
+      __home.player.teleport(gate.x + Math.sin(gate.yaw) * 2, gate.z + Math.cos(gate.yaw) * 2);
+      __home.rig.recenter(__home.player);
+    });
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      const h = __home;
+      // The friends door faces west like the writing door: walk east into it.
+      for (let i = 0; i < 65; i++) { h.player.update(1 / 60, { x: 1, z: 0, run: false }, 0); h.extras.update(1 / 60); }
+    }).catch(e => { if (!/context.*destroyed|navigation/i.test(e.message)) throw e; });
+    await page.waitForURL('**/friends/', { timeout: 10000 });
+    const listed = await page.evaluate(async () => {
+      const { FRIEND_LINKS } = await import('/friends/list.js');
+      const anchors = [...document.querySelectorAll('[data-friend-links] a')];
+      return {
+        count: anchors.length,
+        rendered: anchors.map(a => a.href),
+        expected: FRIEND_LINKS.map(link => link.url),
+        countLabel: document.querySelector('[data-friend-count]').textContent,
+      };
+    });
+    assert.equal(listed.count, listed.expected.length);
+    assert.deepEqual(listed.rendered, listed.expected);
+    assert.ok(listed.countLabel.includes(String(listed.count)), listed.countLabel);
   });
 } finally {
   writeFileSync(`${out}/spaces-report.json`, JSON.stringify({ results, errors }, null, 2));

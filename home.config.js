@@ -8,7 +8,7 @@ export default {
   dock: ['welcome', 'blog', 'works', 'writing', 'friends', 'about'],
   // Scene portals activate by walking through their light; cards remain clickable.
   keyboardInteraction: false,
-  // The custom friends gate replaces the shared directory menu.
+  // The friends door opens a local directory page instead of the shared menu.
   portalMenu: false,
   mailbox: { endpoint: '', email: '', turnstileSitekey: '' },
   badge: true,

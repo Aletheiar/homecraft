@@ -17,11 +17,18 @@ test('a return restores the local portal approach and consumes the checkpoint on
   assert.equal(api.consumeHubReturn('?space=hub&return=1', store), null);
 });
 
-test('walking through a plane returns safely to its front, not into the active veil', () => {
+test('a checkpoint behind the veil steps back out through its front', () => {
   const store = memory();
   api.saveHubReturn({ pos: { x: -4.95, z: -7 }, y: 0 }, { yaw: 1, firstPerson: false }, gate, store);
   const result = api.consumeHubReturn('?space=hub&return=1', store);
   assert.ok(result.x <= -6.2); assert.equal(result.z, -7);
+});
+
+test('a checkpoint in front of the veil steps back out through its rear', () => {
+  const store = memory();
+  api.saveHubReturn({ pos: { x: -5.05, z: -7 }, y: 0 }, { yaw: 1, firstPerson: false }, gate, store);
+  const result = api.consumeHubReturn('?space=hub&return=1', store);
+  assert.ok(result.x >= -3.8); assert.equal(result.z, -7);
 });
 
 test('invalid checkpoints cannot place a visitor beyond the courtyard or in midair', () => {

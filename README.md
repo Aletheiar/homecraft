@@ -25,7 +25,7 @@ world/            这个世界本身
 assets/           图片、模型（GLB）、样式
 engine/           引擎（模板 0.1.1 起，本仓库自行维护）
 tools/            serve.py 本地预览、check.mjs 自检、build.sh 打包
-about/ articles/  关于页与文章页（独立入口，也可由门进入）
+about/ articles/ friends/  关于页、文章页与友链目录页（独立入口，也可由门进入）
 ```
 
 站点自身的内容放在 `world/`、`index.html`、`home.config.js`、`homecraft.json`、`assets/`；`engine/` 是与站点无关的共享引擎。

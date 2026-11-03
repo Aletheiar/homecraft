@@ -50,13 +50,8 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   let mode = 'ground', island = null, level = 0, pilot = null, standing = null;
   const velocity = new THREE.Vector3();
   const solidAt = (x, y, z) => !!grid?.type(x, y, z);
-  // A web-zip, Spider-Man style: a web shoots from their hand to the point
-  // aimed at, then pulls them along a rising arc to where the player lands. The web is
-  // one stretched box, shown only while it is out.
-  let zip = null, ladder = null;
-  const web = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xf2f4f6, transparent: true, opacity: 0.92 }));
-  web.name = 'web'; web.visible = false; web.frustumCulled = false;
-  const handAt = new THREE.Vector3(), anchorAt = new THREE.Vector3();
+  // The ladder (or vine) underfoot, when the world's sites report one.
+  let ladder = null;
   // In the pool: the body's middle, its drift, pitch and roll, and whether
   // it is resting on the bottom (`rest`), lying there (`lie`, eased), heading
   // down or up on its own (`dive`, `rise`), or in a dive or a climb (`anim`).
@@ -66,11 +61,44 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
 
   // One step on foot. Stepping from the house's grid onto something outside
   // it (the pier, a bridge) hands over to that, and back again.
+  // A ledge taller than a step is a wall on foot: the 30 cm ring around the lip
+  // has no place for the body, so nothing within reach accepts the walk. Try a
+  // stride that clears the lip instead; when it lands lower, step off and let
+  // gravity finish. This is how the andesite plinth on the pyramid's crown, a
+  // parapet or a tree crown is left: nothing gives way in front of the feet.
+  function stepOff(dx, dz) {
+    const length = Math.hypot(dx, dz);
+    if (!(length > 1e-6)) return false;
+    for (let k = 0.1; k <= RADIUS * 2 + 1e-6; k += 0.1) {
+      const px = pos.x + dx / length * k, pz = pos.z + dz / length * k;
+      const out = ground.canStand(px, pz, level);
+      if (out && out.y <= level - 0.05) {
+        pos.x = px; pos.z = pz; island = out.site; level = out.y; standing = null;
+        mode = 'air'; vy = 0;
+        return true;
+      }
+      // A ledge taller than a drop keeps its next foothold out of canStand's
+      // reach: the visitor still walks off it and falls, which is what the edge
+      // is drawn as.
+      if (!out) {
+        const below = ground.topAt(px, pz, level - 0.05);
+        if (below && below.y <= level - 0.05) {
+          pos.x = px; pos.z = pz; island = below.site; level = below.y; standing = null;
+          mode = 'air'; vy = 0;
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   function stepBy(dx, dz, guide = null) {
     const tx = pos.x + dx, tz = pos.z + dz;
     if (island) {
       const reference = guide?.route ? { ...standing, route: guide.route, index: guide.index, y: level, expectedY: guide.y, guided: true } : standing;
+      const fromX = pos.x, fromZ = pos.z;
       const here = ground.move(pos, dx, dz, level, reference);
+      if (pos.x === fromX && pos.z === fromZ && stepOff(dx, dz)) return;
       standing = here; level = here.y; island = here.site;
       return;
     }
@@ -145,7 +173,7 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
     return true;
   }
   function visit(id) { const s = STATIONS.find(s => s.id === id); return s ? goTo(...s.at, s) : false; }
-  function settle() { velocity.set(0, 0, 0); vy = 0; speed = 0; pilot = null; zip = null; ladder = null; web.visible = false; standing = null; swim = null; flewOut = 0; }
+  function settle() { velocity.set(0, 0, 0); vy = 0; speed = 0; pilot = null; ladder = null; standing = null; swim = null; flewOut = 0; }
   function teleport(x, z, station = null) {
     cancel(); settle();
     const stand = nav.nearestStand(x, z);
@@ -170,7 +198,7 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   function startFlying() {
     if (mode === 'fly') return;
     const fromWater = leaveWater(0.7);
-    cancel(); ladder = null; mode = 'fly'; island = null; standing = null; velocity.set(0, 0, 0); vy = 0; zip = null; web.visible = false;
+    cancel(); ladder = null; mode = 'fly'; island = null; standing = null; velocity.set(0, 0, 0); vy = 0;
     // Out of the pool in a burst, so the player does not drop straight back in.
     if (fromWater) { velocity.y = CLIMB; flewOut = 0.8; }
   }
@@ -186,12 +214,12 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   // Into the water with the body's middle at height c (above the surface the player
   // falls in first, with a splash).
   function intoWater(c, fall = 0) {
-    ladder = null; pilot = null; zip = null; web.visible = false; island = null; standing = null;
+    ladder = null; pilot = null; island = null; standing = null;
     mode = 'swim'; velocity.set(0, 0, 0); vy = 0; speed = 0;
     swim = { c, vx: 0, vy: fall, vz: 0, pitch: 0, roll: 0, lie: 0, rest: false, dive: false, rise: false, still: 0, push: 0, breath: 2.5, anim: null, wet: c < WATER + 0.5 };
     y = c - PIVOT;
   }
-  // Leaving the water any way but climbing out (flying, a web): a splash.
+  // Leaving the water any way but climbing out (flying, a dive): a splash.
   function leaveWater(power) {
     if (mode !== 'swim') return false;
     onWater?.('splash', pos.x, WATER, pos.z, power);
@@ -443,57 +471,6 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
       }
     } else s.breath = 1.2;
   }
-  // Zip to a place the player can stand ({ x, y, z, island, anchor, normal }), as in
-  // the Spider-Man games: pulled straight along the web towards the anchor,
-  // then, letting go, up and over onto their feet. A ledge (a wall's face) ends
-  // with their hands at the anchor and a vault over the top; a floor or a top
-  // ends just above it and a short drop.
-  function zipTo(target) {
-    if (mode === 'zip') return false;
-    leaveWater(0.6);
-    cancel(); ladder = null; pilot = null; velocity.set(0, 0, 0); vy = 0;
-    const a = target.anchor, n = target.normal || [0, 1, 0], ledge = Math.abs(n[1]) < 0.5;
-    const end = ledge ? { x: a.x + n[0] * 0.45, y: a.y - 1.7, z: a.z + n[2] * 0.45 }
-      : { x: target.x, y: target.y + (target.y > y + 0.5 ? 0.8 : 0.05), z: target.z };
-    const d = Math.hypot(end.x - pos.x, end.y - y, end.z - pos.z);
-    zip = { from: { x: pos.x, y, z: pos.z }, end, to: target, t: -0.1, pull: THREE.MathUtils.clamp(d / 34, 0.22, 1.6), hop: ledge ? 0.34 : 0.14, peak: Math.max(target.y, a.y) + 1, ledge, released: false };
-    anchorAt.set(a.x, a.y, a.z);
-    mode = 'zip'; heading = Math.atan2(end.x - pos.x, end.z - pos.z);
-    return true;
-  }
-  function zipping(dt) {
-    zip.t += dt;
-    if (zip.t <= 0) return;
-    const { from, end, to } = zip;
-    if (zip.t < zip.pull) {
-      // Fastest at the start, easing in at the end.
-      const u = zip.t / zip.pull, e = 1 - (1 - u) * (1 - u);
-      pos.x = from.x + (end.x - from.x) * e; pos.z = from.z + (end.z - from.z) * e; y = from.y + (end.y - from.y) * e;
-      return;
-    }
-    zip.released = true; web.visible = false;
-    const u = Math.min(1, (zip.t - zip.pull) / zip.hop);
-    if (zip.ledge) {
-      // Up past the edge first, then over and down onto the top.
-      const across = THREE.MathUtils.smoothstep(u, 0.35, 0.9);
-      pos.x = end.x + (to.x - end.x) * across; pos.z = end.z + (to.z - end.z) * across;
-      y = u < 0.6 ? end.y + (zip.peak - end.y) * Math.sin((u / 0.6) * Math.PI / 2) : zip.peak + (to.y - zip.peak) * ((u - 0.6) / 0.4) ** 2;
-    } else {
-      pos.x = end.x + (to.x - end.x) * u; pos.z = end.z + (to.z - end.z) * u; y = end.y + (to.y - end.y) * u * u;
-    }
-    if (u >= 1) { mode = 'ground'; island = to.island; y = level = to.y; zip = null; }
-  }
-  // The web runs from their hand to the anchor; for the first instant it is
-  // still shooting out.
-  function drawWeb() {
-    if (!zip || zip.released) return;
-    avatar.hand.getWorldPosition(handAt);
-    const reach = zip.t < 0 ? 1 + zip.t / 0.1 : 1;
-    const end = handAt.clone().lerp(anchorAt, Math.max(0.02, reach)), length = handAt.distanceTo(end);
-    web.position.copy(handAt).add(end).multiplyScalar(0.5);
-    web.lookAt(end); web.scale.set(0.028, 0.028, Math.max(0.01, length));
-    web.visible = length > 0.05;
-  }
 
   // Ending flight drops the player onto whatever is below if they can stand there.
   // Over the sea or a roof the player flies to the nearest place to stand and lands:
@@ -711,8 +688,7 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   }
 
   function update(dt, input, cameraYaw, firstPerson = false) {
-    if (mode === 'zip') zipping(dt);
-    else if (mode === 'swim') swimming(dt, input, cameraYaw);
+    if (mode === 'swim') swimming(dt, input, cameraYaw);
     else if (mode === 'ladder') climbLadder(dt, input, cameraYaw);
     else if (mode === 'fly') fly(dt, input, cameraYaw);
     else if (mode === 'air') fall(dt, input, cameraYaw);
@@ -723,7 +699,6 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
     // In first person the body faces the view, except lying on the pool's floor.
     if (firstPerson && !(mode === 'swim' && swim.rest)) heading = cameraYaw + Math.PI;
     place(dt, input);
-    drawWeb();
   }
 
   // Avatar, pose and the blob shadow on whatever is below.
@@ -740,7 +715,7 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
     }
     avatar.root.position.set(pos.x, y, pos.z); avatar.root.rotation.y = heading;
     const flying = mode === 'fly', horizontal = flying ? Math.hypot(velocity.x, velocity.z) : speed;
-    avatar.update(dt, { speed: flying || mode === 'zip' ? 0 : speed / RUN * (input.run ? 1 : 1.6), run: !flying && input.run && speed > WALK, fly: flying ? Math.min(1, horizontal / FLY) : -1, air: mode === 'air', zip: mode === 'zip' });
+    avatar.update(dt, { speed: flying ? 0 : speed / RUN * (input.run ? 1 : 1.6), run: !flying && input.run && speed > WALK, fly: flying ? Math.min(1, horizontal / FLY) : -1, air: mode === 'air' });
     const below = floorBelow(pos.x, pos.z, y + 0.01), lift = y - below.y;
     avatar.blob.position.set(pos.x, below.y + 0.015, pos.z);
     if (avatar.blob.material) { avatar.blob.visible = below.y > SEA && lift < 8; avatar.blob.material.opacity = 0.32 * Math.max(0, 1 - lift / 8); }
@@ -759,12 +734,11 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   }
 
   return {
-    pos, web, update, goTo, follow, walkThrough, visit, cancel, teleport, jump, toggleFly, startFlying, stopFlying, flyTo, zipTo,
+    pos, update, goTo, follow, walkThrough, visit, cancel, teleport, jump, toggleFly, startFlying, stopFlying, flyTo,
     enterPool, swimTo, leavePool, toggleDive, flyIntoPool,
     get y() { return y; }, get heading() { return heading; }, get floorY() { return y; },
-    get moving() { return speed > 0.3 || !!zip || (mode === 'fly' && velocity.lengthSq() > 0.1) || (mode === 'swim' && Math.hypot(swim.vx, swim.vz) > 0.3); },
-    get travelling() { return !!path?.length || !!pilot || !!zip; }, get path() { return path; },
-    get zipping() { return !!zip; },
+    get moving() { return speed > 0.3 || (mode === 'fly' && velocity.lengthSq() > 0.1) || (mode === 'swim' && Math.hypot(swim.vx, swim.vz) > 0.3); },
+    get travelling() { return !!path?.length || !!pilot; }, get path() { return path; },
     get flying() { return mode === 'fly'; }, get island() { return island; }, get mode() { return mode; },
     // Flying themselves to a tapped place, rather than steered by hand.
     get piloting() { return !!pilot; },

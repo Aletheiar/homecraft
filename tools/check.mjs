@@ -80,7 +80,7 @@ for (const view of VIEWS) {
       let flew = false;
       for (let i = 0; i < 6000 && h.player.travelling; i++) {
         h.player.update(1 / 60, empty, 0);
-        flew ||= ['air', 'fly', 'zip'].includes(h.player.mode);
+        flew ||= ['air', 'fly'].includes(h.player.mode);
       }
       return !h.player.travelling && !flew && Math.hypot(h.player.pos.x - target.x, h.player.pos.z - target.z) < .2;
     };

@@ -39,7 +39,8 @@ world/            The user's world
 assets/           Images (project screenshots, skins, icons)
 engine/           Engine imported from template 0.1.1 and maintained in this repository
 tools/            serve.py (local preview), check.mjs (self-check), build.sh (build & deploy)
-about/ articles/  Standalone pages reached from their doors
+about/ articles/ friends/
+                  Standalone pages reached from their doors; the friend list lives in friends/list.js
 ```
 
 Site customization lives in `world/`, `index.html`, `home.config.js`, `homecraft.json`, and `assets/`. `engine/` is the shared engine: keep it free of content specific to this site so that a change there stays a change to the engine, and put layout, content, and per-site data in `world/`. Engine changes are allowed now that upstream is frozen; test them like any other change.

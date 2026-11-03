@@ -2,12 +2,12 @@ import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { canvasTexture } from '@engine/world/textures.js';
 import { buildPortals, attachPortalControls } from '../portals.js';
-import { revealArrival, markArrival, chargeAndLeave } from '../portal-transition.js';
+import { revealArrival, markArrival, chargeAndLeave, clearOverlay } from '../portal-transition.js';
 import { SPACE, ROOM, SPAWN, STATIONS, PORTALS } from './layout.js';
 
 const WOOD = { tex: 'walnut' }, METAL = { tex: 'paint', tint: 0xa48c62 };
 const PAPER = { tex: 'paint', tint: 0xf0e9d6 }, INK = { tex: 'paint', tint: 0x405c61 };
-const TITLES = { library: '手帐图书室', studio: '项目工作室', friends: '博客传送客厅' };
+const TITLES = { library: '手帐图书室', studio: '项目工作室' };
 
 export function build({ grid, layer }) {
   const furniture = new BoxBatch(layer), trim = new BoxBatch(layer);
@@ -108,7 +108,7 @@ export function build({ grid, layer }) {
     sofa(-6, 1.6); sofa(6, 1.6);
     desk(-6, 3.8, 2.4); desk(6, 3.8, 2.4);
     planter(-10, 8.5); planter(10, 8.5);
-  } else if (SPACE === 'studio') {
+  } else {
     desk(0, -5.6, 6); notebook(-1.2, -5.6);
     box(.9, .85, -5.8, 1.8, 1.05, .12, INK);
     box(.9, .96, -5.72, 1.6, .82, .025, { tex: 'paint', tint: 0x82b6ad, emissive: .35 });
@@ -122,17 +122,11 @@ export function build({ grid, layer }) {
     }
     sofa(-6, 3.3); sofa(6, 3.3); planter(-10, 8); planter(10, 8);
     sign(null, '项目陈列 · 示例', '等待添加自己的作品', 0, 3.4, -9.88, 4.7);
-  } else {
-    sofa(-7, 2.7); sofa(7, 2.7);
-    desk(-7, 4.7, 2.3); desk(7, 4.7, 2.3);
-    box(0, .04, -2, 2.6, .9, .75, WOOD); solid(0, -2, 2.6, .75, .94);
-    planter(-10.5, -7.3); planter(10.5, -7.3); planter(10, 8.5);
-    sign(null, '示例博客传送门', '展示可访问站点，不代表真实好友', 0, 4.8, -9.88, 6.5);
   }
 
   for (const station of STATIONS) {
     const [x, z] = station.look;
-    sign(station.id, station.name, SPACE === 'friends' ? '示例站点 · 点击查看' : '点击导览牌查看', x, 1.7, z + .45);
+    sign(station.id, station.name, '点击导览牌查看', x, 1.7, z + .45);
   }
   const portals = buildPortals(layer, PORTALS);
   obstacles.push(...portals.obstacles);
@@ -177,8 +171,7 @@ export function setup({ player, rig, world }) {
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
     leaving = false;
-    document.querySelector('#portal-ripple')?.remove();
-    document.documentElement.classList.remove('arriving');
+    clearOverlay();
   });
   function enter() {
     player.cancel(); rig.skipIntro();
@@ -203,10 +196,9 @@ export function setup({ player, rig, world }) {
     if (!world.roomContains(player.pos.x, player.pos.z, player.y)) player.teleport(lastX, lastZ);
     else if (player.mode === 'ground') { lastX = player.pos.x; lastZ = player.pos.z; }
   };
-  const goTo = player.goTo, flyTo = player.flyTo, zipTo = player.zipTo;
+  const goTo = player.goTo, flyTo = player.flyTo;
   player.goTo = (x, z, station) => world.roomContains(x, z) && goTo(x, z, station);
   player.flyTo = (x, z) => world.roomContains(x, z) && flyTo(x, z);
-  player.zipTo = target => world.roomContains(target.x, target.z, target.y) && zipTo(target);
   return {
     update(dt) {
       if (!initialized) { initialized = true; enter(); revealArrival(); }

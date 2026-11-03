@@ -106,30 +106,80 @@ for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } },
   await check('outside clicks are not valid walking destinations', async () => {
     assert.equal(await page.evaluate(() => { __home.player.teleport(-9, 0); return __home.player.goTo(70, 70); }), false);
   });
-  await check('web-zip cannot pass through a glass side', async () => {
-    const position = await page.evaluate(() => {
-      const h = __home;
-      h.player.teleport(38.5, 38.5); h.extras.update();
-      h.player.zipTo({ x: 2, y: 0, z: 2, anchor: { x: 2, y: 0, z: 2 } });
-      for (let i = 0; i < 180; i++) { h.player.update(1 / 60, { x: 0, z: 0 }, 0); h.extras.update(); }
-      return { x: h.player.pos.x, z: h.player.pos.z };
-    });
-    assert.ok(Math.max(Math.abs(position.x), Math.abs(position.z)) > 15, JSON.stringify(position));
-    return position;
-  });
-  await check('ending flight above the roof cannot drop through glass', async () => {
+  await check('ending flight above the roof lands on the glass roof', async () => {
     const position = await page.evaluate(() => {
       const h = __home;
       h.player.teleport(38.5, 38.5); h.extras.update(); h.player.startFlying();
       for (let i = 0; i < 260; i++) { h.player.update(1 / 60, { x: 0, z: 0, up: true }, 0); h.extras.update(); }
       // This is a reachable aerial position above the roof.
-      h.player.pos.x = 2; h.player.pos.z = 2;
+      h.player.pos.x = .5; h.player.pos.z = .5;
       h.player.stopFlying();
       for (let i = 0; i < 300; i++) { h.player.update(1 / 60, { x: 0, z: 0 }, 0); h.extras.update(); }
-      return { x: h.player.pos.x, z: h.player.pos.z, y: h.player.y };
+      return { x: h.player.pos.x, z: h.player.pos.z, y: h.player.y, island: h.player.island };
     });
-    assert.ok(Math.max(Math.abs(position.x), Math.abs(position.z)) > 15, JSON.stringify(position));
+    assert.ok(position.y > 23.5, JSON.stringify(position));
+    assert.ok(Math.max(Math.abs(position.x), Math.abs(position.z)) < 2, JSON.stringify(position));
     return position;
+  });
+  await check('a visitor walks off the plinth and back down the glass', async () => {
+    const down = await page.evaluate(() => {
+      const h = __home;
+      h.player.teleport(38.5, 38.5); h.extras.update(); h.player.startFlying();
+      for (let i = 0; i < 260; i++) { h.player.update(1 / 60, { x: 0, z: 0, up: true }, 0); h.extras.update(); }
+      // Fly over the apex and settle onto the andesite plinth, as a visitor does.
+      h.player.pos.x = .2; h.player.pos.z = .2;
+      h.player.stopFlying();
+      for (let i = 0; i < 60; i++) { h.player.update(1 / 60, { x: 0, z: 0, down: true }, 0); h.extras.update(); }
+      const top = h.player.y;
+      // Walk south: off the plinth, then down the slope.
+      let off = top;
+      for (let i = 0; i < 45; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: true }, 0); h.extras.update(); off = Math.min(off, h.player.y); }
+      const mid = { y: h.player.y, island: h.player.island, mode: h.player.mode };
+      for (let i = 0; i < 240; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: true }, 0); h.extras.update(); }
+      return { top, off, mid, y: h.player.y, z: h.player.pos.z, island: h.player.island, mode: h.player.mode };
+    });
+    assert.ok(down.top > 24, JSON.stringify(down));
+    // A ledge taller than a step must not hold the visitor: stepping off drops them.
+    assert.ok(down.off < down.top - 0.9, JSON.stringify(down));
+    assert.equal(down.mid.island, 'pyramid', JSON.stringify(down));
+    assert.ok(down.mid.y < 24, JSON.stringify(down));
+    // And the descent carries them on down the slope, not just to its lip.
+    assert.equal(down.island, 'pyramid', JSON.stringify(down));
+    assert.ok(down.y < 6, JSON.stringify(down));
+    return down;
+  });
+  await check('a visitor walks up the glass to the crown', async () => {
+    const climb = await page.evaluate(() => {
+      const h = __home;
+      // The paving just past the apron step ring; walking north climbs the base.
+      const started = h.player.teleport(0, 19.15); h.extras.update();
+      let best = h.player.y;
+      for (let i = 0; i < 1500; i++) { h.player.update(1 / 60, { x: 0, z: -1, run: true }, 0); h.extras.update(); best = Math.max(best, h.player.y); }
+      return { started, best, island: h.player.island, mode: h.player.mode, x: h.player.pos.x, z: h.player.pos.z };
+    });
+    // The slope carries the visitor to the crown, where the andesite capstone
+    // stops them: it is one step too tall to walk, so it is flown or jumped onto.
+    assert.equal(climb.started, true, JSON.stringify(climb));
+    assert.ok(climb.best > 22, JSON.stringify(climb));
+    assert.equal(climb.island, 'pyramid', JSON.stringify(climb));
+    return climb;
+  });
+  await check('rain and snow stop on the roof instead of falling into the hall', async () => {
+    const shelter = await page.evaluate(() => {
+      const s = __home.weatherFx.shelter;
+      return { hall: s.topAt(-9, 0), centre: s.topAt(0, 0), door: s.topAt(-17, 0), outside: s.topAt(30, 0) };
+    });
+    assert.ok(shelter.hall > 5, JSON.stringify(shelter));
+    assert.ok(shelter.centre > 20, JSON.stringify(shelter));
+    assert.ok(shelter.door < 1, JSON.stringify(shelter));
+    assert.ok(shelter.outside < 1, JSON.stringify(shelter));
+    return shelter;
+  });
+  await check('snow does not fall inside the hall', async () => {
+    await page.evaluate(() => { __home.player.teleport(-9, 0); __home.setWeatherMode('snow'); });
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: `${output}/${view.name}-snow-hall.png` });
+    await page.evaluate(() => __home.setWeatherMode('clear'));
   });
   await check('sample article pages load and remain readable', async () => {
     for (const path of ['first-visit', 'design-notes', 'quiet-corner']) {

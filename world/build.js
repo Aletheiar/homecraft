@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { ISLAND, SPAWN, POOL } from './layout.js';
-import { createBoundarySource, withinCourtyard, segmentHitsShell, FENCE_HALF } from './boundaries.js';
+import { createBoundarySource, withinCourtyard, shellBlocks, useShellSurface, FENCE_HALF } from './boundaries.js';
 import { poolContains } from '@engine/world/pool-regions.js';
 import { furnishHall } from './furnish.js';
 import { loadPyramid, pyramidState } from './pyramid.js';
@@ -29,13 +29,6 @@ export function build({ grid, layer, scene, stage }) {
   hall.obstacles.push(...portals.obstacles, ...foyer.obstacles);
   hall.planes.push(...portals.planes, ...foyer.planes, ...gallery.planes);
   hall.hotspots.push(...portals.hotspots, ...foyer.hotspots, ...gallery.hotspots);
-  hall.obstacles.push(
-    { x0: -19.5, x1: -15.5, z0: -19.5, z1: -2.8, level: 0 },
-    { x0: -19.5, x1: -15.5, z0: 2.8, z1: 19.5, level: 0 },
-    { x0: 15.5, x1: 19.5, z0: -19.5, z1: 19.5, level: 0 },
-    { x0: -15.5, x1: 15.5, z0: -19.5, z1: -15.5, level: 0 },
-    { x0: -15.5, x1: 15.5, z0: 15.5, z1: 19.5, level: 0 },
-  );
   // The fence follows the former pool perimeter. Restored small pyramids and
   // their complete original bases remain outside this walkable boundary.
   for (const axis of ['x', 'z']) for (const edge of [-FENCE_HALF, FENCE_HALF]) {
@@ -66,6 +59,9 @@ export function build({ grid, layer, scene, stage }) {
   const lawn = new THREE.Mesh(new THREE.ShapeGeometry(outside), new THREE.MeshStandardMaterial({ color: 0x8eaa76, roughness: 1 }));
   lawn.name = 'outside-lawn';
   lawn.rotation.x = -Math.PI / 2; lawn.position.y = -.39; lawn.receiveShadow = true; scene.add(lawn);
+  // Walking asks the imported shell where its surface is; before it arrives the
+  // sampler answers undefined and the analytic cone stands in for it.
+  useShellSurface((x, z) => pyramidState.shellTop ? pyramidState.shellTop(x, z) : undefined);
   loadPyramid(scene, stage.renderer);
   return { ...hall, batches: { ...hall.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata } };
 }
@@ -89,20 +85,22 @@ export function setup({ player, rig, stage, world }) {
   const foyer = attachFoyerControls(world.foyer);
   const status = document.querySelector('#model-status');
   const view = () => rig.showcase(innerWidth < 650 ? [-70, 95, 170] : [-83, 53, 88], [0, 5, 0]);
-  const before = { x: 0, y: 0, z: 0 }, after = { x: 0, y: 0, z: 0 };
+  const after = { x: 0, y: 0, z: 0 };
   const move = player.update;
   player.update = (dt, input, yaw, firstPerson) => {
-    before.x = player.pos.x; before.y = player.y; before.z = player.pos.z;
     move(dt, input, yaw, firstPerson);
     after.x = player.pos.x; after.y = player.y; after.z = player.pos.z;
-    // Imported geometry is not in the engine voxel grid. Sweep all movement
-    // modes so falling and web-zip cannot bypass the sloping glass shell.
-    if (!withinCourtyard(after.x, after.z, after.y) || segmentHitsShell(before, after)) player.teleport(lastSafeX, lastSafeZ);
+    // The block grid does not contain the imported shell, so a walk on it runs
+    // straight through the glass; the shell itself says where a body fits.
+    // Flight and falls ask the same question, and the treads are ground a
+    // visitor may climb, so this stops the walker and nothing else.
+    if (!withinCourtyard(after.x, after.z, after.y)
+      || (!player.island && player.mode === 'ground' && shellBlocks(after.x, after.y, after.z)))
+      player.teleport(lastSafeX, lastSafeZ);
   };
-  const goTo = player.goTo, flyTo = player.flyTo, zipTo = player.zipTo;
+  const goTo = player.goTo, flyTo = player.flyTo;
   player.goTo = (x, z, station) => withinCourtyard(x, z) && goTo(x, z, station);
   player.flyTo = (x, z) => withinCourtyard(x, z) && flyTo(x, z);
-  player.zipTo = target => withinCourtyard(target.x, target.z, target.y) && zipTo(target);
   document.querySelector('#overview-button').addEventListener('click', () => { player.cancel(); rig.skipIntro(); view(); });
   document.querySelector('#enter-button').addEventListener('click', () => {
     introduced = true; rig.skipIntro(); player.teleport(-9, 0); rig.recenter(player); rig.set(.42, .3, 5.4);

@@ -178,9 +178,6 @@ export function createAvatar(skinUrl, { onFace } = {}) {
       // Flying: legs trail, arms sweep back and out, leaning into the speed.
       const f = s.fly, drift = Math.sin(idleT * 2.2) * 0.05;
       Object.assign(target, { legR: 0.18 + 0.14 * f + drift, legL: 0.12 + 0.14 * f - drift, armR: 0.3 + 0.55 * f, armL: 0.3 + 0.55 * f, armRz: -0.22 - 0.2 * f, armLz: 0.22 + 0.2 * f, lean: 0.06 + 0.45 * f });
-    } else if (s.zip) {
-      // Swinging on a web: the right arm reaches up the line, legs tucked.
-      Object.assign(target, { legR: -0.7, legL: 0.35, armR: -2.55, armL: 0.55, armRz: 0.12, armLz: 0.3, lean: 0.18 });
     } else if (s.air) {
       Object.assign(target, { legR: -0.5, legL: 0.3, armR: -0.7, armL: -0.45, armRz: -0.12, armLz: 0.12, lean: 0.04 });
     }

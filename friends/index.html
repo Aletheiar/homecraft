@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Aletheia 的友链目录：从这里前往其他人的博客。">
+  <title>友链 · Aletheia</title>
+  <link rel="icon" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../assets/pyramid.css">
+  <link rel="stylesheet" href="../assets/links.css">
+  <script type="module" src="./friends.js"></script>
+</head>
+<body>
+<div id="portal-ripple" aria-hidden="true"></div>
+<script>
+(() => {
+  const root = document.documentElement, el = document.getElementById('portal-ripple');
+  if (!el) return;
+  let arriving = false, at = 0;
+  try { arriving = sessionStorage.getItem('homecraft.arriving.v1') === '1'; at = Number(sessionStorage.getItem('homecraft.arriving.at.v1')) || 0; } catch {}
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!arriving || !at || Date.now() - at > 30000 || reduced) {
+    el.remove();
+    try { sessionStorage.removeItem('homecraft.arriving.v1'); sessionStorage.removeItem('homecraft.arriving.at.v1'); } catch {}
+    return;
+  }
+  root.classList.add('arriving');
+  el.style.setProperty('--nether-delay', `-${Math.min(6000, Date.now() - at)}ms`);
+  setTimeout(() => {
+    if (root.classList.contains('arriving')) { root.classList.remove('arriving'); el.remove(); }
+  }, 15000);
+})();
+</script>
+  <a class="skip-link" href="#directory">跳到友链列表</a>
+  <nav class="links-nav" aria-label="页面导航">
+    <a class="back-link" data-return-hub href="/?space=hub&amp;return=1"><span aria-hidden="true">←</span> 返回大厅</a>
+    <span class="nav-label">友链</span>
+  </nav>
+
+  <main id="directory" class="links-sheet" tabindex="-1">
+    <header class="links-header">
+      <div class="links-monogram" aria-hidden="true">
+        <svg viewBox="0 0 9 9" width="52" height="52" focusable="false">
+          <path d="M4 0h1v2H4zM2 2h1v2H2zM6 2h1v2H6zM0 4h2v1H0zM7 4h2v1H7zM3 4h3v1H3zM4 5h1v4H4zM2 6h1v2H2zM6 6h1v2H6z" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="links-identity">
+        <p class="links-kicker">FRIENDS / DIRECTORY</p>
+        <h1>其他人的博客</h1>
+        <p class="links-lead">一扇门，一张目录。选择想去的站点，会在这里之外打开；本站不承载他们的内容。</p>
+      </div>
+      <span class="links-corner" aria-hidden="true"></span>
+    </header>
+
+    <section class="friend-section" aria-labelledby="friend-title">
+      <div class="section-heading">
+        <h2 id="friend-title">友链目录</h2>
+        <span class="link-count" data-friend-count></span>
+        <span class="section-rule" aria-hidden="true"></span>
+      </div>
+      <ul class="friend-grid" data-friend-links></ul>
+      <noscript><p class="script-note">请启用 JavaScript 查看友链目录。</p></noscript>
+    </section>
+
+    <footer class="links-footer"><span data-links-note>示例站点，不代表真实好友</span><span>友链目录</span></footer>
+  </main>
+</body>
+</html>

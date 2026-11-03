@@ -1,5 +1,5 @@
 // Every sound here is synthesized; there are no audio files. A soft tick for
-// the switches, a two-note chirp for the phone, a thwip for the web, ticks for
+// the switches, a two-note chirp for the phone, ticks for
 // the Vertec's vanes, the shelf door, thunder after a flash, and the pool's
 // splashes, drips and bubbles. Rain follows the weather: a soft wash and the
 // patter of separate drops outdoors, dull under the glass roof, a deep hush
@@ -145,10 +145,6 @@ export function createSound() {
       o.frequency.setValueAtTime(74, t); o.frequency.linearRampToValueAtTime(56, t + 0.45);
       env(og, t, 0.02, 0.45, 0.35);
       o.connect(og).connect(dest); o.start(t); o.stop(t + 0.5);
-    },
-    // A web shooting out: a short bright hiss falling in pitch ("thwip").
-    web() {
-      hiss(out(0.2, 0.12), ctx.currentTime, 'bandpass', 3200, 2.4, 0.003, 0.13, 0.75, 850);
     },
     // The phone coming up (rising pair) or going away (falling pair).
     phone(up = true) {

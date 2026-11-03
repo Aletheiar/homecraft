@@ -41,7 +41,6 @@ const HUD = `
   </div>
   <nav id="hotbar" aria-label="Dock"></nav>
   <div id="corner">
-    <button id="webButton" aria-label="吐丝" data-en-label="Web" aria-pressed="false"><span></span></button>
     <button id="flyButton" aria-label="飞行" aria-pressed="false"><span></span></button>
     <button id="viewButton" aria-label="第一人称" data-en-label="First person" aria-pressed="false"><span></span></button>
     <button id="moodButton" aria-label="天气与时段" aria-expanded="false" aria-controls="weatherMenu"><span></span><b></b></button>
@@ -49,7 +48,6 @@ const HUD = `
   </div>
   <div id="tooltip" hidden></div>
   <div id="crosshair" hidden></div>
-  <div id="aim" hidden></div>
   <button id="prompt" hidden><kbd>F</kbd><i class="icon"></i><span></span></button>
   <!-- Touch screens, flying by hand: Minecraft's pocket D-pad steers and the
        rocker climbs and descends (ui/flightpad.js). -->

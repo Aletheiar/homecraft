@@ -20,18 +20,10 @@ const stations = {
   studio: [
     { id: 'works', name: '项目工作台', en: 'Projects', icon: 'works', at: [0, -3], look: [0, -5.5] },
   ],
-  friends: [
-    { id: 'friends', name: '示例博客导览', en: 'Example blogs', icon: 'about', at: [0, .4], look: [0, -2] },
-  ],
 };
 export const STATIONS = stations[SPACE] || stations.library;
 
+// The flag asks the hall to restore the spot this visitor left from.
 export const PORTALS = [
-  // The flag asks the hall to restore the spot this visitor left from.
   { id: 'return-hub', title: '返回中央大厅', subtitle: 'HOME · 本地空间', color: 0x91bb9d, x: 0, z: 8, yaw: Math.PI, href: '/?space=hub&return=1' },
-  ...(SPACE === 'friends' ? [
-    { id: 'example-terry', title: 'Terry', subtitle: '示例链接 · terryhu.cn', color: 0x83bcb5, x: -7, z: -7.2, yaw: 0, href: 'https://terryhu.cn/' },
-    { id: 'example-134688', title: '134688', subtitle: '示例链接 · m.134688.xyz', color: 0xd4b17e, x: 0, z: -7.2, yaw: 0, href: 'https://m.134688.xyz/' },
-    { id: 'example-rsliyu', title: 'Rsliyu', subtitle: '示例链接 · rsliyu.com', color: 0xa9a0ca, x: 7, z: -7.2, yaw: 0, href: 'https://rsliyu.com/' },
-  ] : []),
 ];
