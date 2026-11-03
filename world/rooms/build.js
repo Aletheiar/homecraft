@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { canvasTexture } from '@engine/world/textures.js';
 import { buildPortals, attachPortalControls } from '../portals.js';
-import { revealArrival, markArrival } from '../portal-transition.js';
+import { revealArrival, markArrival, chargeAndLeave } from '../portal-transition.js';
 import { SPACE, ROOM, SPAWN, STATIONS, PORTALS } from './layout.js';
 
 const WOOD = { tex: 'walnut' }, METAL = { tex: 'paint', tint: 0xa48c62 };
@@ -162,7 +162,24 @@ export function setup({ player, rig, world }) {
   setText('#model-status', `${title} · 本地预览`);
   setText('.explore-hint span', 'WASD 移动 · 拖动视角 · V 第一人称 · 双击空格飞行');
   const returnButton = document.querySelector('#return-button');
-  if (returnButton) { returnButton.textContent = '返回大厅'; returnButton.addEventListener('click', () => { markArrival(); location.assign('/?space=hub&return=1'); }); }
+  let leaving = false;
+  if (returnButton) {
+    returnButton.textContent = '返回大厅';
+    returnButton.addEventListener('click', () => {
+      if (leaving) return;
+      leaving = true;
+      markArrival();
+      chargeAndLeave(() => location.assign('/?space=hub&return=1'));
+    });
+  }
+  // BFCache restores the old module state; a latch left by the departure
+  // would make the return button inert after Back.
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    leaving = false;
+    document.querySelector('#portal-ripple')?.remove();
+    document.documentElement.classList.remove('arriving');
+  });
   function enter() {
     player.cancel(); rig.skipIntro();
     player.teleport(SPAWN.x, SPAWN.z, { look: [SPAWN.x, -4] });

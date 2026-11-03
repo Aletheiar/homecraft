@@ -113,7 +113,8 @@ function initialize() {
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
     leaving = false;
-    document.querySelector('#portal-ripple')?.classList.remove('charging', 'opening');
+    document.querySelector('#portal-ripple')?.remove();
+    document.documentElement.classList.remove('arriving');
   });
   for (const link of document.querySelectorAll('[data-return-hub]')) {
     link.addEventListener('click', event => {
@@ -121,10 +122,8 @@ function initialize() {
       event.preventDefault();
       if (leaving) return;
       leaving = true;
-      chargeAndLeave(() => {
-        markArrival();
-        location.assign(link.href);
-      });
+      markArrival();
+      chargeAndLeave(() => location.assign(link.href));
     });
   }
 }

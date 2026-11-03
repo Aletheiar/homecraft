@@ -77,7 +77,8 @@ export function attachPortalControls({ player, rig, definitions, veils = [], onL
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
     navigating = false; elapsed = 0; player.cancel();
-    document.querySelector('#portal-ripple')?.classList.remove('charging', 'opening');
+    document.querySelector('#portal-ripple')?.remove();
+    document.documentElement.classList.remove('arriving');
     if (lastGate) {
       player.teleport(lastGate.x + Math.sin(lastGate.yaw) * 1.5, lastGate.z + Math.cos(lastGate.yaw) * 1.5);
       rig.recenter(player);

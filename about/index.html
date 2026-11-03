@@ -11,6 +11,26 @@
   <script type="module" src="./about.js"></script>
 </head>
 <body>
+<div id="portal-ripple" aria-hidden="true"></div>
+<script>
+(() => {
+  const root = document.documentElement, el = document.getElementById('portal-ripple');
+  if (!el) return;
+  let arriving = false, at = 0;
+  try { arriving = sessionStorage.getItem('homecraft.arriving.v1') === '1'; at = Number(sessionStorage.getItem('homecraft.arriving.at.v1')) || 0; } catch {}
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!arriving || !at || Date.now() - at > 30000 || reduced) {
+    el.remove();
+    try { sessionStorage.removeItem('homecraft.arriving.v1'); sessionStorage.removeItem('homecraft.arriving.at.v1'); } catch {}
+    return;
+  }
+  root.classList.add('arriving');
+  el.style.setProperty('--nether-delay', `-${Math.min(6000, Date.now() - at)}ms`);
+  setTimeout(() => {
+    if (root.classList.contains('arriving')) { root.classList.remove('arriving'); el.remove(); }
+  }, 15000);
+})();
+</script>
   <a class="skip-link" href="#profile">跳到个人资料</a>
   <nav class="about-nav" aria-label="页面导航">
     <a class="back-link" data-return-hub href="/?space=hub&amp;return=1"><span aria-hidden="true">←</span> 返回大厅</a>
