@@ -15,11 +15,11 @@ the envelope. The overview camera remains inside the room.
 | Library | `writing` | `(6,-3)` | `(6,-5.5)` |
 | Studio | `works` | `(0,-3)` | `(0,-5.5)` |
 | Friends | `friends` | `(0,0.4)` | `(0,-2)` |
-| All | `back` | `(-7,6)` | `(-7,8)` |
 
 The return portal is at `(0,8)`, faces north toward the room, and routes to
-`/?space=hub`. The HUD return button provides the same route. Native station
-cards are defined in the root HTML.
+`/?space=hub`. Its own sign is the only "return to the hall" label in the room;
+there is no separate guide sign or pedestal. The HUD return button provides the
+same route. Native station cards are defined in the root HTML.
 
 The friend lounge has three south-facing example portals at `(-7,-7.2)`,
 `(0,-7.2)`, and `(7,-7.2)`. Their destinations are `https://terryhu.cn/`,

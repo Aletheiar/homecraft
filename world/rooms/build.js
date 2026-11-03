@@ -131,13 +131,8 @@ export function build({ grid, layer }) {
   }
 
   for (const station of STATIONS) {
-    if (station.id === 'back') {
-      box(-7, 0, 8.2, 2.9, .95, .42, WOOD); solid(-7, 8.2, 2.9, .42, .95);
-      sign('back', '返回中央大厅', '点击导览牌返回大厅', -7, 1.8, 8, 2.9, Math.PI);
-    } else {
-      const [x, z] = station.look;
-      sign(station.id, station.name, SPACE === 'friends' ? '示例站点 · 点击查看' : '点击导览牌查看', x, 1.7, z + .45);
-    }
+    const [x, z] = station.look;
+    sign(station.id, station.name, SPACE === 'friends' ? '示例站点 · 点击查看' : '点击导览牌查看', x, 1.7, z + .45);
   }
   const portals = buildPortals(layer, PORTALS);
   obstacles.push(...portals.obstacles);

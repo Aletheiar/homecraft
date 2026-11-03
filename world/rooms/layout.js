@@ -10,20 +10,18 @@ export const INTRO = { pos: [0, 4.6, 7.5], portrait: [0, 4.6, 8], look: [0, 1.2,
 export const LIGHT_VOLUME = { min: [-13, -1, -11], extent: [26, 8, 22], size: [26, 8, 22] };
 export const SHELTER = { x0: -13, z0: -11, w: 26, d: 22 };
 
-const back = { id: 'back', name: '返回大厅', en: 'Return to hall', icon: 'map', at: [-7, 6], look: [-7, 8] };
+// The return portal is the only in-world way back. It already carries the
+// "return to the hall" sign, so no second guide sign sits in the room.
 const stations = {
   library: [
     { id: 'blog', name: '文章书架', en: 'Articles', icon: 'blog', at: [-6, -3], look: [-6, -5.5] },
     { id: 'writing', name: '随笔手帐', en: 'Journal', icon: 'writing', at: [6, -3], look: [6, -5.5] },
-    back,
   ],
   studio: [
     { id: 'works', name: '项目工作台', en: 'Projects', icon: 'works', at: [0, -3], look: [0, -5.5] },
-    back,
   ],
   friends: [
     { id: 'friends', name: '示例博客导览', en: 'Example blogs', icon: 'about', at: [0, .4], look: [0, -2] },
-    back,
   ],
 };
 export const STATIONS = stations[SPACE] || stations.library;
