@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Aletheia 的个人主页与社交账号。">
+  <title>关于我 · Aletheia</title>
+  <link rel="stylesheet" href="../assets/pyramid.css">
+  <link rel="stylesheet" href="../assets/about.css">
+  <script type="module" src="./about.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#profile">跳到个人资料</a>
+  <nav class="about-nav" aria-label="页面导航">
+    <a class="back-link" data-return-hub href="/?space=hub&amp;return=1"><span aria-hidden="true">←</span> 返回大厅</a>
+    <span class="nav-label">关于我</span>
+  </nav>
+
+  <main id="profile" class="profile-sheet" tabindex="-1">
+    <header class="profile-header">
+      <div class="profile-monogram" aria-hidden="true">
+        <svg viewBox="0 0 9 9" width="54" height="54" focusable="false">
+          <path d="M3 1h3v1H3zM2 2h1v2H2zM6 2h1v2H6zM1 4h1v4H1zM7 4h1v4H7zM2 4h5v1H2z" fill="currentColor"/>
+        </svg>
+      </div>
+      <div class="profile-identity">
+        <p class="profile-kicker">站长</p>
+        <h1 data-profile-name>Aletheia</h1>
+        <p class="profile-bio" data-profile-bio hidden></p>
+      </div>
+      <span class="profile-corner" aria-hidden="true"></span>
+    </header>
+
+    <section class="accounts-section" aria-labelledby="accounts-title">
+      <div class="section-heading">
+        <h2 id="accounts-title">社交账号</h2>
+        <span class="section-rule" aria-hidden="true"></span>
+      </div>
+      <ul class="account-list" data-profile-accounts></ul>
+      <noscript><p class="script-note">请启用 JavaScript 查看社交账号。</p></noscript>
+    </section>
+
+    <footer class="about-footer"><span data-profile-footer>Aletheia</span><span>个人主页</span></footer>
+  </main>
+</body>
+</html>

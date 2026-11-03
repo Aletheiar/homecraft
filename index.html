@@ -1,90 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#7fb2e8">
-<!-- The world draws its own day and night. -->
+<meta name="theme-color" content="#244e48">
 <meta name="color-scheme" content="only light">
 <meta name="darkreader-lock">
-<title>My Home</title>
-<meta name="description" content="">
-<meta property="og:type" content="website">
-<meta property="og:title" content="My Home">
-<meta property="og:description" content="">
-<meta property="og:image" content="assets/og.jpg">
-<meta name="twitter:card" content="summary_large_image">
+<title>玻璃金字塔 · 本地预览</title>
+<meta name="description" content="NewHeaven 玻璃金字塔个人网站本地原型：中央大厅、文章、项目、随笔与关于。">
 <link rel="icon" href="assets/favicon.png">
 <link rel="stylesheet" href="engine/style.css">
-<script type="importmap">{"imports":{
-  "three":"./vendor/three/three.module.min.js",
-  "@engine/":"./engine/",
-  "@world/":"./world/",
-  "@config":"./home.config.js"
-}}</script>
+<link rel="stylesheet" href="assets/pyramid.css">
+<script src="world/boot.js"></script>
 </head>
 <body>
-<main id="world" aria-label="My Home"></main>
+<main id="world" aria-label="玻璃金字塔三维庭院"></main>
 <div id="loading"><div class="bar"><i></i></div></div>
-
+<header class="pyramid-brand"><span class="brand-mark" aria-hidden="true">△</span><div><span class="brand-eyebrow">A SPACE TO EXPLORE</span><h1>玻璃金字塔</h1><span id="model-status" role="status">正在载入金字塔…</span></div></header>
+<nav class="pyramid-actions" aria-label="场景视角"><button id="overview-button" type="button">总览庭院</button><button id="enter-button" type="button">进入大厅 <span>↗</span></button><button id="return-button" type="button">回到入口</button></nav>
+<aside class="explore-hint"><b>从庭院，走进自己的小世界</b><span>WASD 移动 · 拖动视角 · V 第一人称 · 双击空格飞行</span></aside>
+<footer class="model-credit">建筑：<a href="https://www.minecraft.net/en-us/article/louvre-craft" target="_blank" rel="noopener">NewHeaven</a><span> / HOMECRAFT / LOCAL PREVIEW</span></footer>
 <section id="pages">
-  <h1 class="plain-title">My Home</h1>
-
-  <article class="page" data-station="about">
-    <h2 data-zh="关于我">About me</h2>
-    <div class="about">
-      <div class="about-text" lang="en">
-        <p>Add your introduction</p>
-        <div class="about-foot"><a class="mc-button" href="#contact" data-open="phone">Follow</a><a class="mc-button" href="#mailbox" data-open="mailbox">Mailbox</a></div>
-      </div>
-      <div class="about-text" lang="zh-CN">
-        <p>填写你的介绍</p>
-        <div class="about-foot"><a class="mc-button" href="#contact" data-open="phone">关注</a><a class="mc-button" href="#mailbox" data-open="mailbox">留言</a></div>
-      </div>
-    </div>
-  </article>
-
-  <article class="page" data-station="blog" data-icon="blog">
-    <h2 data-zh="个人主页">Website</h2>
-    <div class="placeholder-card"><p data-zh="填写你的个人主页链接">Add your website link</p></div>
-  </article>
-
-  <article class="page" id="contact" data-station="contact">
-    <h2 data-zh="关注">Follow</h2>
-    <p data-zh="填写你的联系方式">Add your contact details</p>
-    <ul class="contact">
-      <li data-app="github"><span>GitHub</span><a data-zh="填写 GitHub 链接">Add your GitHub link</a><p></p></li>
-    </ul>
-  </article>
-
-  <article class="page" id="mailbox" data-station="mailbox">
-    <h2 data-zh="留言">Mailbox</h2>
-    <form class="mailbox" method="post" enctype="text/plain">
-      <input name="subject" maxlength="80" required placeholder="Subject" aria-label="Subject (required)" data-zh-placeholder="主题" data-zh-label="主题，必填">
-      <textarea name="message" rows="6" maxlength="1000" required placeholder="Write something" aria-label="Write something" data-zh-placeholder="输入文字" data-zh-label="输入文字"></textarea>
-      <input name="contact" maxlength="120" required autocomplete="email" placeholder="Email or other contact (required)" aria-label="How to reach you (required)" data-zh-placeholder="联系方式（必填，邮箱或微信等）" data-zh-label="联系方式，必填">
-      <input class="trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <div class="mailbox-foot"><button class="mc-button" type="submit" data-zh="发送" disabled>Send</button></div>
-      <p class="mailbox-status" role="status" aria-live="polite"></p>
-    </form>
-  </article>
-
+<h1 class="plain-title">玻璃金字塔 · 本地预览</h1>
+<article class="page" data-station="welcome" data-icon="map">
+<h2>中央大厅</h2><p class="card-kicker">01 / WELCOME</p><h3>欢迎来到玻璃之下。</h3>
+<p>这是一座以金字塔为入口的个人网站原型。你可以在庭院散步，走进大厅，也可以直接使用底部导航阅读。</p>
+<div class="station-grid"><a href="#blog" data-open="blog"><b>02 文章阅览</b><span>把想法整理成文字</span></a><a href="#works" data-open="works"><b>03 项目研究</b><span>把探索做成作品</span></a><a href="#writing" data-open="writing"><b>04 随笔生活</b><span>记录日常的片段</span></a><a href="#about" data-open="about"><b>05 关于友链</b><span>认识这个空间的主人</span></a></div>
+<p class="preview-note">当前文章为演示内容，方便体验空间与阅读流程；尚未填入你的正式文章和个人资料。</p>
+</article>
+<article class="page" data-station="blog" data-icon="blog">
+<h2>文章阅览</h2><p class="card-kicker">02 / ARTICLES</p><p>在安静的展台前，打开一篇文章。</p>
+<div class="article-list"><a href="articles/first-visit.html" target="_blank" rel="noopener"><span class="article-meta">空间手记 · 示例文章</span><h3>把个人网站，变成一座可以走进去的建筑</h3><p>从庭院进入大厅，再从展台走进文字。</p><span class="article-arrow">阅读文章 ↗</span></a><a href="articles/design-notes.html" target="_blank" rel="noopener"><span class="article-meta">设计记录 · 示例文章</span><h3>玻璃、留白与五个开放的角落</h3><p>为什么让中央大厅保持开阔，又如何组织内容。</p><span class="article-arrow">阅读文章 ↗</span></a></div>
+</article>
+<article class="page" data-station="works" data-icon="works">
+<h2>项目研究</h2><p class="card-kicker">03 / PROJECTS</p><h3>从一个想法，到一个能体验的空间。</h3>
+<p><a class="space-link" href="/?space=studio" data-approach-portal="works">前往项目工作室传送门 →</a></p>
+<div class="project-feature"><span class="project-symbol">△</span><div><span class="article-meta">正在制作 · 本地原型</span><h3>玻璃金字塔个人网站</h3><p>基于 Homecraft，将 NewHeaven 建筑几何接入可行走的三维个人空间。</p></div></div>
+<ul><li>保留金字塔、水池与远处宫殿景观。</li><li>大厅传送门连接独立的室内空间。</li><li>步行和飞行受庭院范围约束。</li></ul><p class="preview-note">这里预留给你的正式项目、截图、研究记录与代码链接。</p>
+</article>
+<article class="page" data-station="writing" data-icon="writing">
+<h2>随笔生活</h2><p class="card-kicker">04 / JOURNAL</p><h3>给日常留一个角落。</h3><p>这个区域可以收纳照片、旅行、阅读摘记和不需要结论的想法。窗外是水池，身边有一张坐下来的长椅。</p>
+<p><a class="space-link" href="/?space=library" data-approach-portal="writing">前往图书室传送门 →</a></p>
+<div class="article-list"><a href="articles/quiet-corner.html" target="_blank" rel="noopener"><span class="article-meta">生活随笔 · 示例文章</span><h3>在透明的屋顶下，留一点空白</h3><p>一段为本地预览准备的示例文字。</p><span class="article-arrow">阅读随笔 ↗</span></a></div>
+</article>
+<article class="page" data-station="about" data-icon="about">
+<h2>关于本站</h2><p class="card-kicker">ABOUT / Aletheia</p><h3>很高兴在这里遇见你。</h3><p>自我介绍与社交账号有了独立的阅读页面，从这扇门继续。</p>
+<p><a class="space-link" href="/about/" data-approach-portal="about">前往关于本站传送门 →</a></p>
+<div class="about-source"><b>这个原型的来源</b><p>场景引擎：<a href="https://github.com/terryHu7/homecraft" target="_blank" rel="noopener">Homecraft</a><br>当前 fork：<a href="https://github.com/Aletheiar/homecraft" target="_blank" rel="noopener">Aletheiar/homecraft</a><br>建筑：<a href="https://www.minecraft.net/en-us/article/louvre-craft" target="_blank" rel="noopener">NewHeaven / Louvre Craft</a></p></div>
+<p class="preview-note">该版本仅用于本地体验；未连接留言服务，也没有发布到线上。</p>
+</article>
+<article class="page" data-station="friends" data-icon="about">
+<h2>博客传送客厅</h2><p class="card-kicker">FRIENDS / EXAMPLE LINKS</p><p>在一个小客厅里，通过不同的门前往其他人的博客。以下是体验用的示例站点，尚未填入你的真实友链。</p>
+<p><a class="space-link" href="/?space=friends" data-approach-portal="friends">前往博客客厅传送门 →</a></p>
+<ul><li><a href="https://terryhu.cn/">Terry</a></li><li><a href="https://m.134688.xyz/">134688</a></li><li><a href="https://rsliyu.com/">Rsliyu</a></li></ul>
+</article>
+<article class="page" data-station="back" data-icon="map"><h2>返回中央大厅</h2><p>沿着绿色传送门回到玻璃金字塔，回到你离开的那扇门前。</p><p><a class="space-link" href="/?space=hub&amp;return=1">返回大厅 →</a></p></article>
+<article class="page" data-station="plaza" data-icon="map"><h2>风中的晶体</h2><p>庭院中的一件小型动态装置。可以暂停，观察它在不同光线下的形状。</p><button class="space-link" type="button" data-foyer-action="crystal" aria-pressed="false">暂停晶体旋转</button></article>
+<article class="page" data-station="observatory" data-icon="map"><h2>庭院观测台</h2><p>选一个时刻，再回到庭院看看水面和玻璃的变化。</p><div class="time-options"><button class="space-link" data-foyer-action="time" data-time="morning">清晨</button><button class="space-link" data-foyer-action="time" data-time="dusk">黄昏</button><button class="space-link" data-foyer-action="time" data-time="night">星夜</button></div></article>
+<article class="page" data-station="miku" data-icon="about"><h2>玻璃之下 · 初音未来</h2><p>为这个空间生成的同人装饰插画。悬挂在大厅上空，地面仍然保持开阔。</p><img class="gallery-art" src="assets/gallery/miku-glass.webp" alt="青绿色双马尾的初音未来与玻璃几何、音符" loading="lazy"></article>
 </section>
-
-<!-- file:// cannot load the world modules. -->
-<script>
-if (location.protocol === 'file:') {
-  const zh = /^zh/i.test(navigator.language), note = document.createElement('aside');
-  note.id = 'startupNotice';
-  note.innerHTML = zh
-    ? '<h2>请用本地服务器打开</h2><p>直接双击打开时，浏览器不会加载 3D 世界。在这个文件夹里运行 <code>python3 tools/serve.py</code>（Windows 用 <code>python tools/serve.py</code>），它会找一个空闲端口并自动打开页面。地址也会打印在终端里。</p>'
-    : '<h2>Open it through a local server</h2><p>Browsers don’t load the 3D world from a double-clicked file. In this folder, run <code>python3 tools/serve.py</code> (on Windows, <code>python tools/serve.py</code>). It picks a free port and opens the page. The address is also printed in the terminal.</p>';
-  document.getElementById('pages').before(note);
-  document.getElementById('loading')?.remove();
-  document.body.classList.add('plain');
-}
-</script>
-<noscript><style>#world,#hud,#loading{display:none}#pages{display:block}</style></noscript>
+<noscript><style>#world,#hud,#loading,.pyramid-brand,.pyramid-actions,.explore-hint{display:none}#pages{display:block}</style></noscript>
 <script type="module" src="engine/main.js"></script>
 </body>
 </html>

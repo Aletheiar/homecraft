@@ -1,9 +1,11 @@
 {
   "version": 1,
-  "name": "My Home",
+  "name": "玻璃金字塔 · 本地预览",
   "url": "",
   "logo": "assets/favicon.png",
   "intro": "",
-  "lang": ["zh", "en"],
+  "lang": [
+    "zh"
+  ],
   "homecraft": true
 }
