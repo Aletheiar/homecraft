@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import * as L from '@world/layout.js';
 import { SWIM_PIVOT } from './avatar.js';
+import { poolContains, poolRegion, clampPoolPoint, poolShores } from './pool-regions.js';
 
 const WALK = 3.6, RUN = 6.2, FLY = 8.5, FLY_FAST = 16, CLIMB = 6, JUMP = 6.4, GRAVITY = 19, RADIUS = 0.3, SEA = -0.9;
 // What the world has: stations, a spawn point, and optionally a house (left
@@ -23,7 +24,7 @@ const STATIONS = L.STATIONS || [], SPAWN = L.SPAWN || { x: 0, z: 0, heading: Mat
 const HOUSE = L.HOUSE || null, POOL = L.POOL || null;
 const POOL_LADDER = L.POOL_LADDER || { x0: Infinity, x1: -Infinity, z: 0 };
 const inHouse = HOUSE ? (x, z) => x >= HOUSE.x0 && x < HOUSE.x1 && z >= HOUSE.z0 && z < HOUSE.z1 : () => false;
-const inPool = POOL ? (x, z) => x >= POOL.x0 && x < POOL.x1 && z >= POOL.z0 && z < POOL.z1 : () => false;
+const inPool = (x, z) => poolContains(POOL, x, z);
 const DOORWAY = L.DOORWAY || [];
 const EXIT = L.EXIT || (HOUSE && { x: (HOUSE.x0 + HOUSE.x1) / 2, z: HOUSE.z1 + 2.5 });
 
@@ -199,6 +200,7 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   }
   // The body stays a little clear of the walls, and of the ladder's rungs.
   function inPoolBounds(x, z, c = WATER) {
+    if (POOL.polygons) return clampPoolPoint(POOL, x, z, EDGE, mode === 'swim' ? pos : null);
     x = Math.min(POOL.x1 - EDGE, Math.max(POOL.x0 + EDGE, x));
     z = Math.min(POOL.z1 - EDGE, Math.max(POOL.z0 + EDGE, z));
     if (c > -1.9 && x > POOL_LADDER.x0 - 0.3 && x < POOL_LADDER.x1 + 0.3) z = Math.max(z, POOL_LADDER.z + 0.32);
@@ -215,8 +217,29 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
     const out = { x: x + ox * 0.55, z: z + oz * 0.55 };
     return nav.canStand(out.x, out.z) ? { edge: { x: x - ox * 0.25, z: z - oz * 0.25 }, out, ox, oz } : null;
   }
+  // Polygon shores reuse the original climbing animation and walking grid.
+  function polygonExit(shore) {
+    for (const distance of [.9, 1.3, 1.8]) {
+      const out = { x: shore.x + shore.ox * distance, z: shore.z + shore.oz * distance };
+      if (nav.canStand(out.x, out.z)) return {
+        edge: { x: shore.x - shore.ox * EDGE, z: shore.z - shore.oz * EDGE },
+        out, ox: shore.ox, oz: shore.oz,
+      };
+    }
+    return null;
+  }
   // Pushing against a side: the way out there, if there is one.
   function wallExit(dx, dz) {
+    if (POOL.polygons) {
+      const shores = poolShores(POOL, pos.x, pos.z, pos);
+      for (const shore of shores) {
+        if (Math.hypot(shore.x - pos.x, shore.z - pos.z) < EDGE + .22 && dx * shore.ox + dz * shore.oz > .45) {
+          const exit = polygonExit(shore);
+          if (exit) return exit;
+        }
+      }
+      return null;
+    }
     const ladderSide = pos.x > POOL_LADDER.x0 - 0.3 && pos.x < POOL_LADDER.x1 + 0.3;
     const north = (ladderSide ? POOL_LADDER.z + 0.32 : POOL.z0 + EDGE) + 0.06;
     if (dz < -0.5 && pos.z < north) return exitAt(pos.x, POOL.z0, 0, -1);
@@ -246,6 +269,17 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   // Walking to the nearest side, diving in and swimming to (x, z).
   function enterPool(x, z) {
     if (mode !== 'ground' || island) return false;
+    if (POOL.polygons) {
+      const target = clampPoolPoint(POOL, x, z, EDGE);
+      const shores = poolShores(POOL, x, z).map(polygonExit).filter(Boolean);
+      shores.sort((a, b) => Math.hypot(a.out.x - pos.x, a.out.z - pos.z) - Math.hypot(b.out.x - pos.x, b.out.z - pos.z));
+      for (const side of shores) {
+        if (!goTo(side.out.x, side.out.z)) continue;
+        then = () => { diveIn(-side.ox, -side.oz); path = [target]; };
+        return true;
+      }
+      return false;
+    }
     const along = (v, lo, hi) => Math.min(hi - 0.6, Math.max(lo + 0.6, v));
     const north = { x: along(x, POOL.x0, POOL.x1), z: POOL.z0 - 0.55, nx: 0, nz: 1 };
     // Not off the ladder: beside it.
@@ -262,6 +296,7 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   }
   function swimTo(x, z) {
     if (mode !== 'swim' || swim.anim) return false;
+    if (POOL.polygons && poolRegion(POOL, pos.x, pos.z) !== poolRegion(POOL, x, z)) return false;
     cancel(); swim.rest = swim.dive = false;
     path = [inPoolBounds(x, z, swim.c)];
     return true;
@@ -270,6 +305,16 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   // climb out, then carry on with `after`.
   function leavePool(x, z, after = null) {
     if (mode !== 'swim' || swim.anim) return false;
+    if (POOL.polygons) {
+      const exits = poolShores(POOL, x, z, pos).map(polygonExit).filter(Boolean);
+      exits.sort((a, b) => Math.hypot(a.out.x - x, a.out.z - z) - Math.hypot(b.out.x - x, b.out.z - z));
+      const exit = exits[0];
+      if (!exit) return false;
+      cancel(); swim.rest = swim.dive = false; swim.rise = true;
+      path = [clampPoolPoint(POOL, exit.edge.x, exit.edge.z, EDGE, pos)];
+      then = () => climbOut(exit, after);
+      return true;
+    }
     const along = (v, lo, hi) => Math.min(hi - 0.5, Math.max(lo + 0.5, v));
     const exits = [exitAt(along(x, POOL.x0, POOL.x1), POOL.z0, 0, -1), exitAt(POOL.x0, along(z, POOL.z0, POOL.z1), -1, 0), exitAt(POOL.x1, along(z, POOL.z0, POOL.z1), 1, 0)].filter(Boolean);
     const cost = e => Math.hypot(e.edge.x - pos.x, e.edge.z - pos.z) + Math.hypot(e.out.x - x, e.out.z - z);
@@ -287,7 +332,8 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
     if (swim.rest || swim.dive) { swim.rest = swim.dive = false; swim.rise = true; return true; }
     swim.dive = true; swim.rise = false;
     // Down into open water, clear of the walls, so there is sky to look up at.
-    const to = { x: Math.min(POOL.x1 - 2, Math.max(POOL.x0 + 2, pos.x)), z: Math.min(POOL.z1 - 2.2, Math.max(POOL.z0 + 2.2, pos.z)) };
+    const to = POOL.polygons ? clampPoolPoint(POOL, pos.x, pos.z, 2, pos)
+      : { x: Math.min(POOL.x1 - 2, Math.max(POOL.x0 + 2, pos.x)), z: Math.min(POOL.z1 - 2.2, Math.max(POOL.z0 + 2.2, pos.z)) };
     if (Math.hypot(to.x - pos.x, to.z - pos.z) > 0.3) path = [to];
     return true;
   }
@@ -568,7 +614,8 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
       ({ x: dx, z: dz } = steer(input, cameraYaw));
       // Walking (or jumping) off the deck into the pool dives in.
       const l = Math.hypot(dx, dz);
-      if (!island && inPool(pos.x + dx / l * 0.7, pos.z + dz / l * 0.7) &&
+      const approach = POOL?.polygons ? 1.2 : .7;
+      if (!island && inPool(pos.x + dx / l * approach, pos.z + dz / l * approach) &&
         pos.x > POOL.x0 - 1.2 && pos.x < POOL.x1 + 1.2 && pos.z > POOL.z0 - 1.2 && pos.z < POOL.z1 + 1.2) { diveIn(dx / l, dz / l); return; }
     } else if (path?.length) {
       // Consume reached waypoints in this frame so a turn does not insert a

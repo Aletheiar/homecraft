@@ -2,6 +2,7 @@
 // drawn from the blocks themselves, like a Minecraft map item: one colour per
 // top block, lighter where the ground steps up, darker where it falls away.
 import * as L from '@world/layout.js';
+import { poolContains } from '../world/pool-regions.js';
 
 const ISLAND = L.ISLAND, STATIONS = L.STATIONS || [], POOL = L.POOL || null, HOUSE = L.HOUSE || null;
 import { icon } from './icons.js';
@@ -43,7 +44,7 @@ export function drawMapImage(grid, obstacles, decorate = null) {
     let k = 1;
     if (north && north.y < here.y) k = 1.1;
     if (north && north.y > here.y) k = 0.84;
-    const pool = !!POOL && x >= POOL.x0 && x < POOL.x1 && z >= POOL.z0 && z < POOL.z1;
+    const pool = poolContains(POOL, x, z);
     // A block type can bring its own map colour: grid.define('x', { map: '#hex', ... }).
     ctx.fillStyle = shade(pool ? COLORS.pool_deep : here.t.map || COLORS[here.t.name] || '#888888', k);
     ctx.fillRect((x - ISLAND.x0) * PPM, (z - ISLAND.z0) * PPM, PPM, PPM);

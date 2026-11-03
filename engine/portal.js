@@ -205,11 +205,11 @@ export async function visitWorld(next) {
 let controls = null;
 export const placePortalControls = parent => controls?.mount(parent);
 function mountReturn() {
-  if (controls) return;
+  if (controls || (config.portalMenu === false && !cameFrom)) return;
   const name = sourceLabel(cameFromName, cameFrom);
   controls = createDoorControls({
     parent: document.getElementById('hud'), openId: 'portalButton', backId: 'portalReturn',
-    onOpen: () => window.__home?.openPortal(),
+    onOpen: config.portalMenu === false ? null : () => window.__home?.openPortal(),
     onReturn: cameFrom ? () => { void visitWorld({ url: cameFrom, name, homecraft: true }); } : null,
   });
   const label = () => controls.label(t('传送门', 'Portal'), t(`返回 ${name}`, `Back to ${name}`), cameFrom || '');

@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import * as L from '@world/layout.js';
 import { rng } from './textures.js';
+import { poolContains } from './pool-regions.js';
 
 // Loaded only when the world has a POOL (main.js imports it on demand).
 const POOL = L.POOL || { x0: 0, x1: 1, z0: 0, z1: 1, water: 0, bed: -1 };
@@ -302,8 +303,21 @@ export function createPool({ stage, world, shelter, quality }) {
     defines: { RIPPLES, STEPS: quality.mobile ? 9 : 11, LAYERS: quality.mobile ? 1 : 2 },
     transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true,
   });
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(POOL.x1 - POOL.x0, POOL.z1 - POOL.z0), material);
-  water.name = 'pool-water'; water.rotation.x = -Math.PI / 2; water.position.copy(CENTRE);
+  let water;
+  if (POOL.polygons) {
+    const points = [];
+    for (const polygon of POOL.polygons) for (let i = 1; i < polygon.length - 1; i++) {
+      for (const p of [polygon[0], polygon[i], polygon[i + 1]]) points.push(p[0], 0, p[1]);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+    geometry.computeVertexNormals();
+    water = new THREE.Mesh(geometry, material); water.position.y = WATER;
+  } else {
+    water = new THREE.Mesh(new THREE.PlaneGeometry(POOL.x1 - POOL.x0, POOL.z1 - POOL.z0), material);
+    water.rotation.x = -Math.PI / 2; water.position.copy(CENTRE);
+  }
+  water.name = 'pool-water';
   // After the glass, before the rain, which a surface seen from below hides.
   water.renderOrder = 3;
 
@@ -368,7 +382,7 @@ export function createPool({ stage, world, shelter, quality }) {
     uniforms.uAirFog.value.set(stage.airNear, stage.airFar);
     // Is the camera in the water?
     const c = camera.position;
-    inside = c.y < WATER && c.x > POOL.x0 && c.x < POOL.x1 && c.z > POOL.z0 && c.z < POOL.z1;
+    inside = c.y < WATER && poolContains(POOL, c.x, c.z);
     // Caustics follow the sun's slant through the surface. Seen from the deck
     // they are the sunny glitter on the floor; close up under water, gentler.
     const s = sky.uSunDir.value, eta = 1 / 1.336, k = Math.sqrt(1 - eta * eta * (1 - s.y * s.y));
@@ -399,7 +413,7 @@ export function createPool({ stage, world, shelter, quality }) {
     if (inside && !still && weather.rain > 0.05) {
       for (rainIn -= dt; rainIn <= 0; rainIn += 1 / (18 * weather.rain)) {
         const a = random() * Math.PI * 2, r = Math.sqrt(random()) * 3.5, x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
-        if (x > POOL.x0 && x < POOL.x1 && z > POOL.z0 && z < POOL.z1) bubbles.push({ x, y: WATER - .03 - random() * .12, z, r: .004 + random() * .007, phase: random() * 6.3, drift: 0 });
+        if (poolContains(POOL, x, z)) bubbles.push({ x, y: WATER - .03 - random() * .12, z, r: .004 + random() * .007, phase: random() * 6.3, drift: 0 });
       }
     }
     // Bubbles rise, wobbling, and burst at the surface.
@@ -424,7 +438,7 @@ export function createPool({ stage, world, shelter, quality }) {
       const around = (at, size, middle) => middle - size / 2 + (((at - middle + size / 2) % size) + size) % size;
       for (const [a, b, d, e] of motes) {
         const x = around(a * 9 + time * .05 * (e - .5), 9, c.x), y = around(b * 4 + time * .02, 4, c.y), z = around(d * 9, 9, c.z);
-        if (x < POOL.x0 || x > POOL.x1 || z < POOL.z0 || z > POOL.z1 || y > WATER - .05 || y < POOL.bed) continue;
+        if (!poolContains(POOL, x, z) || y > WATER - .05 || y < POOL.bed) continue;
         under.add(x, y, z, .006 + e * .01, .18 + .25 * e, 2);
       }
     }

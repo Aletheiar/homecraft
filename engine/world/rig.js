@@ -7,6 +7,7 @@
 // the view back.
 import * as THREE from 'three';
 import * as L from '@world/layout.js';
+import { poolContains } from './pool-regions.js';
 
 const HOUSE = L.HOUSE || null, SECRET = L.SECRET || null, LOFT = L.LOFT || null, POOL = L.POOL || null;
 const inHouse = HOUSE ? (x, z) => x >= HOUSE.x0 && x < HOUSE.x1 && z >= HOUSE.z0 && z < HOUSE.z1 : () => false;
@@ -17,6 +18,8 @@ const INTRO = L.INTRO || { pos: [cx + span * .62, span * .48, cz + span * .78], 
 
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const INTRO_HOLD = 1.1, INTRO_SWOOP = 2.4;
+// Allow a moderate upward view without crossing either vertical orbit pole.
+const MIN_PITCH = -0.8, MAX_PITCH = 1.38, CAMERA_CLEARANCE = 0.25;
 
 export function createRig(camera, world) {
   const target = new THREE.Vector3();
@@ -53,7 +56,7 @@ export function createRig(camera, world) {
       return;
     }
     yawGoal -= dx * 0.0052;
-    pitchGoal = THREE.MathUtils.clamp(pitchGoal + dy * 0.0042, 0.06, 1.38);
+    pitchGoal = THREE.MathUtils.clamp(pitchGoal + dy * 0.0042, MIN_PITCH, MAX_PITCH);
   }
   // Scrolling out of first person steps back behind the player.
   function zoom(f) {
@@ -95,17 +98,34 @@ export function createRig(camera, world) {
 
   const followPos = new THREE.Vector3();
   const dir = new THREE.Vector3();
+  const collisionOrigin = new THREE.Vector3();
+  const collisionRight = new THREE.Vector3(), collisionUp = new THREE.Vector3();
+  const cameraSolid = (type, group) => type.kind !== 'glass' && !world.hidden.has(group);
   let reach = Infinity;
+  function viewHit(origin, full) {
+    const hit = world.grid.raycast(origin, dir, full, cameraSolid);
+    return Math.min(hit ? hit.t : Infinity, world.viewBlock?.(origin, dir, full) ?? Infinity);
+  }
   // Keep the camera out of trees, walls and the mountainside: pull it in front
   // of whatever solid sits between it and the player (lowered walls and glass do not count).
   function collide(dt, out) {
     dir.subVectors(out, focus);
     const full = dir.length();
     dir.divideScalar(full);
-    const hit = world.grid.raycast(focus, dir, full, (type, group) => type.kind !== 'glass' && !world.hidden.has(group));
-    const slope = world.viewBlock?.(focus, dir, full) ?? Infinity;
-    const block = Math.min(hit ? hit.t : Infinity, slope);
-    const want = block < full ? Math.max(1.4, block - 0.4) : full;
+    // Sweep a padded near plane, not just its centre: the corners can clip
+    // the ground or a sloping shore even when the centre ray is unobstructed.
+    const halfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.near;
+    collisionRight.set(dir.z, 0, -dir.x).normalize();
+    collisionUp.crossVectors(dir, collisionRight).normalize();
+    collisionRight.multiplyScalar(Math.max(CAMERA_CLEARANCE, halfHeight * camera.aspect + camera.near));
+    collisionUp.multiplyScalar(Math.max(CAMERA_CLEARANCE, halfHeight + camera.near));
+    let block = viewHit(focus, full);
+    for (let x = -1; x <= 1; x += 2) for (let y = -1; y <= 1; y += 2) {
+      collisionOrigin.copy(focus).addScaledVector(collisionRight, x).addScaledVector(collisionUp, y);
+      block = Math.min(block, viewHit(collisionOrigin, full));
+    }
+    // Solids take priority over the preferred distance, even next to the player.
+    const want = block < full ? Math.max(0, block - 0.4) : full;
     reach = want < reach ? want : reach + (want - reach) * (1 - Math.exp(-dt * 3));
     reach = Math.min(reach, full);
     out.copy(focus).addScaledVector(dir, reach);
@@ -167,7 +187,10 @@ export function createRig(camera, world) {
       collide(dt, followPos);
       if (player.swimming || gazeT > 0) keepOffWater(followPos);
       camera.position.copy(followPos);
-      camera.lookAt(focus);
+      // A close obstacle may collapse the orbit onto its target. Keep the
+      // intended direction instead of lookAt's coincident-point fallback.
+      if (camera.position.distanceToSquared(focus) < 1e-8) camera.lookAt(look.copy(camera.position).sub(dir));
+      else camera.lookAt(focus);
       lookUp(dt, player);
       return;
     }
@@ -208,7 +231,7 @@ export function createRig(camera, world) {
   // the pool when it follows the player down into it.
   function keepOffWater(p) {
     if (!POOL) return;
-    if (p.x > POOL.x0 && p.x < POOL.x1 && p.z > POOL.z0 && p.z < POOL.z1) {
+    if (poolContains(POOL, p.x, p.z)) {
       const d = p.y - POOL.water;
       if (Math.abs(d) < 0.16) p.y = POOL.water + (d >= 0 ? 0.16 : -0.16);
       p.y = Math.max(p.y, POOL.bed + 0.15);
@@ -255,6 +278,6 @@ export function createRig(camera, world) {
     get showcaseActive() { return !!show && show.back < 0; },
     get distance() { return distance; },
     reset() { [yawGoal, pitchGoal, distanceGoal] = HOME_VIEW; },
-    set(y, p, d) { yaw = yawGoal = y; pitch = pitchGoal = p; distance = distanceGoal = d; },
+    set(y, p, d) { yaw = yawGoal = y; pitch = pitchGoal = THREE.MathUtils.clamp(p, MIN_PITCH, MAX_PITCH); distance = distanceGoal = d; },
   };
 }

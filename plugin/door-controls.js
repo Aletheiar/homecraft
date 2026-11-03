@@ -58,10 +58,13 @@ export function createDoorControls({ parent, onOpen, onReturn, openId, backId })
     el.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
     root.append(el); return el;
   };
-  const open = button('open', 'open', onOpen, openId);
-  const canvas = Object.assign(document.createElement('canvas'), { width: 16, height: 16 });
-  canvas.setAttribute('aria-hidden', 'true'); drawDoor(canvas);
-  const openText = document.createElement('span'); openText.hidden = true; open.append(canvas, openText);
+  let open = null;
+  if (onOpen) {
+    open = button('open', 'open', onOpen, openId);
+    const canvas = Object.assign(document.createElement('canvas'), { width: 16, height: 16 });
+    canvas.setAttribute('aria-hidden', 'true'); drawDoor(canvas);
+    const openText = document.createElement('span'); openText.hidden = true; open.append(canvas, openText);
+  }
   let back = null;
   if (onReturn) {
     back = button('back', 'return', onReturn, backId);
@@ -85,7 +88,7 @@ export function createDoorControls({ parent, onOpen, onReturn, openId, backId })
   return {
     root, open, back, mount,
     label(openText, backText, backURL = '') {
-      open.querySelector('span').textContent = openText; open.setAttribute('aria-label', openText); open.title = openText;
+      if (open) { open.querySelector('span').textContent = openText; open.setAttribute('aria-label', openText); open.title = openText; }
       if (back) { back.querySelector('span').textContent = backText; back.title = backURL; }
     },
   };

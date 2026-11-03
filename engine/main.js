@@ -1,4 +1,5 @@
 import { pageURL, mountEmbed } from './ui/embed.js';
+import { poolContains, poolRegion } from './world/pool-regions.js';
 // Homecraft: boots the world (`@world/`), puts the player in it, and wires the
 // Dock, the radar, the pages (index.html), the phone and the portal together.
 // A world's build.js may also export setup(app) for its own moving parts.
@@ -33,7 +34,7 @@ import { mountHud } from './hud.js';
 import { t, nameOf, applyLang, onLang, langSwitch } from './lang.js';
 
 const STATIONS = L.STATIONS || [], POOL = L.POOL || null, HOUSE = L.HOUSE || null;
-const inPool = POOL ? (x, z) => x >= POOL.x0 && x < POOL.x1 && z >= POOL.z0 && z < POOL.z1 : () => false;
+const inPool = (x, z) => poolContains(POOL, x, z);
 const inHouse = HOUSE ? (x, z) => x >= HOUSE.x0 && x < HOUSE.x1 && z >= HOUSE.z0 && z < HOUSE.z1 : () => false;
 // Nothing to swim in: the parts of the loop that ask about water get plain answers.
 const NO_POOL = { submerged: false, fogColor: null, update() {}, warmup() {}, splash() {}, ripple() {}, exhale() {} };
@@ -281,7 +282,7 @@ async function boot() {
   const workbench = createWorkbench(panel);
   // A note sent from the mailbox's page raises the flag on the mailbox itself.
   const mailboxForm = createMailboxForm({ onSent: () => mailbox.raiseFlag() });
-  const worldList = createWorldList({ onChoose(world) { closePage(); depart(world); } });
+  const worldList = config.portalMenu === false ? null : createWorldList({ onChoose(world) { closePage(); depart(world); } });
   // Standing at the portal, on foot: walk into it, seen from behind. From
   // anywhere else (the Dock, first person, flying), straight to loading.
   function depart(world) {
@@ -301,7 +302,7 @@ async function boot() {
   const publicStations = [...document.querySelectorAll('#pages .page[data-station]')]
     .map(p => p.dataset.station).filter(id => id !== 'contact').map(stationFor);
   // The portal is a place to press F at too, though it has no page.
-  const portalStation = portal && STATIONS.find(s => s.id === 'portal');
+  const portalStation = config.portalMenu !== false && portal && STATIONS.find(s => s.id === 'portal');
   const popOut = document.createElement('a');
   popOut.className = 'pop-out'; popOut.target = '_blank'; popOut.rel = 'noopener'; popOut.textContent = '↗'; popOut.hidden = true;
   panel.querySelector('header .close').before(popOut);
@@ -311,7 +312,7 @@ async function boot() {
     if (!publicStations.some(s => s.id === id)) return;
     const page = pageEl(id);
     if (!page) return;
-    worldList.destroy();
+    worldList?.destroy();
     // A page that is only a link (data-link) opens in a new tab.
     if (page.dataset.link) { const url = pageURL(page.dataset.link); if (url) window.open(url.href, '_blank', 'noopener'); return; }
     togglePhone(false);
@@ -349,7 +350,7 @@ async function boot() {
     markSlot(id);
   }
   function openPortal() {
-    if (isTravelling() || portal?.busy) return;
+    if (config.portalMenu === false || isTravelling() || portal?.busy) return;
     togglePhone(false); toggleWeatherMenu(false); minimap.toggleBig(false); rig.skipIntro();
     openStation = 'portal'; panel.dataset.station = 'portal'; panel.dataset.kind = '';
     $('#panelTitle').textContent = t('传送门', 'Portal');
@@ -384,7 +385,7 @@ async function boot() {
   });
   panel.addEventListener('close', () => {
     if (panel.open) return;
-    worldList.destroy();
+    worldList?.destroy();
     mailboxForm.unmount();
     placePortalControls($('#hud'));
     panel.querySelector('.body iframe')?.remove();
@@ -413,6 +414,7 @@ async function boot() {
     return best;
   }
   function updatePrompt() {
+    if (config.keyboardInteraction === false) { promptFor = null; promptEl.hidden = true; return; }
     const s = rig.introActive || portal?.busy ? null : nearestTarget();
     const show = !!s && !(panel.open && openStation === s.id);
     if (show && promptFor !== s.id) {
@@ -569,7 +571,7 @@ async function boot() {
     else if (!fromPointer || now - aimCheck > 60) { aimCheck = now; aimOk = !!zipTarget(x, y); }
     aim.hidden = !aimOk;
     if (aimOk) aim.style.transform = `translate(${x}px, ${y}px)`;
-    stage.renderer.domElement.style.cursor = aimOk ? 'none' : x >= 0 && pick(x, y).spot?.id === 'portal' ? 'pointer' : '';
+    stage.renderer.domElement.style.cursor = aimOk ? 'none' : x >= 0 && pick(x, y).spot ? 'pointer' : '';
   }
   function refreshAim() {
     if (rig.firstPerson) hover(innerWidth / 2, innerHeight / 2);
@@ -588,6 +590,8 @@ async function boot() {
       const target = zipTarget(x, y);
       if (target) return webTo(target);
     }
+    // Ordinary signs use the same hotspots as proximity/F interaction.
+    if (target.spot) { activate(target.spot.id); return; }
     const { block, island, water } = target;
     if (water) return navigate(water.x, water.z, POOL.water);
     if (island?.site === 'roof-ladder') {
@@ -606,7 +610,8 @@ async function boot() {
     // reached by climbing out on the nearest side first.
     const poolSpot = inPool(x, z) && (targetY === null || targetY < 0);
     if (player.swimming) {
-      const accepted = poolSpot ? player.swimTo(x, z) : player.leavePool(x, z, () => navigate(x, z, targetY));
+      const sameWater = poolSpot && poolRegion(POOL, player.pos.x, player.pos.z) === poolRegion(POOL, x, z);
+      const accepted = sameWater ? player.swimTo(x, z) : player.leavePool(x, z, () => navigate(x, z, targetY));
       marker.show(x, poolSpot ? POOL.water : targetY ?? nav.heightAt(x, z), z, accepted ? 0x85c9ff : 0xeab66a);
       return accepted;
     }
@@ -779,6 +784,7 @@ async function boot() {
     shortcutsBlocked: () => minimap.isBigOpen() || weatherMenuOpen() || isTravelling() || !!portal?.busy,
     escape: () => { if (weatherMenuOpen()) toggleWeatherMenu(false, true); else if (minimap.isBigOpen()) minimap.toggleBig(false); else if (panel.open) closePage(); else if (phone.up) { if (!phone.back()) togglePhone(false); } else toggleWeb(false); },
     interact: () => {
+      if (config.keyboardInteraction === false) return;
       const s = nearestTarget();
       if (s) { useTarget(s.id); return; }
       // First person: whatever sits under the crosshair.
@@ -872,7 +878,7 @@ async function boot() {
   } else if (arrivedBy) {
     settlePortalArrival();
     stage.render();
-  } else if (!reducedMotion) rig.startIntro(player);
+  } else if (!reducedMotion && !extras.skipIntro) rig.startIntro(player);
   finishLoading();
   walkOut?.();
 

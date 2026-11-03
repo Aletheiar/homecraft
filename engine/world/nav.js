@@ -3,9 +3,10 @@
 // furniture is in the way. Routes use A* over that grid, then pull the string
 // straight. A world's floorAt gives the floor height under each point.
 import * as L from '@world/layout.js';
+import { poolContains } from './pool-regions.js';
 
 const ISLAND = L.ISLAND, POOL = L.POOL || null, floorAt = L.floorAt || (() => 0);
-const inPool = POOL ? (x, z) => x >= POOL.x0 && x < POOL.x1 && z >= POOL.z0 && z < POOL.z1 : () => false;
+const inPool = (x, z) => poolContains(POOL, x, z);
 
 const RES = 4; // cells per metre
 export const RADIUS = 0.28;
