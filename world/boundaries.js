@@ -37,6 +37,16 @@ export function pyramidTop(r) {
   return PYRAMID.height * (1 - r / PYRAMID.half);
 }
 
+// A* routes stay on the courtyard floor. Use a fixed footprint rather than
+// the async loaded surface: a raised, climbable apron must not become a wall
+// merely because the model arrived before the walking grid was built.
+export function navigationBlocks(x, z, feet = 0) {
+  const top = pyramidTop(Math.max(Math.abs(x), Math.abs(z)));
+  if (top === null) return false;
+  if (top <= DOOR.top && Math.abs(z) < DOOR.half && x > DOOR.x0 && x < DOOR.x1) return false;
+  return feet < top - .01 && feet + BODY > top - SHELL;
+}
+
 // Walkable top of the shell under (x, z), or null off it. Once the model is
 // loaded the answer comes from the shell itself, so a body stands exactly where
 // the glass is drawn — including the door gap and the steps around it, which the

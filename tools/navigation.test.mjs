@@ -9,6 +9,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 } });
 const { VoxelGrid } = await import('../engine/world/voxels.js');
 const { createNav } = await import('../engine/world/nav.js');
+const { useShellSurface } = await import('../world/boundaries.js');
 
 test('pool routes avoid low glass while the original west doorway stays open', () => {
   const grid = new VoxelGrid({ min: [-45, -4, -45], size: [90, 40, 90] });
@@ -22,4 +23,18 @@ test('pool routes avoid low glass while the original west doorway stays open', (
   assert.equal(nav.canStand(-9, 0), true, 'the tall interior remains accessible');
   const path = nav.findPath({ x: -29, z: 0 }, { x: 0, z: -18.6 });
   assert.ok(path?.length, 'the northern shore remains reachable around the glass');
+});
+
+test('loading raised model surfaces does not close the door or dry shore approach in A*', () => {
+  const grid = new VoxelGrid({ min: [-45, -4, -45], size: [90, 40, 90] });
+  grid.define('stone', {});
+  grid.fill(-44, -1, -44, 44, 0, 44, 'stone');
+  // The imported apron is a walkable step, not a new ground-level wall.
+  // Loading it before or after the nav grid must produce the same map.
+  useShellSurface(() => .4);
+  try {
+    const nav = createNav(grid, []);
+    assert.equal(nav.canStand(-18, 0), true, 'the west door must not depend on model arrival order');
+    assert.equal(nav.canStand(0, 18.65), true, 'the apron approach has room for the body and grid clearance');
+  } finally { useShellSurface(null); }
 });

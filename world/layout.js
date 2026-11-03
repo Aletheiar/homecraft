@@ -1,10 +1,10 @@
 import polygons from '../assets/models/pool-regions.js';
-import { shellBlocks } from './boundaries.js';
+import { navigationBlocks } from './boundaries.js';
 
 // A* walks the courtyard floor, not the roof. Include low glass in its map
 // so a route to a pool cannot cut through the imported shell. Manual climbing
 // continues to use the separate walkable slope surface.
-export const blockedAt = (x, z, feet) => shellBlocks(x, feet, z);
+export const blockedAt = navigationBlocks;
 // The .4 scale increases linear dimensions by 25% over the first preview.
 export const ISLAND = { x0: -45, x1: 45, z0: -45, z1: 45 };
 export const SPAWN = { x: -29, z: 0, heading: Math.PI / 2 };

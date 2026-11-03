@@ -44,15 +44,16 @@ player to remain on the pyramid indefinitely.
 Full swimming acceptance also exposed automatic routes cutting through low
 glass on the way to the northern and eastern pools. The navigation grid now
 supports an optional layout `blockedAt(x, z, feet)` predicate; this world uses
-its existing shell collision predicate there. A real-grid regression first
+a fixed analytic glass footprint there. A real-grid regression first
 failed on the old map, then passed with low glass blocked and the original
 western doorway and northern shore still reachable. Worlds without the hook
 keep their former behavior. This does not remove manual roof climbing.
 
-The grid is initially baked from the analytic footprint before the async model
-arrives. Exact imported entry details are still handled by movement collision;
-the seven-pool and entrance browser checks provide the demonstrated coverage,
-not a claim that every loaded mesh triangle is represented in A*.
+The A* footprint is independent of model arrival order. The first Linux CI run
+exposed the difference: sampling a loaded 0.4 m step as a ground obstruction
+closed dry approaches, while an earlier startup left them open. A second Node
+regression reproduces that load-order case. Exact imported entry details remain
+handled by movement collision, not represented triangle by triangle in A*.
 
 ## Acceptance and build
 
@@ -61,7 +62,7 @@ Local acceptance completed on 2026-11-04 with exit code 0:
 | Check | Result |
 |---|---|
 | Site metadata/engine drift | Passed with the three documented warning categories |
-| Node tests | 39 passed |
+| Node tests | 40 passed, including the subsequent load-order regression |
 | Desktop/mobile startup and Dock | Passed |
 | Courtyard | 40 passed |
 | Space journeys and props | 10 passed |
