@@ -38,7 +38,8 @@ a.account-row { transition: background-color .15s; }
 a.account-row:hover { background: #edf0e5; }
 a.account-row:focus-visible { position: relative; outline-offset: -4px; }
 .account-badge { flex: 0 0 43px; width: 43px; height: 43px; display: grid; place-items: center; background: #eceee4; border: 1px solid #d6dccd; color: #486353; font: 14px/1 ui-monospace, Consolas, monospace; box-shadow: 3px 3px 0 #e3e5d8; }
-.account-badge--zhihu, .account-badge--shuiyuan { font: 20px/1 "Microsoft YaHei", sans-serif; }
+.account-badge--text { font: 20px/1 "Microsoft YaHei", sans-serif; }
+.account-badge svg { display: block; }
 .account-identity { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .account-platform { font-size: 15px; font-weight: 500; }
 .account-name { color: var(--about-muted); font-size: 13px; overflow-wrap: anywhere; }
