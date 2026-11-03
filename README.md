@@ -1,45 +1,48 @@
-# Homecraft
+# 玻璃金字塔 · 个人站点
 
-**中文** · [English](README.en.md)
+一个建在 [Homecraft](https://github.com/terryHu7/homecraft) 引擎上的三维个人网站：庭院里是一座玻璃金字塔，中厅有四扇通往图书室、工作室、博主传送客厅与「关于本站」的门。
 
-## 个人网站即我的世界
+## 本地预览
 
-过去我是个喜欢折腾网站的人，但模板换了又换，总感觉被什么东西困住了。
+```bash
+python3 tools/serve.py
+```
 
-受我的世界、黑客帝国和元宇宙的启发，借助 AI，我把个人网站从二维网页建成了三维世界。
+会挑一个空闲端口、在浏览器里打开，并打印地址。改动保存后直接刷新即可，缓存是关掉的。
 
-这个世界包罗万象，可以自由移动，里面建了篮球场，健身房，工作台，甚至还有昼夜交替和天气系统。
+## 目录
 
-对于二维网页也完全可以内嵌进来，例如按 F 查看。而且得益于方块风的性能开销小，手机也能轻松访问。
+```
+index.html        页面内容：每个 <article class="page" data-station="id"> 是一张卡片
+homecraft.json    公开站点元数据：站名、URL、logo、一句话介绍
+home.config.js    设置：名字、皮肤、语言、天气城市、Dock、留言簿
+world/            这个世界本身
+  layout.js       数据：庭院边界、出生点、各站点与展牌位置
+  build.js        建造：build(ctx) 搭方块与家具，setup(app) 定义动态行为
+  portals.js      四座门的位置与朝向
+  pyramid.js      金字塔本体与内部中厅
+  boundaries.js   墙体、玻璃斜面扫掠碰撞与西侧开口
+assets/           图片、模型（GLB）、样式
+engine/           引擎（模板 0.1.1 起，本仓库自行维护）
+tools/            serve.py 本地预览、check.mjs 自检、build.sh 打包
+about/ articles/  关于页与文章页（独立入口，也可由门进入）
+```
 
-逛上一圈，像是去朋友家做客了一趟。比起传统的网站，这样的相识或许更让人印象深刻。
+站点自身的内容放在 `world/`、`index.html`、`home.config.js`、`homecraft.json`、`assets/`；`engine/` 是与站点无关的共享引擎。
 
-一旦接受了这个设定，就再也回不去传统个人网站了…
+## 自检
 
-## 实机截图 [🔗 Terry's Home](https://terryhu.cn)
+```bash
+npm run check        # check:site + 无头浏览器启动检查，截图落在 tools/.check/
+```
 
-<p align="center"><img src="docs/images/cover.webp" width="420" alt="封面"></p>
+`?debug` 加在网址后面会显示 draw call、三角面数与帧时间。
 
-| 篮球场 | 泳池 | 工作台 |
-| :---: | :---: | :---: |
-| <img src="docs/images/terry-court.webp" width="240" alt="篮球场"> | <img src="docs/images/terry-pool.webp" width="240" alt="泳池"> | <img src="docs/images/terry-desk.webp" width="240" alt="工作台"> |
-| **作品展示** | **健身房** | **天气系统** |
-| <img src="docs/images/terry-works.webp" width="240" alt="作品展示"> | <img src="docs/images/terry-gym.webp" width="240" alt="健身房"> | <img src="docs/images/terry-snow.webp" width="240" alt="下雪"> |
+`check:site` 目前固定报三条，都是已知状态：`homecraft.json` 没有 intro、logo 仍是模板的草方块、`engine/` 与 0.1.1 清单有差异（正常，本仓库改过引擎）。这些不该靠编造元数据或回退引擎来消掉。
 
-## 开始使用
+## 状态
 
-<p align="center"><img src="docs/images/starter.webp" width="640" alt="初始模板"></p>
-
-一行命令 `python3 tools/serve.py`即可运行。项目已内置初始模板、相关提示词与约束。
-
-Terry's Home 完整实现见 [examples/terry-home](examples/terry-home)。
-
-后续更新见[更新指引](engine/UPDATING.md)。
-
-## 传送门 [🔗 申请收录](https://github.com/terryHu7/homecraft/issues/new/choose)
-
-<p align="center"><img src="docs/images/portal.webp" width="640" alt="传送门"></p>
-
-类似传统博客的友链，传送门列表收录了大家的个人网站，方便互相"串门"。
-
-## 友情链接 [🔗 LINUX DO](https://linux.do)
+- 上游已冻结：远程 `import/upstream-0.1.1` tag 指向模板基线，不再跟随官方更新，引擎改动自己修自己测。
+- 尚未上线：没有部署配置，也没有做公网部署。
+- 内容是占位的：3 篇示例文章、3 个示例友链、关于页简介待填。
+- 已知超预算：场景约 65 万三角面（预算 20 万），主要来自外景 `assets/models/newheaven-scenery.glb`（12.5 MB）。

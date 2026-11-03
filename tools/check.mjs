@@ -6,7 +6,7 @@
 //
 //   npm install            (once: installs Playwright)
 //   npm run serve          (in another terminal; it prints the address and opens the browser)
-//   npm run check [-- http://127.0.0.1:<port>/examples/terry-home/]
+//   npm run check [-- http://127.0.0.1:<port>/]
 //
 // Frame times here come from this computer's GPU, not a phone's: they show
 // regressions, not real-phone smoothness. Try a real phone before you ship.

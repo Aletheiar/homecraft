@@ -14,7 +14,9 @@ import { inflateSync } from 'node:zlib';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { engineFiles } from './engine-manifest.mjs';
-import { TEMPLATE_LOGO } from './directory.mjs';
+
+// The hash of the template's grass-block logo, so a forgotten default is named.
+const TEMPLATE_LOGO = '55fd4562515e92c53e1bdc8bceccc6cd0b36b4abafef5941d687a36a0e0ade5e';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const site = resolve(process.argv[2] || repo);
@@ -85,7 +87,7 @@ if (manifest?.files) {
   const now = engineFiles(), changed = [];
   for (const [file, hash] of Object.entries(manifest.files)) if (now[file] !== hash) changed.push(now[file] ? `changed ${file}` : `missing ${file}`);
   for (const file of Object.keys(now)) if (!manifest.files[file]) changed.push(`added ${file}`);
-  if (changed.length) warnings.push(`engine/ differs from Homecraft ${manifest.version}: ${changed.slice(0, 6).join(', ')}${changed.length > 6 ? `, and ${changed.length - 6} more` : ''}. Preserve intentional local changes; follow engine/UPDATING.md for official updates instead of overwriting customized files`);
+  if (changed.length) warnings.push(`engine/ differs from Homecraft ${manifest.version}: ${changed.slice(0, 6).join(', ')}${changed.length > 6 ? `, and ${changed.length - 6} more` : ''}. Preserve intentional local changes; engine/ is maintained here now that upstream is frozen`);
 }
 
 const where = relative(process.cwd(), site) || '.';

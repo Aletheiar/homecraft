@@ -24,7 +24,7 @@
 | `lang` | An array of `zh`, `en` |
 | `homecraft` | Whether the site supports the portal protocol; set to `true` after integration |
 
-`logo` and `intro` may be left empty during local previews. Both are required when requesting a directory listing and can be supplied in the request form or in this file. AI agents must use information provided or confirmed by the user and leave missing fields empty.
+`logo` and `intro` may be left empty during local previews. Both are required before the site is published anywhere and can be supplied in this file. AI agents must use information provided or confirmed by the user and leave missing fields empty.
 
 Character skins are configured through `skin` in `home.config.js`; see the [avatar guide](avatar.md).
 
@@ -34,7 +34,7 @@ Character skins are configured through `skin` in `home.config.js`; see the [avat
 
 `engine/door-metadata.js` provides `readSiteInfo(worldURL)` and `metadataURL(worldURL)`, supporting subdirectories, relative logo URLs and bilingual information, with response size limits and timeouts. A failed read does not block a visit.
 
-The public directory displays reviewed information; opening a portal does not re-fetch each website's `homecraft.json`. See [Request listing](worlds.md) for updates. The bundled Terry entry can appear without fetching the public directory.
+The public directory displays reviewed information; opening a portal does not re-fetch each website's `homecraft.json`. This site is not listed there. The bundled Terry entry can appear without fetching the public directory.
 
 The return button shows the origin website's name: it prefers the `homecraft.json` read at departure, falls back to the page `<title>`, and displays the origin URL if the link carries no name. Names and introductions are shown as plain text.
 

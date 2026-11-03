@@ -63,7 +63,7 @@ location / {
 
 ## Updating an Existing Website
 
-Follow [Update Homecraft](../engine/UPDATING.md) to update the shared engine. The guide covers existing forks, local modifications, backups, and conflict resolution. Preview and test the updated source, then redeploy through your existing hosting setup.
+The engine is maintained in this repository; there is no upstream update path. After changing it, preview and test the source, then redeploy through your existing hosting setup.
 
 Deployed websites serve their own JavaScript copies. Publishing the shared directory updates their listings, while engine improvements take effect after each website updates and redeploys its code. The portal protocol remains compatible with older websites.
 
@@ -74,4 +74,4 @@ Deployed websites serve their own JavaScript copies. Publishing the shared direc
 - Follow [Site Metadata](site-metadata.md) to configure and verify cross-origin access to `homecraft.json`.
 - Follow the [Portal Protocol](protocol.md) to preserve referrer information on navigation.
 
-For steps on applying for directory listing, see [Public Directory](worlds.md).
+This site is not listed in the public directory, and no directory data is kept here.

@@ -1,6 +1,6 @@
 # Portal Protocol (Version 1)
 
-This protocol supports navigation between Homecraft websites and websites using the [portal plugin](../plugin/). The public directory is static JSON and navigation uses ordinary links, with no additional backend required.
+This protocol supports navigation between Homecraft websites. The public directory is static JSON and navigation uses ordinary links, with no additional backend required.
 
 **Keep the protocol backward compatible.** Deployed websites may use older versions. Fields may be added, but existing fields must not be renamed, removed or given a different meaning. Verify navigation between new and old versions after changes.
 
@@ -8,7 +8,7 @@ Public site details live in `homecraft.json` beside the home page; its fields an
 
 ## 1. Public Directory
 
-Portals read the shared directory from `https://terryhu7.github.io/homecraft/worlds.json`. The directory is generated from `directory/` in the main repository. See the [public directory](worlds.md) for listing instructions.
+Portals read the shared directory from `https://terryhu7.github.io/homecraft/worlds.json`, which the upstream repository generates. This site is not listed there.
 
 Data example:
 

@@ -7,7 +7,7 @@ This repository is a standalone personal site built from the Homecraft template:
 ## Repository Status
 
 - **Upstream is frozen.** The template was imported from `terryHu7/homecraft` `main` at commit `db4b7f4` (engine 0.1.1) and recorded as the annotated tag `import/upstream-0.1.1`. `git diff import/upstream-0.1.1 main` is the complete list of changes made for this site.
-- **The engine updater is retired here.** Do not run `npm run update`, the standalone updater, or the procedure in [engine/UPDATING.md](engine/UPDATING.md). `engine/manifest.json` records the 0.1.1 baseline; it is not a target to return to, and its drift report is expected rather than a problem.
+- **The engine updater is retired here.** Do not run `npm run update`, the standalone updater, or any upstream upgrade procedure; those scripts and their documentation are no longer in this repository. `engine/manifest.json` records the 0.1.1 baseline; it is not a target to return to, and its drift report is expected rather than a problem.
 - **The engine is maintained in this repository now.** Upstream fixes do not arrive on their own. Bugs in `engine/` are fixed here, and engine files may be changed when this site needs it. Keep engine code generic enough to run any site built on it, and keep site-specific layout, content, and data in `world/`.
 - **Attribution is required.** `LICENSE` keeps the upstream MIT copyright line. Never remove the `terryHu7` line; add your own below it.
 
@@ -16,7 +16,7 @@ This repository is a standalone personal site built from the Homecraft template:
 This repository has a single owner. Work on a topic branch and merge into `main`; pull requests are optional.
 
 - Keep one purpose per commit. Use `type(scope): description` for final commit messages, with English descriptions and original website names.
-- Before committing, run `npm run check:site` and the relevant `tools/*.test.mjs` suites. Do not run `npm run check:pr`: its assertions describe the upstream template's pages and world, not this site.
+- Before committing, run `npm run check:site` and the relevant `tools/*.test.mjs` suites. The template's own page and listing checks are not part of this repository.
 - Do not include `Co-authored-by` trailers in commits or PR merges.
 - Write technical documentation, Agent and skill instructions, workflow descriptions, and CLI output in English. Use concise, professional language and describe concrete behavior. Avoid metaphors, colloquialisms, and promotional phrasing.
 - User-facing wording changes require the owner's confirmation before publication. Prepare the exact text for review. Where the site is bilingual, English comes first and Chinese follows, both complete.
@@ -25,7 +25,7 @@ This repository has a single owner. Work on a topic branch and merge into `main`
 ## Development Principles
 
 1. **Ensure mobile experience.** Follow the performance budget. After any functional or visual change, check the `?debug` overlay or run `npm run check`.
-2. **Reference the showcase home for dimensions and materials.** Refer to similar items in `examples/terry-home` for style; see "Visual Design" for details.
+2. **Reuse this world's own vocabulary.** Refer to similar items in `world/furnish.js`, `world/pyramid.js`, and `world/statues.js` for dimensions and materials; see "Visual Design" for details.
 
 ## Directory Structure
 
@@ -38,11 +38,8 @@ world/            The user's world
   build.js        Building: build(ctx) creates blocks and furniture; setup(app) defines dynamic behavior (optional)
 assets/           Images (project screenshots, skins, icons)
 engine/           Engine imported from template 0.1.1 and maintained in this repository
-examples/terry-home/   Showcase home: reference implementation for buildings, furniture, landscaping, and pets
-backend/mailbox/  Optional: Cloudflare Worker that forwards guestbook messages to email
 tools/            serve.py (local preview), check.mjs (self-check), build.sh (build & deploy)
-plugin/           Portal plugin for regular websites and blogs (homecraft-door.js)
-directory/        Upstream public directory data (unused by this site)
+about/ articles/  Standalone pages reached from their doors
 ```
 
 Site customization lives in `world/`, `index.html`, `home.config.js`, `homecraft.json`, and `assets/`. `engine/` is the shared engine: keep it free of content specific to this site so that a change there stays a change to the engine, and put layout, content, and per-site data in `world/`. Engine changes are allowed now that upstream is frozen; test them like any other change.
@@ -65,7 +62,7 @@ npm install && npm run check    # Install dependencies and run site + browser ch
 
 ## Upstream Updates
 
-Upstream is frozen for this repository; see "Repository Status". Do not run `npm run update`, the standalone updater, or the procedure in [engine/UPDATING.md](engine/UPDATING.md).
+Upstream is frozen for this repository; see "Repository Status". Do not run `npm run update` or any upgrade procedure; the updater and its documentation are not in this repository.
 
 If the owner asks for a specific fix from `terryHu7/homecraft`, treat it as targeted reading rather than an upgrade: inspect that upstream commit, apply the smallest equivalent change to `engine/` here, cite the upstream commit in the message, and test it like any other engine change.
 
@@ -138,7 +135,7 @@ All fields in the return value are optional:
 | `lights` | Real-time point lights, maximum 2. Use `bakes` for standard lighting |
 | `surfaces` | Dynamic surfaces supported by the engine: `fireplace` (one or more flame faces `{ position, rotation, width, height }`), `scoreboard` (wall-mounted calendar clock), `tvScreen` (a Mesh playing city night footage) |
 | `forest` | Return value of `buildForest(grid, layer, spots)`. Tree canopies are merged into a single draw call |
-| `sites` / `named` | Walkable surfaces outside the block grid, such as hills, docks, and rooftop stairs; see examples for usage |
+| `sites` / `named` | Walkable surfaces outside the block grid, such as hills, docks, and rooftop stairs; see `world/build.js` for usage |
 
 ## World Building
 
@@ -176,7 +173,7 @@ Built-in textures are all procedurally generated 16×16 pixel images: `grass_top
 - Grass and flowers: `buildTufts(layer, materials, [{ x, z, tile: 'flower_red' }, …])`. tile can be `tall_grass flower_red flower_white flower_violet`; optional parameter `s` sets size, `tint` sets color. Return value goes into `planes`; tufts in the same batch are merged into a single draw call.
 - Signs and paintings: use `canvasTexture(w, h, (ctx, w, h) => …)` and `pixelText(ctx, 'HELLO', x, y, scale, color)` to generate textures, then apply them to panels in `planes`.
 
-Implementation examples: `world/build.js` (empty island with trees), `examples/terry-home/world/furnish.js` (indoor furniture).
+Implementation examples: `world/build.js` (empty island with trees), `world/furnish.js` (indoor furniture, signs and paintings).
 
 ## Content (index.html)
 
@@ -195,7 +192,7 @@ Implementation examples: `world/build.js` (empty island with trees), `examples/t
 
 ## Guestbook
 
-The guestbook entry defaults to opening the visitor's email app. For in-site submission, deploy the Worker per [backend/mailbox/README.md](backend/mailbox/README.md).
+The guestbook entry opens the visitor's email app. This site ships no mailbox worker; in-site submission would need one deployed separately.
 
 ## Performance Budget
 
@@ -218,7 +215,7 @@ When exceeding the budget, prioritize reducing rendering overhead; if still unab
 
 The following are the default design requirements; user-specified styles take priority.
 
-- **Reference existing items.** Look for similar buildings, furniture, plants, paintings, or light fixtures in `examples/terry-home/world/`, reuse their dimensions, materials, and implementation, then adjust per user requirements. See `examples/terry-home/README.md` for the file reference table.
+- **Reference existing items.** Look for similar buildings, furniture, plants, paintings, or light fixtures in `world/furnish.js`, `world/pyramid.js`, and `world/statues.js`, reuse their dimensions, materials, and implementation, then adjust per user requirements.
 - **Two to three primary materials per space.** One wood, one metal, one low-saturation accent color. Use dark tones for sofas and chairs, light tones for bedding.
 - **Highlight one main piece per area**, leaving space around it.
 - **Use real-world proportions.** 1 block = 1 m, character height = 1.8 m. Doors 2.2–2.8 m tall, at least 1.2 m wide; tabletops at 0.75 m; seat height 0.45 m; bed surface 0.5 m; floor-to-ceiling at least 3 m; stair risers ~0.17 m. Passages at least 1.2 m wide. Leave small gaps between furniture and walls, and between objects.
@@ -232,4 +229,4 @@ The portal connects independently deployed websites; see [docs/protocol.md](docs
 
 - Link formats follow `engine/door-protocol.js`, `engine/portal.js`, and `engine/traveller.js`. The public directory URL follows `engine/config.js`.
 - `Referrer-Policy` preserves the origin. Links contain only public URLs — no account IDs, email addresses, or other identity information.
-- The listing entry point and the public directory belong to the upstream template repository and require a publicly deployed site. This site is not listed, and `directory/` is not maintained here; joining the directory later is a new decision for the owner, not routine maintenance.
+- The listing entry point and the public directory belong to the upstream template repository and require a publicly deployed site. This site is not listed and carries no directory data; joining the directory later is a new decision for the owner, not routine maintenance.

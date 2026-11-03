@@ -17,8 +17,6 @@ If a file fails to load, times out or has an unsupported format, use the default
 
 `engine/door-protocol.js` has no Three.js dependency. Host the file and call `createTravelSession(ownerSkinURL, defaultGreenHoodieSkinURL)` to create a session. At startup, call `arrive()`, then `await wornSkin()` to get the skin `url` for your model. To leave, generate a link with `await link({ url, homecraft: true })`, then call `navigateDoor(href)`.
 
-Existing websites and blogs can use the [portal plugin](../plugin/). The plugin also provides `visitorSkin()`, letting a 3D website read the visitor's skin.
-
 ## Checking
 
 Run `npm run check:site` to check skin format, unexpected transparency and arm width. Run `npm run check:portal` to check cross-site visits.

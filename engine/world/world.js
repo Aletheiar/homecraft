@@ -21,7 +21,7 @@ export const floorAt = L.floorAt || (() => 0);
 export function createWorld(stage, quality) {
   const { scene } = stage;
   const tiles = createTileArray(), materials = createBlockMaterials(tiles.texture, createMarbleTexture(), tiles.layer.prada_marble);
-  // Boxes marked { metal: true } use this; a world may swap in a real metal (see examples/terry-home's stainless.js).
+  // Boxes marked { metal: true } use this; a world may swap in a real metal by defining its own material.
   materials.boxMetal = materials.box;
   const B = L.ISLAND;
   const grid = new VoxelGrid({ min: [B.x0, -20, B.z0], size: [B.x1 - B.x0, 34, B.z1 - B.z0] });

@@ -18,7 +18,7 @@ const DEFAULTS = {
   start: { weather: 'clear', time: 'day' },
   // The Dock, in order: ids of the pages in index.html (data-station), and 'phone'.
   dock: ['blog', 'about', 'mailbox', 'phone'],
-  // Notes from the mailbox: `endpoint` is your deployed backend/mailbox Worker;
+  // Notes from the mailbox: `endpoint` is a deployed mailbox Worker;
   // without one the note opens the visitor's mail app addressed to `email`.
   mailbox: { endpoint: '', email: '', turnstileSitekey: '' },
   // Published sources for the shared Homecraft directory. Multiple sources

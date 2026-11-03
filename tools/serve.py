@@ -19,7 +19,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
         self.send_header('Cache-Control', 'no-cache')
-        if self.path.split('?', 1)[0] in ['/homecraft.json', '/examples/terry-home/homecraft.json']:
+        if self.path.split('?', 1)[0] in ['/homecraft.json']:
             self.send_header('Access-Control-Allow-Origin', '*')
         super().end_headers()
 
