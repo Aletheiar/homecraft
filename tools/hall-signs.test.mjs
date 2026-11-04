@@ -169,10 +169,9 @@ test('each band turns on its own axle, at its own period, and nothing else moves
   assert.ok(half.every((d, i) => Math.abs(d - want[i]) < 1e-9), 'the motion steps by time, not by frames');
 });
 
-test('the crystal glows from inside and breathes without ever being a lamp', () => {
+test('the crystal glows from inside without ever being a lamp', () => {
   const instrument = hall.exhibit.mesh;
-  const glow = HALL_EXHIBIT.armillary.glow;
-  assert.deepEqual(glow, { breath: 5, depth: .07 });
+  assert.equal(HALL_EXHIBIT.armillary.glow, undefined, 'the crystal glow is a constant, not a tuned rhythm');
   const core = instrument.getObjectByName('armillary-core');
   const kernel = instrument.getObjectByName('armillary-core-inner');
   const edges = instrument.getObjectByName('armillary-core-edges');
@@ -180,22 +179,13 @@ test('the crystal glows from inside and breathes without ever being a lamp', () 
   assert.ok(core.material.emissive.getHex() !== 0, 'the shell carries its own colour, not a lamp');
   assert.ok(core.material.emissiveIntensity > .2 && core.material.emissiveIntensity < .8);
   assert.ok(kernel.material.emissiveIntensity > core.material.emissiveIntensity, 'the inner core is the brighter layer');
-  // Breathing: one slow cycle, a few percent either side, and no flicker. It
-  // is sampled over 10 s so both the crest and the trough are seen.
+  // The breath was removed: a +/-15% swing on these two intensities only moved
+  // the crystal's mean pixel luminance 2.3%, so a steady value reads better than
+  // an imperceptible rhythm. Nothing may animate the intensities again.
   const base = { shell: core.material.emissiveIntensity, kernel: kernel.material.emissiveIntensity };
-  const seen = [];
-  for (let i = 0; i < 20; i++) {
-    hall.exhibit.update(.5);
-    seen.push(core.material.emissiveIntensity / base.shell);
-  }
-  const low = Math.min(...seen), high = Math.max(...seen);
-  assert.ok(high - low > .05 && high - low < .3, 'the breath is present but shallow');
-  // The ratio between crest and trough is independent of the instant the
-  // sample base happens to fall on, so it is what the depth is checked against.
-  const spread = high / low, want = (1 + glow.depth) / (1 - glow.depth);
-  assert.ok(Math.abs(spread - want) < .01, 'the breath follows its configured depth');
-  const kernelRatio = kernel.material.emissiveIntensity / base.kernel;
-  assert.ok(Math.abs(kernelRatio - seen[seen.length - 1]) < 1e-9, 'the shell and the kernel breathe together');
+  for (let i = 0; i < 20; i++) hall.exhibit.update(.5);
+  assert.equal(core.material.emissiveIntensity, base.shell, 'the shell glow holds steady');
+  assert.equal(kernel.material.emissiveIntensity, base.kernel, 'the kernel glow holds steady');
   assert.ok(edges?.isLineSegments, 'the edge wires stay available to catch the glow');
   // Nothing else in the exhibit is emissive, so the glow stays a core effect.
   let emissive = 0;

@@ -85,13 +85,15 @@ try {
           span:Math.max(box.max.x-box.min.x,box.max.z-box.min.z),
           nested:gimbal.parent===outer&&innerSpin.parent===gimbal});
       }
-      // The crystal glow is emissive only: sample the breath across ten
-      // half-second steps and count what actually glows in the exhibit.
-      const shell=core.material,kernelMaterial=core.getObjectByName('armillary-core-inner').material,breathe=[];
-      for(let i=0;i<20;i++){h.world.exhibit.update(.5);breathe.push(shell.emissiveIntensity)}
+      // The crystal glow is emissive only and holds steady; count what glows and
+      // confirm nothing animates the two intensities.
+      const shell=core.material,kernelMaterial=core.getObjectByName('armillary-core-inner').material;
+      const steady=[shell.emissiveIntensity,kernelMaterial.emissiveIntensity];
+      for(let i=0;i<20;i++)h.world.exhibit.update(.5);
       let glowMeshes=0;group.traverse(o=>{if(o.isMesh&&o.material.emissive&&o.material.emissive.getHex()!==0)glowMeshes++});
       const shine=h.stage.scene.getObjectByName('hall-emblem-shine');
-      const glow={lo:Math.min(...breathe),hi:Math.max(...breathe),kernelKernel:kernelMaterial.emissiveIntensity>shell.emissiveIntensity,glowMeshes,
+      const glow={steady:shell.emissiveIntensity===steady[0]&&kernelMaterial.emissiveIntensity===steady[1],
+        kernelKernel:kernelMaterial.emissiveIntensity>shell.emissiveIntensity,glowMeshes,
         shine:!!shine,shineAdditive:!!shine&&shine.material.blending===THREE.AdditiveBlending,shineOpacity:shine?shine.material.opacity:0};
       h.player.teleport(-2.2,0);let peak=0;
       for(let i=0;i<90;i++){h.player.update(1/60,{x:1,z:0,run:false},0);h.extras.update(1/60);peak=Math.max(peak,h.player.y)}
@@ -110,10 +112,9 @@ try {
     assert.ok(state.cycle.every(s=>s.span<2.75&&s.top<3.5),'The turning bands stay inside the plinth footprint and under the ceiling line');
     assert.ok(Math.max(...state.cycle.map(s=>s.top))>3.2,'The instrument still fills the hall at some phase of its cycle');
     assert.deepEqual(state.period, { outer: 20, middle: 40, inner: 60, core: 10 });
-    // A quiet core: the glow breathes, nothing else in the exhibit glows, and
-    // the floor's catch-light is additive rather than a light source.
-    assert.ok(state.glow.hi > state.glow.lo, 'The crystal does not breathe');
-    assert.ok(state.glow.hi / state.glow.lo > 1.05 && state.glow.hi / state.glow.lo < 1.2, 'The breath is no longer shallow');
+    // A quiet core: the glow holds steady, nothing else in the exhibit glows,
+    // and the floor's catch-light is additive rather than a light source.
+    assert.ok(state.glow.steady, 'The crystal glow is being animated again');
     assert.equal(state.glow.glowMeshes, 2, 'Only the glass shell and its kernel glow');
     assert.ok(state.glow.kernelKernel, 'The inner layer is the brighter one');
     assert.ok(state.glow.shine && state.glow.shineAdditive, 'The floor emblem keeps its lit metal wire');

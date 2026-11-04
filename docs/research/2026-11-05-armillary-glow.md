@@ -35,15 +35,20 @@ washed the octahedron flat, a flat-coloured kernel lost the ribs, and metalness
 above .4 drained the brass colour because there is no environment map to
 reflect. The shipped pair is the shell/kernel split above.
 
-## Breathing
+## Breathing — removed after measurement
 
-`update()` writes `1 + depth * sin(elapsed · 2π / breath)` into both emissive
-intensities, with `breath: 5` s and `depth: .07` in `space-config.js`. That is a
-±7 % swing, five seconds long: above the threshold where a still frame looks
-dead, below the point where it reads as a pulse. Two float writes per frame and
-no allocation — the materials are never cloned or rebuilt. Both tests assert the
-crest/trough ratio `(1+d)/(1-d)` rather than absolute values, so the check does
-not depend on where in the cycle it happens to sample.
+A five-second breath of ±7 % (and later ±15 %) on the two emissive intensities
+was implemented and then retired. The reason is measurable: the emissive term is
+only a part of what the eye reads on a lit, transparent shell, so a ±15 % swing
+on the intensities moved the crystal's mean pixel luminance from 162.1 to 165.9
+in a 140 x 140 crop — **2.3 %**, below the noise of a faceted, dithered surface
+against a bright glass wall (`tools/.check/breath.mjs`, which reads the pixels
+back from the framebuffer rather than trusting the numbers).
+
+The intensities are now constants set at construction (`CRYSTAL_GLOW = .44`,
+`KERNEL_GLOW = 1.3`) and `update()` no longer touches any material. There is no
+`glow` block left in `space-config.js` to tune, and both suites assert that
+nothing animates the intensities again.
 
 ## Corner lanterns
 
@@ -88,11 +93,11 @@ and bolt vertex colours give the machined edges their highlight.
 ## Validation
 
 - `npm run check:site` — pass, three pre-existing informational warnings.
-- `node --test tools/*.test.mjs` — 58 pass (two new tests: the crystal breath and
-  the lantern/emblem lane).
+- `node --test tools/*.test.mjs` — 59 pass (two new tests: the steady crystal
+  glow and the lantern/emblem lane).
 - `node tools/check-armillary.mjs` — desktop 1440x950 and narrow 390x844; the
-  runtime now also samples the breath, counts the two emissive meshes in the
-  exhibit and confirms the additive floor layer.
+  runtime now also confirms the glow holds steady, counts the two emissive
+  meshes in the exhibit and checks the additive floor layer.
 - `node tools/check-all.mjs http://127.0.0.1:8765/` — all standalone checks pass.
 - `npm run build` — 152 MB into `dist/`.
 - Screenshots at the standing distances (`tools/.check/shots/g5-*`,

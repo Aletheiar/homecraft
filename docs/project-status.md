@@ -21,9 +21,10 @@ implementation checkpoints.
   graduated brass bands, a cyan crystal with an inner kernel and edge ribs, a
   bolted bed-plate with a four-arm fork, two stone tiers and restrained
   circular inlay, carrying a restrained museum glow: the crystal lights from
-  its inner kernel and breathes on a five-second cycle, the plinth corners hold
-  dim amber panes, and the floor emblem gains one additive catch-light. It is
-  committed locally but not uploaded. See the
+  its inner kernel, the plinth corners hold dim amber panes, and the floor
+  emblem gains one additive catch-light. The crystal glow is a constant: a
+  breathing version measured only a 2.3% swing in screen luminance, so it was
+  removed rather than tuned. It is committed locally but not uploaded. See the
   [implementation and checks](research/2026-11-04-armillary-plan-a.md), the
   [precision pass](research/2026-11-04-armillary-precision.md), the
   [motion pass](research/2026-11-05-armillary-motion.md) and the

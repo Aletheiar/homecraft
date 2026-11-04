@@ -23,9 +23,9 @@ export const HALL_SPOTS = {
 // Museum exhibit dimensions are local to the upper stone platform. The hall
 // centre, all stations and the three portal definitions stay fixed. `spin`
 // holds one period in seconds per turning part, so the motion is a single
-// readable number instead of a radian rate. `glow` is the crystal's breath in
-// seconds and its fractional depth, kept small on purpose: the exhibit glows,
-// it does not pulse.
+// readable number instead of a radian rate. The crystal's glow is a constant in
+// `world/armillary.js`: a breathing version measured a 2.3% swing in screen
+// luminance and was removed, so there is deliberately nothing to tune here.
 export const HALL_EXHIBIT = {
   plinth: 2.75, height: .17, cap: 2.23, upperWidth: 2.15, upperHeight: .2, capHeight: .045, gap: .01,
   // Corner lantern panes: an emissive surface, never a light. The value is
@@ -34,7 +34,6 @@ export const HALL_EXHIBIT = {
   armillary: {
     center: 1.60, radii: [1.232, 1.134, 1.036], tube: .027, band: .078, core: .3375,
     spin: { outer: 20, middle: 40, inner: 60, core: 10 },
-    glow: { breath: 5, depth: .07 },
   },
 };
 

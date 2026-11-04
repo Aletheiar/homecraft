@@ -12,7 +12,7 @@ const BRASS = 0xb9975f, LIP = 0xdcc28c, SHOULDER = 0x8f7444, FACE = 0xad8e58,
 // rim points and turns about that diameter: it tumbles like a coin, and the
 // bearing that pins it sits on the rim the band already has, which leaves the
 // floating crystal a clear sphere and keeps the hardware honest.
-export function createArmillary({ center, radii, tube, band, core, spin, glow }, plinthTop) {
+export function createArmillary({ center, radii, tube, band, core, spin }, plinthTop) {
   const group = new THREE.Group(); group.name = 'hall-exhibit'; group.position.set(0, plinthTop, 0);
   // Fixed mounting, then one geometry per band: each band has to turn on its
   // own axle, so each one is merged separately.
@@ -222,9 +222,11 @@ export function createArmillary({ center, radii, tube, band, core, spin, glow },
     }
   }
   shell.setAttribute('color', new THREE.BufferAttribute(shadesArray, 3));
-  // The glow is emissive only: no bloom, no shell, no extra light. A faint
-  // slow breath on two intensities is the whole "live core" effect, and each
-  // frame only writes a number, so nothing is allocated after construction.
+  // The glow is emissive only: no bloom, no light, and no animation. A breath
+  // was tried and removed: at +-15% on these two intensities the crystal's mean
+  // pixel luminance moved 2.3%, because the emissive term is a small part of
+  // what the eye reads on a lit, transparent shell. A steady value reads better
+  // than an imperceptible rhythm.
   const CRYSTAL_GLOW = .44, KERNEL_GLOW = 1.3;
   const crystal = new THREE.Mesh(shell, new THREE.MeshStandardMaterial({
     vertexColors: true, transparent: true, opacity: .76, roughness: .18, metalness: .04,
@@ -261,8 +263,7 @@ export function createArmillary({ center, radii, tube, band, core, spin, glow },
   edges.name = 'armillary-core-edges'; crystal.add(edges); group.add(crystal);
 
   // One accumulated clock drives all four turns; each angle is reduced to
-  // [0, 2pi) so nothing drifts after hours of idling. The same clock carries
-  // the crystal breath, which only writes two numbers per frame.
+  // [0, 2pi) so nothing drifts after hours of idling.
   let elapsed = 0;
   const tau = Math.PI * 2;
   return { mesh: group, update(dt = 0) {
@@ -272,8 +273,5 @@ export function createArmillary({ center, radii, tube, band, core, spin, glow },
     gimbal.rotation.y = (elapsed * tau / spin.middle) % tau;
     innerSpin.rotation.x = (elapsed * tau / spin.inner) % tau;
     crystal.rotation.y = (elapsed * tau / spin.core) % tau;
-    const breath = 1 + glow.depth * Math.sin(elapsed * tau / glow.breath);
-    crystal.material.emissiveIntensity = CRYSTAL_GLOW * breath;
-    innerMesh.material.emissiveIntensity = KERNEL_GLOW * breath;
   } };
 }
