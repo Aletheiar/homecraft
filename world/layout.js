@@ -16,7 +16,7 @@ export const STATIONS = [
   // front of its door and looks east at it.
   { id: 'works', page: false, name: '项目研究', en: 'Projects', icon: 'works', at: [5.2, -5.6], look: [7.2, -5.6] },
   { id: 'writing', page: false, name: '随笔图书室', en: 'Journal', icon: 'writing', at: [-5.6, -5.6], look: [-4, -5.6] },
-  { id: 'friends', page: false, name: '友链目录', en: 'Friends', icon: 'about', at: [5.2, 5.6], look: [7.2, 5.6] },
+  { id: 'friends', page: false, name: '友链目录', en: 'Friends', icon: 'link', at: [5.2, 5.6], look: [7.2, 5.6] },
   { id: 'about', page: false, name: '关于本站', en: 'About', icon: 'about', at: [-5.6, 5.6], look: [-4, 5.6] },
   // The fan artwork hangs above the hall, so this station stands on the floor
   // below it: the card is what the visitor reads, the painting is what they see.

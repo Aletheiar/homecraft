@@ -11,6 +11,25 @@ const PALETTE = {
 };
 
 const ART = {
+  // Two interlocking links, shared by directory/navigation surfaces.
+  link: [
+    '................',
+    '..........kkkk..',
+    '.........kpkkYk.',
+    '........kpk..Yk.',
+    '.......kpk...Yk.',
+    '.......pk...kYk.',
+    '......kp...kYk..',
+    '....kpppk.kYk...',
+    '...kpk.kkYkk....',
+    '..kpk...Y.......',
+    '.kpk...kk.......',
+    '.kk...kYk.......',
+    '.kk..kYk........',
+    '.kYYYYk.........',
+    '..kkkk..........',
+    '................',
+  ],
   // Homecraft's mark: a grass block.
   logo: [
     '................',
