@@ -12,8 +12,9 @@ for (const cached of [false, true]) {
     await page.goto(base);
     await page.waitForFunction(() => window.__home?.world.pyramid?.sceneryReady);
     await page.locator('#enter-button').click();
-    await page.evaluate(() => {
-      const h = __home; h.player.teleport(-7, 7); h.rig.recenter(h.player);
+    await page.evaluate(async () => {
+      const { HUB_PORTALS } = await import('/world/space-config.js'), gate = HUB_PORTALS.find(g => g.id === 'about');
+      const h = __home; h.player.teleport(gate.x + Math.sin(gate.yaw) * 2, gate.z + Math.cos(gate.yaw) * 2); h.rig.recenter(h.player);
       for (let i = 0; i < 100; i++) { h.rig.update(1 / 60, h.player); h.extras.update(1 / 60); }
     });
     const token = await page.evaluate(() => window.__historyToken);
@@ -24,10 +25,13 @@ for (const cached of [false, true]) {
     await cross(); await page.waitForURL('**/about/');
     await page.goBack({ waitUntil: 'commit' });
     await page.waitForFunction(() => window.__home?.world.pyramid?.sceneryReady);
-    const state = await page.evaluate(() => ({ x: __home.player.pos.x, z: __home.player.pos.z, cached: window.__historyPersisted, token: window.__historyToken, charging: document.querySelector('#portal-ripple')?.classList.contains('charging') || false }));
+    const state = await page.evaluate(async () => {
+      const { HUB_PORTALS } = await import('/world/space-config.js'), gate = HUB_PORTALS.find(g => g.id === 'about');
+      return { x: __home.player.pos.x - gate.x, z: __home.player.pos.z - gate.z, cached: window.__historyPersisted, token: window.__historyToken, charging: document.querySelector('#portal-ripple')?.classList.contains('charging') || false };
+    });
     assert.equal(state.cached, cached, JSON.stringify(state));
     assert.equal(state.token === token, cached);
-    assert.ok(state.x <= -6.45 && state.x > -8 && Math.abs(state.z - 7) < .15, JSON.stringify(state));
+    assert.ok(state.x <= -1.4 && state.x > -3.2 && Math.abs(state.z) < .15, JSON.stringify(state));
     assert.equal(state.charging, false);
     await cross(); await page.waitForURL('**/about/');
     await page.locator('[data-return-hub]').click();

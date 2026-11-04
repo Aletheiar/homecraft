@@ -4,12 +4,34 @@ export function getSpace(search = globalThis.location?.search || '') {
 }
 
 // The original model has a single opening, on the west face. Every interior
-// door faces it so a visitor who walks in sees the front of each door.
+// portal faces it so a visitor who walks in sees the front of each portal.
 export const ENTRANCE_YAW = -Math.PI / 2;
 
+// Hall plan. +x is east, +z is south, so the west opening sits at x = -13.4 and
+// the walkable hall ends near |x| = |z| = 16.4. These anchors are shared by the
+// furniture, the floor drawing and the stations so a later layout change stays
+// one edit.
+export const HALL_CENTER = { x: 0, z: 0 };
+export const HALL_EMBLEM = { radius: 3.9 };
+// The two feature corners: the workbench in the north-east, the lounge in the
+// south-east. Furniture is placed around these anchors, not on top of them.
+export const HALL_SPOTS = {
+  workbench: { deskX: 13.3, deskZ: -12.6, chairZ: -11.5, shelfX: 14.95, shelfZ: -14.25, approach: [13.3, -10.2] },
+  lounge: { x: 13.9, z: 13.4 },
+  exhibit: { x: HALL_CENTER.x, z: HALL_CENTER.z },
+};
+// The display case in the middle of the floor: one stone plinth under the
+// reused glass pyramid. It is low on purpose; the portals stay the landmarks.
+// The pyramid hovers a little above the stone, and drifts up and down by a
+// couple of centimetres, so the gap reads as levitation instead of a modelling
+// mistake. `bob` is the amplitude, `hover` the resting gap.
+export const HALL_EXHIBIT = {
+  plinth: 1.9, height: .3, cap: 2.02, hover: .4, bob: .02,
+  pyramid: { radius: .62, height: .78 },
+};
+
 export const HUB_PORTALS = [
-  { id: 'writing', title: '随笔图书室', subtitle: '走入传送门', color: 0x7bbbad, x: -5, z: -7, yaw: ENTRANCE_YAW, href: '/?space=library' },
-  { id: 'works', title: '项目工作室', subtitle: '走入传送门', color: 0xd5b578, x: 9, z: -7, yaw: ENTRANCE_YAW, href: '/?space=studio' },
-  { id: 'friends', title: '友链目录', subtitle: '通往其他人的博客', color: 0xa69ac8, x: 9, z: 7, yaw: ENTRANCE_YAW, href: '/friends/' },
-  { id: 'about', title: '关于本站', subtitle: 'Aletheia · 自我介绍与社交账号', color: 0x91adbb, x: -5, z: 7, yaw: ENTRANCE_YAW, href: '/about/' },
+  { id: 'writing', title: '随笔图书室', subtitle: '收藏文字、思考与故事', color: 0x7bbbad, x: 11, z: 0, yaw: ENTRANCE_YAW, href: '/?space=library' },
+  { id: 'friends', title: '友链目录', subtitle: '通往其他有趣的角落', color: 0xa69ac8, x: -5.5, z: 6.4, yaw: ENTRANCE_YAW, href: '/friends/' },
+  { id: 'about', title: '关于本站', subtitle: '认识我，以及这个小世界', color: 0x91adbb, x: -5.5, z: -6.4, yaw: ENTRANCE_YAW, href: '/about/' },
 ];

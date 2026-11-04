@@ -17,7 +17,7 @@ const front = (gate, x, z) => {
 };
 
 test('every interior door faces the only opening, on the west glass face', () => {
-  assert.equal(HUB_PORTALS.length, 4);
+  assert.equal(HUB_PORTALS.length, 3);
   for (const gate of HUB_PORTALS) {
     assert.equal(gate.yaw, ENTRANCE_YAW, gate.id);
     // Facing west means the front normal points to negative x.
@@ -26,12 +26,18 @@ test('every interior door faces the only opening, on the west glass face', () =>
   }
 });
 
-test('four identical portal frames form aligned pairs and About opens a reading page', () => {
-  assert.deepEqual(HUB_PORTALS.map(g => [g.x, g.z]), [[-5, -7], [9, -7], [9, 7], [-5, 7]]);
+test('three doors: the two front ones flank the entrance, the reading room closes the axis', () => {
+  assert.deepEqual(HUB_PORTALS.map(g => [g.x, g.z]), [[11, 0], [-5.5, 6.4], [-5.5, -6.4]]);
+  assert.ok(HUB_PORTALS.find(g => g.id === 'about').z < 0, 'About is the north door');
+  assert.ok(HUB_PORTALS.find(g => g.id === 'friends').z > 0, 'Friends is the south door');
+  assert.equal(HUB_PORTALS.find(g => g.id === 'writing').z, 0, 'the reading room holds the main axis');
   assert.equal(HUB_PORTALS.find(g => g.id === 'about').href, '/about/');
   // Friend links live on one static directory page, so the door never gains a
   // companion door when a friend is added.
   assert.equal(HUB_PORTALS.find(g => g.id === 'friends').href, '/friends/');
+  assert.equal(HUB_PORTALS.find(g => g.id === 'writing').href, '/?space=library');
+  // The studio keeps its space and its card link; it simply lost its own door.
+  assert.equal(HUB_PORTALS.some(g => g.id === 'works' || g.href.includes('studio')), false);
 });
 
 test('each door station stands in front of its door and looks at it', () => {

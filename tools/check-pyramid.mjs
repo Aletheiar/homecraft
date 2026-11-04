@@ -80,7 +80,7 @@ for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } },
       await page.locator('#panel .close').click();
     });
   }
-  for (const id of ['works', 'writing', 'friends', 'about']) {
+  for (const id of ['writing', 'friends', 'about']) {
     await check(`Dock ${id} guides to its portal without opening or navigating`, async () => {
       await page.locator(`#hotbar [data-station="${id}"]`).click();
       assert.equal(await page.locator('#panel').evaluate(el => el.open), false);

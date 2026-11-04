@@ -86,7 +86,7 @@ try {
       __home.extras.update(.5);
       return { before, after: veil.material.map.offset.y, tracked: __home.world.veils?.length || 0 };
     });
-    assert.equal(motion.tracked, 4, JSON.stringify(motion));
+    assert.equal(motion.tracked, 3, JSON.stringify(motion));
     assert.ok(Math.abs(motion.after - motion.before) > .01, JSON.stringify(motion));
     return motion;
   });
@@ -96,7 +96,7 @@ try {
   await page.locator('#return-button').click();
   await page.evaluate(() => { __home.rig.showcase([-42, 12, 22], [-24, 1, 0]); for (let i = 0; i < 90; i++) __home.rig.update(1 / 60, __home.player); });
   await page.screenshot({ path: `${out}/interactive-foyer.png` });
-  for (const [id, space] of [['writing', 'library'], ['works', 'studio']]) {
+  for (const [id, space] of [['writing', 'library']]) {
     await check(`${id} portal enters ${space} by crossing, and the enclosed room works`, async () => {
       await page.locator('#enter-button').click();
       await page.evaluate(async id => {
@@ -152,9 +152,22 @@ try {
     // Recover the hub if a failed gate check left us in another space.
     if (new URL(page.url()).searchParams.get('space') !== 'hub') { await page.goto(`${base}?space=hub`); await ready(true); }
   }
+  await check('the studio room still opens from its card link, without a hall door', async () => {
+    await page.goto(`${base}?space=studio`); await ready();
+    const checks = await page.evaluate(() => {
+      const h = __home;
+      return { space: h.world.space, start: h.nav.canStand(h.player.pos.x, h.player.pos.z), sealed: !h.world.roomContains(12, 0, 0) };
+    });
+    assert.deepEqual(checks, { space: 'studio', start: true, sealed: true });
+    await Promise.all([page.waitForURL('**?space=hub**'), page.locator('#return-button').click()]); await ready(true);
+  });
   await check('walking through the portal opening routes into the library', async () => {
     await page.locator('#enter-button').click();
-    await page.evaluate(() => { __home.player.teleport(-7, -7); __home.rig.recenter(__home.player); });
+    await page.evaluate(async () => {
+      const { HUB_PORTALS } = await import('/world/space-config.js');
+      const gate = HUB_PORTALS.find(g => g.id === 'writing');
+      __home.player.teleport(gate.x + Math.sin(gate.yaw) * 2, gate.z + Math.cos(gate.yaw) * 2); __home.rig.recenter(__home.player);
+    });
     await page.waitForTimeout(800);
     const nav = page.waitForURL(url => new URL(url).searchParams.get('space') === 'library', { timeout: 10000 });
     await page.evaluate(() => {

@@ -52,19 +52,23 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
   page.on('pageerror', e => report.errors.push(e.message));
   await page.goto(base); await ready(page); await stand(page);
-  await check('four matching west-facing portals are aligned and all old kiosk furniture is gone', async () => {
+  await check('three west-facing portals are placed on plan and all old kiosk furniture is gone', async () => {
     const state = await page.evaluate(async () => {
       const h = __home, { HUB_PORTALS } = await import('/world/space-config.js');
-      const free = [[-8.75, -11.25], [-10.375, -9.6875], [-7.125, -9.6875], [-6, 2.4]].every(([x, z]) => h.nav.canStand(x, z));
-      let clear = true; for (let x = -13; x < -2; x += .25) if (!h.nav.canStand(x, 0)) clear = false;
-      return { positions: HUB_PORTALS.map(g => [g.x, g.z]), sizes: h.world.veils.map(v => [v.geometry.parameters.width, v.geometry.parameters.height]), oldSign: !!h.stage.scene.getObjectByName('hall-sign-about'), free, clear };
+      const free = [[-6, -9], [0, -2.6], [9, 9], [13.3, -10.2]].every(([x, z]) => h.nav.canStand(x, z));
+      let clear = true;
+      for (let x = -13; x <= -2; x += .25) if (!h.nav.canStand(x, 0)) clear = false;
+      for (let x = 2; x <= 9.5; x += .25) if (!h.nav.canStand(x, 0)) clear = false;
+      return { positions: HUB_PORTALS.map(g => [g.x, g.z]), sizes: h.world.veils.map(v => [v.geometry.parameters.width, v.geometry.parameters.height]), oldSign: !!h.stage.scene.getObjectByName('hall-sign-about'), emblem: !!h.stage.scene.getObjectByName('hall-emblem'), exhibit: !!h.stage.scene.getObjectByName('hall-exhibit'), free, clear };
     });
-    assert.deepEqual(state.positions, [[-5, -7], [9, -7], [9, 7], [-5, 7]]);
+    assert.deepEqual(state.positions, [[11, 0], [-5.5, 6.4], [-5.5, -6.4]]);
     assert.equal(state.oldSign, false); assert.ok(state.free && state.clear);
-    assert.equal(state.sizes.length, 4); state.sizes.forEach(s => assert.deepEqual(s, [2.34, 3.34])); return state;
+    assert.ok(state.emblem && state.exhibit, JSON.stringify(state));
+    assert.equal(state.sizes.length, 3); state.sizes.forEach(s => assert.deepEqual(s, [2.34, 3.34])); return state;
   });
-  await view(page, [-13, 5.5, 13], [1, 2, 0], 'four-portal-hall');
-  await view(page, [-14, 3.7, -5], [-5, 1.4, -9], 'library-clear');
+  await view(page, [-22, 3.4, 0], [6, 2.6, 0], 'hall-from-west-entrance');
+  await view(page, [-6, 2.2, 0], [11, 2, 0], 'hall-centre-to-library');
+  await view(page, [12, 3.2, 9], [-8, 1.8, -2], 'hall-from-east-corner');
   await check('F and the native directory stay inactive; crossing About charges and restores a checkpoint', async () => {
     await stand(page);
     await page.keyboard.press('Control+f'); assert.equal(new URL(page.url()).pathname, '/'); await page.keyboard.press('Escape');
@@ -80,7 +84,7 @@ try {
     assert.equal(charging, true); await profile(page);
     await page.screenshot({ path: `${out}/about-desktop.png` }); await back(page);
     const arrival = await page.evaluate(() => ({ x: __home.player.pos.x, z: __home.player.pos.z, yaw: __home.rig.yaw, fp: __home.rig.firstPerson }));
-    assert.ok(arrival.x <= -6.45 && arrival.x > -8 && Math.abs(arrival.z - 7) < .2);
+    assert.ok(arrival.x <= -5.9 && arrival.x > -7.7 && Math.abs(arrival.z + 6.4) < .2, JSON.stringify(arrival));
     assert.equal(arrival.fp, departure.fp); assert.ok(Math.abs(Math.atan2(Math.sin(arrival.yaw - departure.yaw), Math.cos(arrival.yaw - departure.yaw))) < .02);
     await page.reload(); await ready(page); assert.deepEqual(await page.evaluate(() => [__home.player.pos.x, __home.player.pos.z]), [-29, 0]); return arrival;
   });
@@ -88,16 +92,16 @@ try {
     await page.locator('#hotbar [data-station="about"]').click();
     assert.equal(await page.locator('#panel').evaluate(e => e.open), false);
     assert.equal(new URL(page.url()).pathname, '/');
-    await view(page, [-9, 2.1, 7], [-5, 2.05, 7], 'about-portal-near');
+    await view(page, [-9.7, 2.3, -6.4], [-5.5, 2.2, -6.4], 'about-portal-near');
     await cross(page); await profile(page); await back(page);
-    assert.ok(await page.evaluate(() => __home.player.pos.x <= -6.45 && Math.abs(__home.player.pos.z - 7) < .15));
+    assert.ok(await page.evaluate(() => __home.player.pos.x <= -5.9 && Math.abs(__home.player.pos.z + 6.4) < .15));
   });
   await check('walking into About restores a safe point in front of that door', async () => {
     await stand(page);
     await page.evaluate(() => { const h = __home; for (let i = 0; i < 60; i++) { h.player.update(1 / 60, { x: 1, z: 0, run: false }, 0); h.extras.update(1 / 60); } }).catch(e => { if (!/context.*destroyed|navigation/i.test(e.message)) throw e; });
     await profile(page); await back(page);
     const p = await page.evaluate(() => ({ x: __home.player.pos.x, z: __home.player.pos.z }));
-    assert.ok(p.x <= -6.45 && p.x > -8 && Math.abs(p.z - 7) < .2, JSON.stringify(p)); return p;
+    assert.ok(p.x <= -5.9 && p.x > -7.7 && Math.abs(p.z + 6.4) < .2, JSON.stringify(p)); return p;
   });
   await check('the game-room statue remains a single batch outside the courtyard', async () => {
     const s = await page.evaluate(() => ({ ...__home.world.statues, meshes: __home.world.groups.statues.children.length, outside: __home.player.goTo(-62.6, -19.2) }));
@@ -128,7 +132,7 @@ try {
     await cross(mobile); await profile(mobile);
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.equal(await mobile.locator('#portal-ripple').count(), 0); await mobile.screenshot({ path: `${out}/about-mobile.png` });
-    await back(mobile); assert.ok(await mobile.evaluate(() => __home.player.pos.x <= -6.45 && Math.abs(__home.player.pos.z - 7) < .15));
+    await back(mobile); assert.ok(await mobile.evaluate(() => __home.player.pos.x <= -5.9 && Math.abs(__home.player.pos.z + 6.4) < .15));
   });
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2)); await browser.close();

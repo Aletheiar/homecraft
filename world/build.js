@@ -4,6 +4,7 @@ import { ISLAND, SPAWN, POOL } from './layout.js';
 import { createBoundarySource, withinCourtyard, shellBlocks, useShellSurface, FENCE_HALF } from './boundaries.js';
 import { poolContains } from '@engine/world/pool-regions.js';
 import { furnishHall } from './furnish.js';
+import { buildHallFloor } from './hall-floor.js';
 import { loadPyramid, pyramidState } from './pyramid.js';
 import { buildPortals, attachPortalControls } from './portals.js';
 import { HUB_PORTALS } from './space-config.js';
@@ -25,10 +26,10 @@ export function build({ grid, layer, scene, stage }) {
   for (let x = -40; x < 40; x++) for (let z = -40; z < 40; z++) {
     if (poolContains(POOL, x + .5, z + .5)) grid.fill(x, -3, z, x + 1, 0, z + 1, null);
   }
-  const hall = furnishHall(layer), B = new BoxBatch(layer);
+  const hall = furnishHall(layer), floor = buildHallFloor(layer), B = new BoxBatch(layer);
   const portals = buildPortals(layer, HUB_PORTALS), foyer = buildFoyer(layer), gallery = buildGallery(layer), statues = buildStatues(layer);
   hall.obstacles.push(...portals.obstacles, ...foyer.obstacles);
-  hall.planes.push(...portals.planes, ...foyer.planes, ...gallery.planes);
+  hall.planes.push(...portals.planes, ...foyer.planes, ...gallery.planes, ...floor.planes);
   hall.planes.push(buildForecourt());
   hall.hotspots.push(...portals.hotspots, ...foyer.hotspots, ...gallery.hotspots);
   // The fence follows the former pool perimeter. Restored small pyramids and
@@ -65,11 +66,14 @@ export function build({ grid, layer, scene, stage }) {
   // sampler answers undefined and the analytic cone stands in for it.
   useShellSurface((x, z) => pyramidState.shellTop ? pyramidState.shellTop(x, z) : undefined);
   loadPyramid(scene, stage.renderer);
-  return { ...hall, batches: { ...hall.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata } };
+  return { ...hall, batches: { ...hall.batches, ...floor.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata } };
 }
 
 export function setup({ player, rig, stage, world }) {
-  let introduced = false, lastMessage = '', lastSafeX = SPAWN.x, lastSafeZ = SPAWN.z;
+  let introduced = false, lastMessage = '', lastSafeX = SPAWN.x, lastSafeZ = SPAWN.z, clock = 0;
+  // The glass pyramid above the centre plinth drifts a little, on top of its
+  // resting hover, so the levitation reads as intended.
+  const exhibit = world.exhibit;
   const leave = gate => {
     saveHubReturn(player, rig, gate);
     history.replaceState({ ...history.state, hubReturnPending: true }, '', location.href);
@@ -142,6 +146,8 @@ export function setup({ player, rig, stage, world }) {
       if (!withinCourtyard(player.pos.x, player.pos.z, player.y)) player.teleport(lastSafeX, lastSafeZ);
       else if (player.mode === 'ground') { lastSafeX = player.pos.x; lastSafeZ = player.pos.z; }
       portals.update(dt); foyer.update(dt);
+      clock += dt;
+      if (exhibit) exhibit.mesh.position.y = exhibit.base + Math.sin(clock * .62) * exhibit.bob;
       const message = pyramidState.error ? '模型读取失败，请刷新页面重试' : pyramidState.sceneryReady ? 'NewHeaven · 本地预览' : pyramidState.ready ? '正在载入外围景观…' : '正在载入金字塔…';
       if (message !== lastMessage) { status.textContent = message; lastMessage = message; }
       if (rig.introSkipped) introduced = true;
