@@ -62,3 +62,15 @@ workflow deploys only when repository variable `DEPLOY_PAGES` is `true`;
 uploading source does not enable Pages. Remote branch SHA and Actions outcomes
 must be checked after publication, and are reported separately from the local
 acceptance recorded here. This change does not alter either workflow.
+
+### CI timing follow-up
+
+The first remote run, `41839929866`, failed in `check-opening.mjs`. It could
+click during shader warmup before the loading veil left, then depended on
+wall-clock animation waits while software rendering took hundreds of
+milliseconds per frame. The test now waits for the veil to detach and advances
+the real rig/world controllers on the existing fixed simulation clock. Failed
+contexts close before the next case. Native and forced-software opening
+checks, the 11 camera unit tests and site checks pass locally. Production
+camera code and scene behavior are unchanged. A new remote run verifies the
+integrated result separately.
