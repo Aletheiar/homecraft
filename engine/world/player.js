@@ -616,7 +616,13 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
     if (mag > 0.01) {
       const step = path?.length ? Math.min(speed * dt, Math.hypot(path[0].x - pos.x, path[0].z - pos.z)) : speed * dt;
       if (through) { pos.x += dx / length * step; pos.z += dz / length * step; }
-      else stepBy(dx / length * step, dz / length * step, path?.[0]);
+      else if (airborne) {
+        // A falling body moves at its actual height. Testing a walk at the
+        // landing floor instead pins it against low glass beside a door ledge.
+        const sx = dx / length * step, sz = dz / length * step;
+        if (!blocked(pos.x + sx, y, pos.z)) pos.x += sx;
+        if (!blocked(pos.x, y, pos.z + sz)) pos.z += sz;
+      } else stepBy(dx / length * step, dz / length * step, path?.[0]);
       turnTowards(dx, dz, dt);
     }
   }
@@ -624,6 +630,8 @@ export function createPlayer({ avatar, nav, grid = null, ground = null, onArrive
   function fall(dt, input, cameraYaw) {
     walk(dt, input, cameraYaw, true);
     if (mode !== 'air') return;
+    const below = floorBelow(pos.x, pos.z, y);
+    level = below.y; island = below.island;
     vy -= GRAVITY * dt;
     const next = y + vy * dt;
     if (vy > 0 && solidAt(Math.floor(pos.x), Math.floor(next + 1.8), Math.floor(pos.z))) vy = 0;
