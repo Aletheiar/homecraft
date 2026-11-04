@@ -57,11 +57,6 @@ export function buildFoyer(layer) {
   B.box(-27.8, 1.52, 9, .72, .43, 1.05, { tex: 'paint', tint: 0x365846 });
   B.box(-27.42, 1.8, 9, .02, .055, .73, { tex: 'black_metal' });
   B.box(-27.4, 1.57, 9, .025, .12, .4, { tex: 'paint', tint: 0xe7d6a4 });
-  for (const z of [-4, 4]) {
-    B.box(-35, .08, z, 1.1, .42, 3, { tex: 'walnut' });
-    B.box(-35.4, .5, z, .25, .55, 3, { tex: 'walnut' });
-    obstacles.push({ x0: -35.7, x1: -34.3, z0: z - 1.6, z1: z + 1.6, level: 0 });
-  }
   return { batches: { foyer: B }, planes, obstacles, hotspots, state };
 }
 

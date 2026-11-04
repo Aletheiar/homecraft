@@ -3,9 +3,8 @@ import { BoxBatch } from '@engine/world/blocks.js';
 
 export function buildGallery(layer) {
   const B = new BoxBatch(layer), planes = [], hotspots = [], state = { ready: false, error: null };
-  let loaded = 0;
   function artwork(file) {
-    const texture = new THREE.TextureLoader().load(`assets/gallery/${file}`, () => { state.ready = ++loaded === 3; }, undefined, () => { state.error = 'Artwork could not load'; });
+    const texture = new THREE.TextureLoader().load(`assets/gallery/${file}`, () => { state.ready = true; }, undefined, () => { state.error = 'Artwork could not load'; });
     texture.colorSpace = THREE.SRGBColorSpace; return texture;
   }
   const art = artwork('miku-glass.webp');
@@ -26,7 +25,5 @@ export function buildGallery(layer) {
     if (id === 'miku') hotspots.push({ id, box: new THREE.Box3(new THREE.Vector3(x - .2, y - height / 2, z - width / 2), new THREE.Vector3(x + .2, y + height / 2, z + width / 2)) });
   }
   frame(1, 8.6, 0, 3.2, 4.8, art, 'miku');
-  frame(2, 6.7, -6, 1.7, 2.12, artwork('defect-glass.webp'), 'defect');
-  frame(2, 6.7, 6, 1.7, 2.12, artwork('watcher-glass.webp'), 'watcher');
   return { batches: { gallery: B }, planes, hotspots, state };
 }
