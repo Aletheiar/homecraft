@@ -3,7 +3,7 @@
 Updated: 2026-11-04, Asia/Shanghai.
 
 This is a standalone local prototype based on the frozen Homecraft 0.1.1
-import. The current courtyard, portals, profile and friend directory are
+import. The current courtyard, portals, profile, friend directory and guestbook are
 implemented. Content, rendering budgets and public deployment are separate
 follow-up work; functional acceptance does not certify those areas.
 
@@ -18,43 +18,123 @@ follow-up work; functional acceptance does not certify those areas.
   three entries remain explicitly marked as samples. The profile contains the
   five supplied account destinations and an intentionally blank biography.
 - The imported courtyard, seven polygon pools, perimeter walk, artwork and
-  mirrored Angel Room monument remain in place. Web-zip movement is removed.
+  Angel Room monument remain in place. Its opposite horse monument is now a
+  matching Devil Room monument. Web-zip movement is removed.
 - The pyramid slope, entry and capstone supply walking/landing surfaces.
   Low raised surfaces beside water can now hand walking movement to the pool;
   high outside ledges and airborne movement do not trigger this short dive.
 - The former wind crystal is now a walnut music console with speakers, a
-  turntable and an interactive sign. Its card accepts NetEase playlists and
-  multiple local audio files. The observatory has not been replaced yet.
+  turntable and an interactive sign. Its card plays a curated public playlist
+  and visitor-supplied local files; no music service is contacted. Playback,
+  queue and volume stay in the page.
+
+## GitHub guestbook
+
+The second forecourt prop is a walnut postcard board and green postbox at the
+original observatory location. Clicking its sign opens the standalone
+`guestbook/` page inside the existing card. Text/WebGL fallback links and the
+card's pop-out link open the same page independently.
+
+The page uses the official giscus client and the public repository
+`Aletheiar/homecraft`. Discussions were enabled for this feature, and the owner
+confirmed installing the giscus GitHub App for that repository. Repo/category
+IDs were read from GitHub and are stored in `guestbook/config.js`. A specific,
+strict mapping term (`庭院留言簿`) is shared by every local port, query string
+and deployed URL; it is not derived from the page path. giscus creates the
+discussion when a visitor first submits a comment. No demonstration discussion
+or comment was posted during implementation.
+
+Anyone can read the guestbook. Posting requires GitHub sign-in and the visitor's
+giscus OAuth authorization. Identity, comments, replies and persistence are
+handled by GitHub/giscus, not browser-only storage. The site contains no OAuth
+secret, personal access token or custom authentication backend. Its inherited
+email mailbox remains unconfigured and is a separate feature.
+
+The existing iframe sandbox now allows top-page navigation after a user click
+for same-origin embedded pages. This is needed because the actual giscus login
+link targets `_top`. Remote embeds retain the top-navigation restriction.
+The authenticated return URL goes to the standalone guestbook; its return link
+leads back to the courtyard. The official client handles its login session.
+
+Live desktop and 390 px checks showed the real zero-comment state, a
+login-gated editor and the GitHub sign-in link. Clicking that real link from
+both the standalone page and the nested courtyard card reached
+`https://github.com/login`. No credentials were entered, so authenticated
+submission, editing and another account's message are not claimed as tested.
+
+`tools/check-guestbook.mjs` checks native sign picking, shared mapping, offline
+status/retry and GitHub links, responsive layout, and trusted/remote iframe
+navigation behavior. It intentionally blocks the external service to verify
+failure handling; real service evidence is separate. The static build includes
+`guestbook/`, and ordinary scene checks isolate the external widget network.
+
+## Courtyard monuments and gallery
+
+The original horse opposite the Angel Room monument has been replaced with an
+original voxel interpretation of Isaac's Devil Room statue. The pair stands at
+`(-62.6, -19.2)` and `(-62.6, 19.2)`, faces the pyramid, shares matching bases
+and one opaque furniture batch, and stays outside the playable fence. Combined
+procedural geometry is 6,552 triangles. The source scenery GLB is unchanged;
+runtime removal excludes 3,035 triangles within the measured horse bounds.
+Triangles spanning outside those bounds remain, including palace and ground.
+
+The two abstract hanging prints now display the owner's chosen characters:
+Slay the Spire 2's Defect on the left and the first game's Watcher on the right,
+as seen from the western entrance. Both are generated fan illustrations with
+ivory paper, restrained colors and glass geometry matching the unchanged
+central Miku artwork. Existing frames, cables and dimensions remain; the Miku
+panel has more than four times each side panel's area. The side prints remain
+decorative and add no new interaction targets. Two 512 x 640 WebP textures add
+67,382 bytes. References and measured geometry are recorded in
+`docs/research/2026-11-04-courtyard-decor.md`.
+
+The owner concurrently updated the music console and opening handoff. Those
+changes were preserved. The current complete acceptance command passes 47
+Node tests and all browser suites, including `check-opening`, the guestbook,
+the updated music controls and `check-decor`. The static build also passes.
+Existing scenery still exceeds the triangle budget; these checks do not mark
+performance work complete.
 
 ## Music station
 
-The default playlist is the owner's `18559092586`, configured in
-`world/music-source.js`. Only the playlist ID is saved; sharing tokens are
-discarded. Loading the official player requires an explicit click and uses
-`auto=0`. No music service is contacted on initial arrival.
+The console has two shelves. **庭院唱片** is a curated public playlist of 27
+tracks (115 minutes) served from `assets/music/` and listed in
+`world/music-library.js`; every visitor can play it after the browser's required
+press. **本机试听** holds audio chosen with the card's file or folder picker (or
+dropped onto it) as private object URLs in the current tab. Nothing is uploaded
+and no music service is contacted. Visitor files are never uploaded. Playback
+was verified with real WAV and MP3 media; other formats depend on the browser's
+codecs.
 
-Local playback uses a persistent native audio element: play/pause, seeking,
-volume, a selectable queue, previous/next and automatic advance. Closing or
-reopening cards preserves this element and the remote iframe. Switching
-sources stops the other source, and a stop button remains available outside
-the card. Files stay in the current browser tab and are not uploaded. Reloads
-and portal navigations end playback; cross-page persistence is not implemented.
+The public playlist is edited only in code and rebuilt with the site; the static
+build copies `assets/music/` through `tools/build.sh`. Files load lazily on first
+play, so opening the card does not download the collection. Visitors' local
+files never appear in the public list. Browsers block audible autoplay, so the
+page does not attempt to start music on load.
 
-The record rotates only during actual local playback. The site cannot inspect
-playback inside a cross-origin NetEase frame and does not claim to do so.
-Live verification loaded the supplied playlist on desktop and at 390 px.
-However, clicking play did not advance playback or produce a media request;
-the official `st.music.163.com/browser-get/getBrowser.js` also raised a
-cross-origin `device__browser_update` error in the embed. A standalone-player
-probe did not establish playback either. NetEase integration is therefore
-available with an original-page link, but successful NetEase audio playback is
-not certified. Local audio decoding and playback were verified with real WAV
-and MP3 media; other supported formats depend on the browser's codecs.
+The card was refined with a record-sleeve hero, a grooved vinyl disc, a brass
+tonearm, custom sliders, tabbed shelves with real durations and a bottom fade on
+scrolling lists. It stays usable from 1280x800 down to 320x700 and 360x640: on
+short screens the hero and shelf tighten, the drop hint hides and the lifetime
+note becomes one line.
 
-`tools/check-music.mjs` checks real local playback, queue changes, end-of-track
-advance, record animation, source isolation, invalid links, persistence across
-card closure, and desktop/mobile layout. The external response in this suite
-is a deterministic fixture: it verifies integration, not NetEase streaming.
+A persistent audio element lives beside the card body and survives closing or
+reopening the card. It provides play/pause, previous/next, scrubbing, volume and
+mute, shuffle, repeat (list, one, off), automatic advance and a queue shared by
+both shelves. A floating pill outside the card stops the music, and the record
+turns only during actual playback. Reloads and portal navigations end playback;
+cross-page persistence is not implemented.
+
+The NetEase playlist import, its iframe and `world/music-source.js` were removed
+on 2026-11-04 at the owner's request. The card never requests `music.163.com`.
+
+`tools/check-music.mjs` checks the 27-track public manifest, tab separation,
+local import through both pickers, real WAV/MP3 playback, queue changes, seeking,
+repeat modes, volume persistence, record animation, lifetime across card
+close/reopen, desktop/mobile/short-screen layout, and the absence of NetEase
+requests or markup. Public audio is stubbed during the check so CI does not
+stream the collection. `tools/music.test.mjs` covers time formatting, filename
+parsing and audio filtering.
 
 ## Door-top descent regression
 
@@ -71,12 +151,12 @@ altering the imported model, doorway, pool geometry or shoreline rules.
 fix. It covers both sides of the doorway, its centre and neighboring ordinary
 slopes at desktop/mobile widths, plus the real W-key input path.
 
-The 2026-11-04 acceptance passed the complete standalone suite, including 42
+The 2026-11-04 acceptance passed the complete standalone suite, including 47
 Node tests and 40 door-top descent checks. The added music and descent checks
 also passed with software rendering. Native sign clicks open the music card,
 and actual WAV/MP3 playback was verified at both viewport widths. The static
-build passed. Existing scenery still exceeds the triangle budget; external
-NetEase streaming retains the limitation described above.
+build passed. Existing scenery still exceeds the triangle budget; that warning is
+informational.
 
 ## Shoreline regression
 
@@ -140,8 +220,8 @@ npm run check:all -- http://127.0.0.1:8765/
 
 The full command runs site checks, all Node test files, desktop/mobile startup,
 the courtyard, space journeys, all seven pools, portal/profile integration,
-camera regression, both history paths, the raised-shore and door-top descent
-regressions, and the music station. It
+camera regression, the opening handoff, both history paths, the raised-shore and
+door-top descent regressions, the music station and the GitHub guestbook. It
 stops on any failing command. Reports and screenshots are in `tools/.check/`
 and are ignored by Git.
 
@@ -155,6 +235,10 @@ simulation steps and asserts that it reaches its finished state. A slow Linux
 software renderer must not turn 3.5 seconds of animation into a 30-second
 functional timeout. This changes only the test harness, not production timing
 or the rendering budget; low rendering throughput remains a documented limit.
+The handoff check exercises the first input: when it cuts the opening short, the
+world marks the opening as introduced and never fires the deferred pyramid
+overview, so the camera cannot fly back to the starting view. An untouched
+opening still reaches that overview, and a click dismisses it normally.
 The desktop portal/profile page is closed before starting the mobile case, so
 completed worlds do not keep consuming the same software GPU during startup.
 
@@ -189,7 +273,7 @@ Updating GitHub source does not constitute deployment.
 - The source provenance still records unestablished third-party redistribution
   permissions. This closeout did not establish new permissions.
 
-## Next-stage requests, recorded but not implemented
+## Requested follow-up work
 
 The owner supplied these requests on 2026-11-04:
 
@@ -199,14 +283,22 @@ The owner supplied these requests on 2026-11-04:
 - [ ] Add a pattern to the empty forecourt in front of the pyramid. Decide the
   artwork, coverage and palette before implementation; keep the west entrance,
   paths and pool edges clear.
-- [x] Replace the crystal with the courtyard music console. NetEase streaming
-  remains subject to the external-player limitation above.
-- [ ] Replace the observatory with a visitor-message location. The proposed
-  design is a postcard kiosk with a short message, optional nickname and date,
-  plus readable previous messages. Shared messages require persistent storage
-  accessible by other visitors. The current site has no such backend;
-  localStorage would only show messages in the same browser. This is a proposal,
-  not an implemented guestbook or a deployed service.
+- [ ] Consider an entrance surround or lintel before adding a physical door.
+  Prefer a thin stone/brass frame following the existing opening, preserving
+  its headroom and walking width. A physical swinging/sliding door would need
+  an explicit interaction and collision design before implementation.
+- [x] Replace the horse with a Devil Room statue opposite the Angel Room prop.
+- [x] Replace both abstract side prints with the chosen Defect/Watcher pair.
+- [x] Replace the crystal with the courtyard music console. NetEase import was
+  removed on 2026-11-04; the console now serves a curated 27-track public
+  playlist plus private local imports.
+- [x] Fix the first-click opening handoff. A click or drag that cuts the opening
+  short now marks the opening as introduced and suppresses the deferred pyramid
+  overview, so the camera no longer returns to the starting view on the first
+  input.
+- [x] Replace the observatory with a visitor-message location. The postcard
+  kiosk now embeds the GitHub-authenticated guestbook described above.
 
-The room redesign, floor artwork and postcard kiosk remain future work. The
-music console was implemented after the earlier shoreline closeout.
+The room redesign, entrance treatment and floor artwork remain future work.
+For the forecourt, a restrained geometric inlay along the entrance axis is
+preferred over a full-surface pattern; pool edges and circulation stay clear.

@@ -12,7 +12,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 const { FENCE_HALF } = await import('../world/boundaries.js');
 const data = await import('../world/statue-data.js').catch(() => ({}));
 
-test('the new monument mirrors the horse, faces the pyramid and stays wholly outside the fence', async () => {
+test('the angel monument retains its placement, faces the pyramid and stays wholly outside the fence', async () => {
   assert.equal(typeof data.createAngelBoxes, 'function', 'procedural angel geometry is missing');
   const { buildStatues } = await import('../world/statues.js');
   const result = buildStatues({ paint: 0, travertine: 1 });

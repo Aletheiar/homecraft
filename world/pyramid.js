@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
+import { removeHorseGeometry } from './devil-statue.js';
 
 export const pyramidState = { ready: false, sceneryReady: false, error: null, triangles: 0, sceneryTriangles: 0, shell: null, shellTop: null };
 
@@ -207,6 +208,7 @@ export function loadPyramid(scene, renderer) {
         background.scene.position.y = .025;
         background.scene.traverse(mesh => {
           if (!mesh.isMesh) return;
+          pyramidState.horseTrianglesRemoved = (pyramidState.horseTrianglesRemoved || 0) + removeHorseGeometry(mesh.geometry);
           pyramidState.sceneryTriangles += (mesh.geometry.index?.count ?? mesh.geometry.attributes.position.count) / 3;
           // Distant scenery uses baked directional tones rather than one PBR
           // lighting pass per fragment. Its authored surface coverage remains.
