@@ -16,7 +16,7 @@ export function buildStatues(layer) {
   const devilBoxes = createDevilBoxes(), firstDevil = B.items.opaque.length;
   B.at(DEVIL_PLACEMENT.x, 0, DEVIL_PLACEMENT.z, DEVIL_PLACEMENT.yaw, () => {
     for (const box of devilBoxes) B.box(box.x, box.y, box.z, box.w, box.h, box.d,
-      { tex: 'paint', tint: DEVIL_PALETTE[box.tone] }, { tag: `devil-${box.part}` });
+      { tex: 'paint', tint: DEVIL_PALETTE[box.tone] }, { rx: box.rx || 0, ry: box.ry || 0, rz: box.rz || 0, tag: `devil-${box.part}` });
   });
   const devilBounds = new THREE.Box3();
   for (const item of B.items.opaque.slice(firstDevil)) devilBounds.union(unit.clone().applyMatrix4(item.matrix));

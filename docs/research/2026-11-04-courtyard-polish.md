@@ -1,5 +1,9 @@
 # Courtyard detail refinement
 
+The devil's pose and wing geometry were subsequently rebuilt following a
+new owner reference; see [the crouched rebuild](2026-11-04-devil-crouched-rebuild.md).
+The bench, gallery and icon changes below remain current.
+
 Implemented locally on 2026-11-04, Asia/Shanghai. This supersedes the three-artwork
 layout in the earlier courtyard decoration note. The owner explicitly chose
 removing the exterior benches without replacement and subsequently requested

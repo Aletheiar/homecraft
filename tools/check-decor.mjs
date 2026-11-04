@@ -28,6 +28,7 @@ try {
   const view=async(position,look,file)=>{await page.evaluate(({position,look})=>{__home.rig.showcase(position,look);for(let i=0;i<100;i++)__home.rig.update(1/60,__home.player);},{position,look});await page.waitForTimeout(200);await page.screenshot({path:`${out}/${viewport.width}-${file}.png`});};
   await view([-11,7,0],[1,7.6,0],'gallery');await view([-42,13,28],[-62.6,6.7,19.2],'devil');await view(viewport.width<600?[40,40,0]:[-20,20,0],[-62.6,6.5,0],'pair');
   await view([-43,8,19.2],[-62.6,7.7,19.2],'devil-front');
+  await view(viewport.width<600?[-43,9,24]:[-50,9,23],[-62.6,7.5,19.2],'devil-detail');
   await view([-53,34,25],[-23,0,0],'forecourt');
   report.push({viewport,details,errors});assert.deepEqual(errors,[]);await context.close();
  }

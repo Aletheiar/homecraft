@@ -12,11 +12,11 @@
   "devil": {
     "source": "Original procedural voxel fan interpretation of the stationary Devil Room prop; no official mesh, texture or sprite bundled",
     "placement": { "x": -62.6, "z": 19.2, "facing": "east toward the glass pyramid" },
-    "construction": "404 boxes, 4848 triangles, 11.42 metres tall; rounded skull depth, smaller horn slices, recessed sockets, articulated hands and curved folded-wing contours",
-    "pair_triangle_count": 8352,
+    "construction": "511 boxes, 6132 triangles, 10.15 metres tall; crouched knees and folded shins, rounded faceted face disc with a short lower projection, compact eye sockets and muzzle, depth-bowed wings with continuous curved bone segments",
+    "pair_triangle_count": 9636,
     "visual_reference": "https://playerassist.com/wp-content/uploads/2021/09/xkx037ri7tuz.jpg",
     "refinement_checked": "2026-11-04",
-    "research_log": "docs/research/2026-11-04-courtyard-polish.md"
+    "research_log": "docs/research/2026-11-04-devil-crouched-rebuild.md"
   },
   "construction": "0.2 metre stepped voxel sculpture with solid rounded head, original simplified wing contours, and runs merged along all three axes; 292 boxes and 3504 triangles in one opaque batch",
   "research_log": "docs/research/2026-11-03-isaac-room-statue.md",
