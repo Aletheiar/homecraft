@@ -83,17 +83,21 @@ test('the centre display is a step underfoot, never an invisible column', () => 
   assert.ok(navs.findPath({ x: -4, z: 0 }, { x: 4, z: 0 }), 'the centre lane does not cross the display');
 });
 
-test('the glass pyramid levitates above the plinth', () => {
-  const glass = hall.exhibit.mesh;
-  assert.equal(glass.name, 'hall-exhibit');
-  const underside = glass.position.y - HALL_EXHIBIT.pyramid.height / 2;
-  // The gap is exactly the configured hover, so the owner can tune
-  // HALL_EXHIBIT.hover in world/space-config.js without touching this test.
-  assert.ok(Math.abs(underside - HALL_EXHIBIT_TOP - HALL_EXHIBIT.hover) < 1e-6);
-  assert.ok(HALL_EXHIBIT.hover > 0, 'the exhibit still hovers');
-  // The drift is small enough that the model never settles onto the plinth.
-  assert.ok(HALL_EXHIBIT.bob >= 0 && HALL_EXHIBIT.bob < HALL_EXHIBIT.hover);
-  assert.equal(hall.exhibit.base, HALL_EXHIBIT_TOP + HALL_EXHIBIT.hover + HALL_EXHIBIT.pyramid.height / 2);
+test('the central armillary replaces the cone with solid rings and a glass core', () => {
+  const instrument = hall.exhibit.mesh;
+  assert.equal(instrument.name, 'hall-exhibit');
+  assert.equal(instrument.isGroup, true, 'the old single glass cone is replaced');
+  const metal = instrument.getObjectByName('armillary-rings');
+  const core = instrument.getObjectByName('armillary-core');
+  assert.ok(metal?.isMesh && core?.isMesh);
+  assert.equal(metal.userData.ringCount, 3);
+  assert.ok(metal.geometry.attributes.normal && metal.geometry.index.count > 500, 'the rings have a solid lit surface');
+  assert.equal(core.geometry.type, 'OctahedronGeometry');
+  assert.ok(core.material.transparent && core.material.opacity > .4 && core.material.opacity < .9);
+  assert.equal(instrument.position.x, 0); assert.equal(instrument.position.z, 0);
+  assert.equal(instrument.position.y, HALL_EXHIBIT_TOP, 'the existing low stone base is reused');
+  let cones=0;instrument.traverse(o=>{if(o.geometry?.type==='ConeGeometry')cones++});
+  assert.equal(cones, 0, 'the previous pyramid does not coexist with the new instrument');
 });
 
 test('the centre plinth leaves a wide walk around it and both sides of the lane open', () => {

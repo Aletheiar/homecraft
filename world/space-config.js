@@ -20,14 +20,11 @@ export const HALL_SPOTS = {
   lounge: { x: 13.9, z: 13.4 },
   exhibit: { x: HALL_CENTER.x, z: HALL_CENTER.z },
 };
-// The display case in the middle of the floor: one stone plinth under the
-// reused glass pyramid. It is low on purpose; the portals stay the landmarks.
-// The pyramid hovers a little above the stone, and drifts up and down by a
-// couple of centimetres, so the gap reads as levitation instead of a modelling
-// mistake. `bob` is the amplitude, `hover` the resting gap.
+// The central armillary reuses the existing low stone plinth. Instrument
+// dimensions are relative to its top; the hall anchors and floor stay fixed.
 export const HALL_EXHIBIT = {
-  plinth: 1.9, height: .3, cap: 2.02, hover: .4, bob: .02,
-  pyramid: { radius: .62, height: .78 },
+  plinth: 1.9, height: .3, cap: 2.02,
+  armillary: { center: 1.17, radii: [.88, .81, .74], tube: .018, core: .27, ringSpeed: .008, coreSpeed: .012 },
 };
 
 export const HUB_PORTALS = [

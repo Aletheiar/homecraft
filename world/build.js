@@ -66,13 +66,12 @@ export function build({ grid, layer, scene, stage }) {
   // sampler answers undefined and the analytic cone stands in for it.
   useShellSurface((x, z) => pyramidState.shellTop ? pyramidState.shellTop(x, z) : undefined);
   loadPyramid(scene, stage.renderer);
-  return { ...hall, batches: { ...hall.batches, ...floor.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata } };
+  return { ...hall, batches: { ...hall.batches, ...floor.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata, exhibit: hall.exhibit } };
 }
 
 export function setup({ player, rig, stage, world }) {
-  let introduced = false, lastMessage = '', lastSafeX = SPAWN.x, lastSafeZ = SPAWN.z, clock = 0;
-  // The glass pyramid above the centre plinth drifts a little, on top of its
-  // resting hover, so the levitation reads as intended.
+  let introduced = false, lastMessage = '', lastSafeX = SPAWN.x, lastSafeZ = SPAWN.z;
+  // Only the central instrument rotates; the plinth and hall remain fixed.
   const exhibit = world.exhibit;
   const leave = gate => {
     saveHubReturn(player, rig, gate);
@@ -146,8 +145,7 @@ export function setup({ player, rig, stage, world }) {
       if (!withinCourtyard(player.pos.x, player.pos.z, player.y)) player.teleport(lastSafeX, lastSafeZ);
       else if (player.mode === 'ground') { lastSafeX = player.pos.x; lastSafeZ = player.pos.z; }
       portals.update(dt); foyer.update(dt);
-      clock += dt;
-      if (exhibit) exhibit.mesh.position.y = exhibit.base + Math.sin(clock * .62) * exhibit.bob;
+      exhibit?.update(dt);
       const message = pyramidState.error ? '模型读取失败，请刷新页面重试' : pyramidState.sceneryReady ? 'NewHeaven · 本地预览' : pyramidState.ready ? '正在载入外围景观…' : '正在载入金字塔…';
       if (message !== lastMessage) { status.textContent = message; lastMessage = message; }
       if (rig.introSkipped) introduced = true;

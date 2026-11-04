@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { canvasTexture } from '@engine/world/textures.js';
 import { HALL_SPOTS, HALL_EXHIBIT } from './space-config.js';
+import { createArmillary } from './armillary.js';
 
 // The hall interior: one centre display under the glass, a private workbench
 // in the north-east corner, a lounge in the south-east corner, and the few
@@ -49,25 +50,16 @@ export function furnishHall(layer) {
     solid(x + .01, z, .62, length);
   }
 
-  // ---- the centre: plinth and the one glass pyramid, aligned with the floor
+  // ---- the centre: plinth and armillary, aligned with the floor
   // drawing at (0, 0). Low and quiet; the doors stay the landmarks. ----
-  const { plinth, height, cap, hover, bob, pyramid } = HALL_EXHIBIT;
+  const { plinth, height, cap, armillary } = HALL_EXHIBIT;
   // No obstacle: `world/layout.js` reports the plinth top as floor, so the walk
   // grid climbs onto it. An obstacle here would be an invisible column over a
   // low slab, which is exactly what a visitor must not meet.
   box(0, .02, 0, plinth, height, plinth, STONE);
   box(0, .02 + height, 0, cap, .05, cap, { tex: 'paint', tint: 0xe2dccd });
-  const glass = new THREE.Mesh(
-    new THREE.ConeGeometry(pyramid.radius, pyramid.height, 4),
-    new THREE.MeshStandardMaterial({ color: 0x91c6c4, transparent: true, opacity: .7, roughness: .3 }),
-  );
-  glass.name = 'hall-exhibit';
-  glass.rotation.y = Math.PI / 4;
-  // Levitating above the stone: the gap is what makes the exhibit read as an
-  // object on display rather than a wall. `world/build.js` drifts it by `bob`.
-  const exhibitY = .02 + height + .05 + hover + pyramid.height / 2;
-  glass.position.set(0, exhibitY, 0);
-  planes.push(glass);
+  const exhibit = createArmillary(armillary, .02 + height + .05);
+  planes.push(exhibit.mesh);
 
   // ---- north-east corner: the workbench ----
   const { deskX, deskZ, chairZ, shelfX, shelfZ } = HALL_SPOTS.workbench;
@@ -155,5 +147,5 @@ export function furnishHall(layer) {
   // A last planter where the north wall turns, out of every lane.
   planter(11.6, -15.3);
 
-  return { batches: { hall: B }, planes, obstacles, hotspots, bakes, exhibit: { mesh: glass, base: exhibitY, bob } };
+  return { batches: { hall: B }, planes, obstacles, hotspots, bakes, exhibit };
 }
