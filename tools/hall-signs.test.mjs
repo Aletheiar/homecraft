@@ -113,31 +113,60 @@ test('the central armillary replaces the cone with solid rings and a glass core'
   const instrument = hall.exhibit.mesh;
   assert.equal(instrument.name, 'hall-exhibit');
   assert.equal(instrument.isGroup, true, 'the old single glass cone is replaced');
-  const metal = instrument.getObjectByName('armillary-rings');
+  const support = instrument.getObjectByName('armillary-base');
   const core = instrument.getObjectByName('armillary-core');
-  assert.ok(metal?.isMesh && core?.isMesh);
-  assert.equal(metal.userData.ringCount, 3);
-  assert.ok(metal.geometry.attributes.normal && (metal.geometry.index?.count??metal.geometry.attributes.position.count) > 500, 'the rings have a solid lit surface');
+  const bands = ['armillary-ring-outer', 'armillary-ring-middle', 'armillary-ring-inner'].map(n => instrument.getObjectByName(n));
+  assert.ok(support?.isMesh && core?.isMesh && bands.every(b => b?.isMesh));
+  assert.equal(support.userData.ringCount, 3);
+  assert.ok(support.geometry.attributes.normal && (support.geometry.index?.count ?? support.geometry.attributes.position.count) > 500, 'the support has a solid lit surface');
+  for (const band of bands) assert.ok((band.geometry.index?.count ?? band.geometry.attributes.position.count) > 500, 'every band has a solid lit surface');
   assert.equal(core.geometry.type, 'OctahedronGeometry');
   assert.ok(core.material.transparent && core.material.opacity > .4 && core.material.opacity < .9);
   assert.equal(instrument.position.x, 0); assert.equal(instrument.position.z, 0);
   assert.equal(instrument.position.y, HALL_EXHIBIT_TOP, 'the existing low stone base is reused');
-  let cones=0;instrument.traverse(o=>{if(o.geometry?.type==='ConeGeometry')cones++});
+  let cones = 0; instrument.traverse(o => { if (o.geometry?.type === 'ConeGeometry') cones++ });
   assert.equal(cones, 0, 'the previous pyramid does not coexist with the new instrument');
 });
 
 test('the museum armillary has a larger banded frame, separate gimbal and defined crystal edges', () => {
-  const instrument=hall.exhibit.mesh;
-  assert.ok(HALL_EXHIBIT.armillary.radii[0]>=1.18&&HALL_EXHIBIT.armillary.radii[0]<=1.3);
-  assert.ok(HALL_EXHIBIT.armillary.tube>=.025&&HALL_EXHIBIT.armillary.tube<=.03);
-  const gimbal=instrument.getObjectByName('armillary-gimbal');
-  assert.ok(gimbal?.isGroup, 'the movable band is separate from the mechanical support');
+  const instrument = hall.exhibit.mesh;
+  assert.ok(HALL_EXHIBIT.armillary.radii[0] >= 1.18 && HALL_EXHIBIT.armillary.radii[0] <= 1.3);
+  assert.ok(HALL_EXHIBIT.armillary.tube >= .025 && HALL_EXHIBIT.armillary.tube <= .03);
+  const base = instrument.getObjectByName('armillary-base');
+  assert.ok(base?.isMesh && base.parent === instrument, 'the mounting is a static mesh directly under the exhibit');
   assert.ok(instrument.getObjectByName('armillary-core-edges')?.isLineSegments);
-  assert.ok(instrument.getObjectByName('armillary-core').geometry.parameters.radius>=.32);
-  const frame=instrument.getObjectByName('armillary-rings'),before=frame.rotation.clone(),angle=gimbal.rotation.z;
+  assert.ok(instrument.getObjectByName('armillary-core').geometry.parameters.radius >= .32);
+  assert.ok(instrument.getObjectByName('armillary-ring-outer'), 'the outer main ring still exists');
+});
+
+test('each band turns on its own axle, at its own period, and nothing else moves', () => {
+  const instrument = hall.exhibit.mesh, tau = Math.PI * 2;
+  const spin = HALL_EXHIBIT.armillary.spin;
+  assert.deepEqual(spin, { outer: 20, middle: 40, inner: 60, core: 10 });
+  const base = instrument.getObjectByName('armillary-base');
+  const outer = instrument.getObjectByName('armillary-spin-outer');
+  const gimbal = instrument.getObjectByName('armillary-gimbal');
+  const inner = instrument.getObjectByName('armillary-spin-inner');
+  const core = instrument.getObjectByName('armillary-core');
+  assert.ok(outer?.isGroup && gimbal?.isGroup && inner?.isGroup, 'each turning part has its own axle group');
+  // A real gimbal nests: the middle axle rides on the outer ring, the inner on
+  // the middle one, so every attitude change is carried by real bearings.
+  assert.equal(gimbal.parent, outer); assert.equal(inner.parent, gimbal);
+  const pose = () => [outer.rotation.z, gimbal.rotation.y, inner.rotation.x, core.rotation.y];
+  const still = [base.rotation.x, base.rotation.y, base.rotation.z];
+  const before = pose();
   hall.exhibit.update(2);
-  assert.deepEqual(frame.rotation.toArray(),before.toArray(),'the fixed support does not turn with a gimbal');
-  assert.ok(gimbal.rotation.z!==angle&&Math.abs(gimbal.rotation.z-angle)<.01);
+  const after = pose();
+  const turn = after.map((a, i) => ((a - before[i]) % tau + tau) % tau);
+  const want = [tau * 2 / spin.outer, tau * 2 / spin.middle, tau * 2 / spin.inner, tau * 2 / spin.core];
+  for (let i = 0; i < 4; i++) assert.ok(Math.abs(turn[i] - want[i]) < 1e-9, `part ${i} does not complete its period`);
+  assert.deepEqual([base.rotation.x, base.rotation.y, base.rotation.z], still, 'the mounting never turns');
+  assert.deepEqual([outer.rotation.x, outer.rotation.y, gimbal.rotation.x, gimbal.rotation.z, inner.rotation.y, inner.rotation.z], [0, 0, 0, 0, 0, 0], 'each axle uses exactly one axis');
+  // Two updates must equal one update of twice the length, so the motion is
+  // driven by delta time rather than by the frame count.
+  const once = [...pose()]; hall.exhibit.update(2); const twice = pose();
+  const half = twice.map((a, i) => ((a - once[i]) % tau + tau) % tau);
+  assert.ok(half.every((d, i) => Math.abs(d - want[i]) < 1e-9), 'the motion steps by time, not by frames');
 });
 
 test('the centre plinth leaves a wide walk around it and both sides of the lane open', () => {

@@ -46,7 +46,9 @@ geometry crisp without bloom, particles or extra lights.
 - Each pole keeps the Z-axis axle, gap collar, bearing flange, axle nut and
   bolted cheek plate. The moving band still pivots on that axle by
   `0.035 * sin(t * 0.006)` radians (about +/-2 degrees), and the crystal
-  self-rotates at 0.004 rad/s; both are transform-only updates.
+  self-rotates at 0.004 rad/s; both are transform-only updates. (Superseded by
+  the [motion pass](2026-11-05-armillary-motion.md): the bands now turn on
+  diametral axles at 20/40/60 s and the cheek plate is gone.)
 
 ## Stone and floor
 

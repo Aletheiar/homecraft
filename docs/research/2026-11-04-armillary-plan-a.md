@@ -41,6 +41,9 @@ The separate middle gimbal rotates about the same Z bearing axis by a bounded
 The fixed support stays stationary. The octahedron self-rotates at 0.004 rad/s
 (about 26.18 minutes per turn). Geometry is built once; frame updates change
 only transforms. The moving band casts no cached shadow; the fixed frame does.
+That long slow rock is superseded by the
+[motion pass](2026-11-05-armillary-motion.md), where every band has its own
+diametral axle and a 20/40/60 s period.
 
 The enlarged crystal uses a transparent flat-shaded pale cyan material with
 low emissive intensity. A child LineSegments mesh gives its edges definition

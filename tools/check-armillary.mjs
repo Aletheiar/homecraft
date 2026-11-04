@@ -21,54 +21,98 @@ try {
       const { HALL_EXHIBIT } = await import('/world/space-config.js');
       const group = h.stage.scene.getObjectByName('hall-exhibit');
       if (!group?.isGroup || !h.world.exhibit) return { installed: false };
-      const metal = group.getObjectByName('armillary-rings'), core = group.getObjectByName('armillary-core');
-      const gimbal=group.getObjectByName('armillary-gimbal');
+      const support = group.getObjectByName('armillary-base'), core = group.getObjectByName('armillary-core');
+      const outer = group.getObjectByName('armillary-spin-outer'), gimbal = group.getObjectByName('armillary-gimbal');
+      const innerSpin = group.getObjectByName('armillary-spin-inner');
+      const bands = ['armillary-ring-outer', 'armillary-ring-middle', 'armillary-ring-inner'].map(n => group.getObjectByName(n));
+      if (!support || !core || !outer || !gimbal || !innerSpin || bands.some(b => !b)) return { installed: false };
+      const period = HALL_EXHIBIT.armillary.spin, tau = Math.PI * 2, snap = () => [outer.rotation.z, gimbal.rotation.y, innerSpin.rotation.x, core.rotation.y];
       h.player.teleport(-13, 0); h.rig.skipIntro(); h.rig.setFirstPerson(false);
-      const before = [gimbal.rotation.z, core.rotation.y];
+      const before = snap();
       h.extras.update(.5);
-      const rotation = [gimbal.rotation.z - before[0], core.rotation.y - before[1]];
+      const rotation = snap().map((a, i) => ((a - before[i]) % tau + tau) % tau);
+      const expectedHalf = [tau * .5 / period.outer, tau * .5 / period.middle, tau * .5 / period.inner, tau * .5 / period.core];
       group.updateWorldMatrix(true, true);
-      const bounds = new THREE.Box3().setFromObject(group), size = bounds.getSize(new THREE.Vector3());
+      // Box3.setFromObject corners a rotated child's local box and inflates it,
+      // so the real extents come from the vertices themselves.
+      const tight = () => {
+        const box = new THREE.Box3(), v = new THREE.Vector3();
+        group.traverse(o => {
+          if (!o.isMesh) return;
+          const p = o.geometry.attributes.position;
+          for (let i = 0; i < p.count; i++) box.expandByPoint(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld));
+        });
+        return box;
+      };
+      const bounds = tight(), size = bounds.getSize(new THREE.Vector3());
       const conflicts = h.world.obstacles.filter(o => o.x0 < bounds.max.x && o.x1 > bounds.min.x && o.z0 < bounds.max.z && o.z1 > bounds.min.z);
       const clear = [[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2]].every(([x,z])=>h.nav.canStand(x,z));
       const routes = STATIONS.filter(s=>['writing','about','friends'].includes(s.id)).map(s=>({id:s.id,path:!!h.nav.findPath({x:-13,z:0},{x:s.at[0],z:s.at[1]})}));
-      // The instrument must not intersect rays to the library's identifying sign.
+      // The fixed mounting must never cut the sight line to the library sign.
+      // The turning bands do cross it at some phases, which is recorded below.
       const origin = new THREE.Vector3(-13,1.65,0), ray = new THREE.Raycaster();
-      const signBlocked = [-1.4,0,1.4].some(z=>{
-        const target=new THREE.Vector3(11,3.76,z),direction=target.clone().sub(origin);
-        ray.set(origin,direction.normalize()); ray.far=origin.distanceTo(target);
-        return ray.intersectObject(group,true).some(h=>h.object.isMesh);
+      const signTargets = [-1.4,0,1.4].map(z=>new THREE.Vector3(11,3.76,z));
+      const signBlocked = signTargets.some(t=>{
+        ray.set(origin,t.clone().sub(origin).normalize()); ray.far=origin.distanceTo(t);
+        return ray.intersectObject(support,true).some(h=>h.object.isMesh);
       });
-      // The whole slow cycle must remain on its bearings and leave the core
-      // volume empty of support geometry. Sampling advances production updates.
+      // Every band turns on its own axle: sample five-second steps across the
+      // 120 s cycle of the three periods, and check that the support stays
+      // dead still, the axles stay nested and the crystal volume stays empty.
       const cycle=[];
-      for(let i=0;i<12;i++){
-        h.world.exhibit.update(Math.PI*2/HALL_EXHIBIT.armillary.ringSpeed/12);
+      for(let i=0;i<24;i++){
+        const was=snap();
+        h.world.exhibit.update(5);
         group.updateWorldMatrix(true,true);
+        const delta=snap().map((a,k)=>((a-was[k])%tau+tau)%tau);
+        const expected=[tau*5/period.outer,tau*5/period.middle,tau*5/period.inner,tau*5/period.core].map(a=>a%tau);
         const c=core.getWorldPosition(new THREE.Vector3()),probe=new THREE.Raycaster();
         const coreClear=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].every(d=>{
           probe.set(c,new THREE.Vector3(...d));probe.far=HALL_EXHIBIT.armillary.core*1.15;
-          return probe.intersectObjects([metal,...gimbal.children],false).length===0;
+          return probe.intersectObjects([support,...bands],false).length===0;
         });
-        const libraryClear=[-1.4,0,1.4].every(z=>{
-          const t=new THREE.Vector3(11,3.76,z);ray.set(origin,t.clone().sub(origin).normalize());ray.far=origin.distanceTo(t);
+        const supportClear=signTargets.every(t=>{
+          ray.set(origin,t.clone().sub(origin).normalize());ray.far=origin.distanceTo(t);
+          return !ray.intersectObject(support,true).some(h=>h.object.isMesh);
+        });
+        const signClear=signTargets.map(t=>{
+          ray.set(origin,t.clone().sub(origin).normalize());ray.far=origin.distanceTo(t);
           return !ray.intersectObject(group,true).some(h=>h.object.isMesh);
         });
-        cycle.push({angle:gimbal.rotation.z,coreClear,libraryClear,fixed:metal.rotation.y});
+        const still=support.rotation.x===0&&support.rotation.y===0&&support.rotation.z===0&&support.position.lengthSq()===0;
+        const box=tight();
+        cycle.push({angle:outer.rotation.z,delta,expected,coreClear,supportClear,signClear,still,top:box.max.y,
+          span:Math.max(box.max.x-box.min.x,box.max.z-box.min.z),
+          nested:gimbal.parent===outer&&innerSpin.parent===gimbal});
       }
       h.player.teleport(-2.2,0);let peak=0;
       for(let i=0;i<90;i++){h.player.update(1/60,{x:1,z:0,run:false},0);h.extras.update(1/60);peak=Math.max(peak,h.player.y)}
       const crossing={x:h.player.pos.x,y:h.player.y,peak};
       let oldCones=0,lights=0;group.traverse(o=>{if(o.geometry?.type==='ConeGeometry')oldCones++;if(o.isLight)lights++});
       let triangles=0;group.traverse(o=>{if(o.isMesh)triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;});
-      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,cycle,ringCount:metal.userData.ringCount,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
+      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
     });
+    report.push({viewport,state,errors});
     assert.ok(state.installed, 'The new instrument state is exported to the real update loop');
     assert.equal(state.ringCount, 3); assert.equal(state.oldCones, 0); assert.equal(state.lights, 0);
     assert.deepEqual(state.position, [0,state.plinthTop,0]);
-    assert.ok(state.size[0]<2.75&&state.size[2]<2.75&&state.bounds.max[1]>3.2&&state.bounds.max[1]<3.5);
-    assert.ok(state.rotation.every(r=>r>0&&r<.02),'Actual production updates rotate slowly');
-    assert.ok(state.cycle.every(s=>s.angle>.74&&s.angle<.83&&s.coreClear&&s.libraryClear&&s.fixed===0),'The support stays fixed and the full gimbal cycle clears the crystal and library sign');
+    assert.ok(state.size[0]<2.75&&state.size[2]<2.75);
+    // A tumbling band tops out lower than an upright one, so the height is
+    // measured over the whole cycle instead of at a single frame.
+    assert.ok(state.cycle.every(s=>s.span<2.75&&s.top<3.5),'The turning bands stay inside the plinth footprint and under the ceiling line');
+    assert.ok(Math.max(...state.cycle.map(s=>s.top))>3.2,'The instrument still fills the hall at some phase of its cycle');
+    assert.deepEqual(state.period, { outer: 20, middle: 40, inner: 60, core: 10 });
+    assert.ok(state.rotation.every((r,i)=>Math.abs(r-state.expectedHalf[i])<1e-9),'Every band turns on its own axle at its own period');
+    assert.ok(state.cycle.every(s=>s.still&&s.nested&&s.coreClear&&s.supportClear&&s.delta.every((d,k)=>Math.abs(d-s.expected[k])<1e-9)),'The support stays fixed, the axles stay nested and the 120 s cycle clears the crystal and the sight line');
+    // A tumbling hoop of this size crosses the high sight line to the reading
+    // room sign at some phases; the label has to stay readable for most of the
+    // cycle, which is what this counts.
+    const open = [0,1,2].map(k=>state.cycle.filter(s=>s.signClear[k]).length);
+    assert.ok(open.every(n=>n>=12),'The library sign stays readable for at least half of the ring cycle');
+    // A turn about a diametral axle moves each band inside a fixed radial
+    // shell, so disjoint shells prove the three hoops can never touch.
+    const r = state.config.radii, w = state.config.band, reach = i => [r[i]-w*(i===0?0.5:i===1?0.47:0.44)-.01, r[i]+w*(i===0?0.5:i===1?0.47:0.44)+.01];
+    assert.ok(reach(2)[1]<reach(1)[0]&&reach(1)[1]<reach(0)[0],'Each band sweeps its own radial shell, so no two hoops can ever meet');
     assert.deepEqual(state.conflicts,[]);assert.ok(state.clear&&state.routes.every(r=>r.path));assert.equal(state.signBlocked,false);
     assert.ok(state.crossing.x>2&&Math.abs(state.crossing.y)<.05&&state.crossing.peak<=state.plinthTop+.01,'Both low tiers and the crossing remain usable');
     assert.deepEqual(state.portals,[['writing',11,0],['friends',-5.5,6.4],['about',-5.5,-6.4]]);
@@ -80,7 +124,7 @@ try {
     await view([-6.5,2.3,1.5],[0,1.7,0],'front');
     await view([-13,1.7,0],[11,2.2,0],'entrance');
     await view([-9,7,9],[1,0,0],'hall');
-    assert.deepEqual(errors,[]);report.push({viewport,state,errors});await context.close();
+    assert.deepEqual(errors,[]);await context.close();
   }
 } finally { await browser.close(); writeFileSync(`${out}/report.json`,JSON.stringify(report,null,2)); }
 console.log('Armillary replacement, real animation, compact bounds, library visibility and navigation passed at desktop/narrow widths.');

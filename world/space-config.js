@@ -21,10 +21,15 @@ export const HALL_SPOTS = {
   exhibit: { x: HALL_CENTER.x, z: HALL_CENTER.z },
 };
 // Museum exhibit dimensions are local to the upper stone platform. The hall
-// centre, all stations and the three portal definitions stay fixed.
+// centre, all stations and the three portal definitions stay fixed. `spin`
+// holds one period in seconds per turning part, so the motion is a single
+// readable number instead of a radian rate.
 export const HALL_EXHIBIT = {
   plinth: 2.75, height: .17, cap: 2.23, upperWidth: 2.15, upperHeight: .2, capHeight: .045, gap: .01,
-  armillary: { center: 1.60, radii: [1.232, 1.134, 1.036], tube: .027, band: .078, core: .3375, ringSpeed: .006, coreSpeed: .004 },
+  armillary: {
+    center: 1.60, radii: [1.232, 1.134, 1.036], tube: .027, band: .078, core: .3375,
+    spin: { outer: 20, middle: 40, inner: 60, core: 10 },
+  },
 };
 
 export const HUB_PORTALS = [

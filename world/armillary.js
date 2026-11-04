@@ -7,11 +7,16 @@ import { mergeGeometries } from '../vendor/three/addons/utils/BufferGeometryUtil
 const BRASS = 0xb9975f, LIP = 0xdcc28c, SHOULDER = 0x8f7444, FACE = 0xad8e58,
   RIM = 0xe8d1a0, ENGRAVED = 0x453921, BOLT = 0xe8d2a4, HUB = 0xd2b47c;
 
-// Nested brass bands share a real north/south bearing axis. Only the middle
-// gimbal moves; the meridian, near-horizontal ring and mounting stay fixed.
-export function createArmillary({ center, radii, tube, band, core, ringSpeed, coreSpeed }, plinthTop) {
+// Three graduated bands turning on real gimbal axles. A hoop is only unchanged
+// by a spin about its own normal, so every band is instead pinned through two
+// rim points and turns about that diameter: it tumbles like a coin, and the
+// bearing that pins it sits on the rim the band already has, which leaves the
+// floating crystal a clear sphere and keeps the hardware honest.
+export function createArmillary({ center, radii, tube, band, core, spin }, plinthTop) {
   const group = new THREE.Group(); group.name = 'hall-exhibit'; group.position.set(0, plinthTop, 0);
-  const fixed = [], moving = [];
+  // Fixed mounting, then one geometry per band: each band has to turn on its
+  // own axle, so each one is merged separately.
+  const base = [], outerParts = [], middleParts = [], innerParts = [];
   const transform = (x, y, z, rx = 0, ry = 0, rz = 0) => new THREE.Matrix4().compose(
     new THREE.Vector3(x, y, z),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
@@ -61,10 +66,9 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
 
   // A band is a machined strip, not a tube: raised lips on both faces, a
   // recessed field carrying the graduations, and a polished rim. The whole
-  // profile is one geometry, so a ring still costs one draw call. `side`
-  // picks the graduated face: -1 for the west face of a standing band, +1 to
-  // turn the dial upward on the near-horizontal ring.
-  function track(parts, radius, width, matrix, marks, side = -1) {
+  // profile is one geometry, so a ring still costs one draw call. Both faces
+  // are graduated because the bands now turn over and show either side.
+  function track(parts, radius, width, matrix, marks) {
     const depth = tube * 2 - .008, outer = depth + .008, lip = width * .13;
     const profile = [
       [width / 2, -outer / 2, RIM], [width / 2, outer / 2, LIP],
@@ -74,23 +78,26 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
       [-(width / 2 - lip), -outer / 2, SHOULDER], [-(width / 2 - lip), -depth / 2, FACE],
       [width / 2 - lip, -depth / 2, SHOULDER], [width / 2 - lip, -outer / 2, LIP],
     ];
-    place(parts, swept(profile, Math.max(40, Math.round(radius * 52)), radius), matrix);
+    place(parts, swept(profile, Math.max(36, Math.round(radius * 44)), radius), matrix);
     // Graduations in the recess: three lengths, so the major and minor marks
     // separate without a mesh per degree.
-    const k = width / .078, field = side * (depth / 2 - .0008);
+    const k = width / .078;
     const major = Math.max(4, Math.round(marks / 4)), medium = Math.max(2, Math.round(marks / 8));
     const rail = radius + width / 2 - width * .065;
-    for (let i = 0; i < marks; i++) {
-      const a = i * Math.PI * 2 / marks;
-      const grade = i % major === 0 ? 2 : i % medium === 0 ? 1 : 0;
-      const mark = transform(radius * Math.cos(a), radius * Math.sin(a), field, 0, 0, a - Math.PI / 2);
-      piece(parts, new THREE.BoxGeometry([.0062, .0104, .0166][grade] * k, [.028, .042, .058][grade] * k, .0066),
-        ENGRAVED, matrix.clone().multiply(mark));
-      // Rivets sit on the raised border, not in the dial, so the silhouette
-      // stays a straight machined edge.
-      if (i % medium === 0) {
-        const rivet = transform(rail * Math.cos(a), rail * Math.sin(a), side * (outer / 2 + .0004), Math.PI / 2);
-        piece(parts, new THREE.CylinderGeometry(.0054 * k, .0054 * k, .005, 8), BOLT, matrix.clone().multiply(rivet));
+    for (const side of [-1, 1]) {
+      const field = side * (depth / 2 - .0008);
+      for (let i = 0; i < marks; i++) {
+        const a = i * Math.PI * 2 / marks;
+        const grade = i % major === 0 ? 2 : i % medium === 0 ? 1 : 0;
+        const mark = transform(radius * Math.cos(a), radius * Math.sin(a), field, 0, 0, a - Math.PI / 2);
+        piece(parts, new THREE.BoxGeometry([.0062, .0104, .0166][grade] * k, [.028, .042, .058][grade] * k, .0066),
+          ENGRAVED, matrix.clone().multiply(mark));
+        // Rivets sit on the raised border, not in the dial, so the silhouette
+        // stays a straight machined edge.
+        if (i % medium === 0) {
+          const rivet = transform(rail * Math.cos(a), rail * Math.sin(a), side * (outer / 2 + .0004), Math.PI / 2);
+          piece(parts, new THREE.CylinderGeometry(.0054 * k, .0054 * k, .005, 8), BOLT, matrix.clone().multiply(rivet));
+        }
       }
     }
     // Four clamped segment joints, kept clear of the top so the sight line to
@@ -103,53 +110,79 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
     }
   }
 
-  const yz = transform(0, 0, 0, 0, Math.PI / 2, 0);
-  track(fixed, radii[0], band, transform(0, center, 0).multiply(yz), 48);
-  track(moving, radii[1], band * .94, yz, 32);
-  track(fixed, radii[2], band * .88, transform(0, center, 0, 0, 0, Math.PI * 80 / 180).multiply(yz), 32, 1);
+  // Bearing hardware. Each band is pinned at two rim points, so its axle is a
+  // diameter of that band; the collar straddles the band at the pinned point
+  // and the stub reaches out to the parent band, where it is bolted.
+  function gudgeon(parts, axis, from, to, radius) {
+    const length = Math.abs(to - from), middle = (from + to) / 2;
+    const at = axis === 'x' ? transform(middle, 0, 0, 0, 0, Math.PI / 2)
+      : axis === 'y' ? transform(0, middle, 0) : transform(0, 0, middle, Math.PI / 2);
+    piece(parts, new THREE.CylinderGeometry(radius, radius, length, 10), HUB, at);
+  }
+  function collar(parts, axis, distance, radial, width, thickness) {
+    const size = axis === 'x' ? [radial, width, thickness] : axis === 'y' ? [width, radial, thickness] : [width, thickness, radial];
+    const at = axis === 'x' ? transform(distance, 0, 0) : axis === 'y' ? transform(0, distance, 0) : transform(0, 0, distance);
+    piece(parts, new THREE.BoxGeometry(size[0], size[1], size[2]), LIP, at);
+    piece(parts, new THREE.BoxGeometry(size[0] * .78, size[1] * 1.22, size[2] * 1.22), SHOULDER, at);
+  }
+
+  // Outer band: plane YZ, axle along Z, pinned by the fork trunnions.
+  track(outerParts, radii[0], band, transform(0, 0, 0, 0, Math.PI / 2, 0), 48);
+  // Middle band: plane XY, axle along Y, carried by the outer band.
+  track(middleParts, radii[1], band * .94, new THREE.Matrix4(), 32);
+  // Inner band: plane XZ, axle along X, carried by the middle band.
+  track(innerParts, radii[2], band * .88, transform(0, 0, 0, Math.PI / 2, 0, 0), 32);
+
+  // The middle band's trunnions are part of the outer band, so they travel
+  // with it and drag the middle axle through space. Each stub starts outside
+  // the child band's rim and stops inside the parent band, and the collar
+  // straddles the rim the stub grips, so no stub ever pierces a band.
+  const half = [band / 2, band * .94 / 2, band * .88 / 2];
+  for (const side of [-1, 1]) {
+    collar(outerParts, 'y', side * radii[1], .09, .09, .085);
+    gudgeon(outerParts, 'y', side * (radii[1] + half[1]), side * (radii[0] - .02), .022);
+    collar(middleParts, 'x', side * radii[2], .09, .09, .085);
+    gudgeon(middleParts, 'x', side * (radii[2] + half[2]), side * (radii[1] - .02), .02);
+  }
 
   // ---- mounting ----------------------------------------------------------
   // A circular brass bed-plate bolted into the stone, a turned drum and pier,
-  // then a four-arm fork that carries the gimbal axle on both poles. Ring
-  // bottoms clear the capital and no support passes through the crystal.
-  piece(fixed, new THREE.CylinderGeometry(.452, .462, .018, 44), BRASS, transform(0, .010, 0));
-  place(fixed, swept([[.404, .017, LIP], [.456, .017, RIM], [.456, .003, LIP], [.404, .003, SHOULDER]], 44));
+  // then a four-arm fork that carries the outer band's axle on both poles.
+  // Ring bottoms clear the capital and no support passes through the crystal.
+  piece(base, new THREE.CylinderGeometry(.452, .462, .018, 44), BRASS, transform(0, .010, 0));
+  place(base, swept([[.404, .017, LIP], [.456, .017, RIM], [.456, .003, LIP], [.404, .003, SHOULDER]], 44));
   for (let i = 0; i < 8; i++) {
     const a = i * Math.PI / 4 + Math.PI / 8;
-    piece(fixed, new THREE.CylinderGeometry(.015, .015, .009, 6), BOLT,
+    piece(base, new THREE.CylinderGeometry(.015, .015, .009, 6), BOLT,
       transform(.428 * Math.cos(a), .021, .428 * Math.sin(a)));
   }
-  piece(fixed, new THREE.CylinderGeometry(.34, .404, .026, 40), SHOULDER, transform(0, .031, 0));
-  piece(fixed, new THREE.CylinderGeometry(.30, .34, .02, 36), LIP, transform(0, .054, 0));
-  piece(fixed, new THREE.CylinderGeometry(.19, .30, .036, 28), BRASS, transform(0, .082, 0));
-  piece(fixed, new THREE.CylinderGeometry(.15, .19, .05, 24), LIP, transform(0, .125, 0));
-  piece(fixed, new THREE.CylinderGeometry(.088, .15, .09, 20), BRASS, transform(0, .195, 0));
-  piece(fixed, new THREE.CylinderGeometry(.10, .088, .03, 20), LIP, transform(0, .255, 0));
-  piece(fixed, new THREE.CylinderGeometry(.115, .10, .026, 20), BRASS, transform(0, .283, 0));
+  piece(base, new THREE.CylinderGeometry(.34, .404, .026, 40), SHOULDER, transform(0, .031, 0));
+  piece(base, new THREE.CylinderGeometry(.30, .34, .02, 36), LIP, transform(0, .054, 0));
+  piece(base, new THREE.CylinderGeometry(.19, .30, .036, 28), BRASS, transform(0, .082, 0));
+  piece(base, new THREE.CylinderGeometry(.15, .19, .05, 24), LIP, transform(0, .125, 0));
+  piece(base, new THREE.CylinderGeometry(.088, .15, .09, 20), BRASS, transform(0, .195, 0));
+  piece(base, new THREE.CylinderGeometry(.10, .088, .03, 20), LIP, transform(0, .255, 0));
+  piece(base, new THREE.CylinderGeometry(.115, .10, .026, 20), BRASS, transform(0, .283, 0));
 
-  // The fork straddles the standing bands by two arms per side, clear of the
-  // rims except where it bolts into the pole flange, so nothing cuts through a
-  // ring and the moving band keeps the axle it turns about.
+  // The fork straddles the outer band by two arms per side, clear of its rims
+  // except where it bolts into the pole flange, so nothing cuts through a ring.
   for (const side of [-1, 1]) for (const sx of [-1, 1]) {
     const curve = new THREE.CatmullRomCurve3([
       [.048, .250, .055], [.056, .36, .40], [.056, .60, .85], [.056, .92, 1.14],
       [.056, 1.26, 1.30], [.055, 1.46, 1.325], [.054, 1.545, 1.281],
     ].map(([x, y, z]) => new THREE.Vector3(sx * x, y, side * z)));
-    piece(fixed, new THREE.TubeGeometry(curve, 26, .027, 6, false), BRASS);
+    piece(base, new THREE.TubeGeometry(curve, 26, .027, 6, false), BRASS);
   }
   for (const side of [-1, 1]) {
     const z = side * 1.2;
-    piece(fixed, new THREE.CylinderGeometry(.019, .019, .20, 10), HUB, transform(0, center, z, Math.PI / 2));
-    piece(fixed, new THREE.CylinderGeometry(.028, .028, .018, 10), BOLT, transform(0, center, side * 1.1845, Math.PI / 2));
-    // Bearing flange on the meridian's outer edge, with the axle end and nut.
-    piece(fixed, swept([[.024, -.007, LIP], [.082, -.007, HUB], [.082, .007, BOLT], [.024, .007, LIP]], 24),
+    piece(base, new THREE.CylinderGeometry(.019, .019, .20, 10), HUB, transform(0, center, z, Math.PI / 2));
+    piece(base, new THREE.CylinderGeometry(.028, .028, .018, 10), BOLT, transform(0, center, side * 1.1845, Math.PI / 2));
+    // Bearing flange on the outer band's rim, with the axle end and nut.
+    piece(base, swept([[.024, -.007, LIP], [.082, -.007, HUB], [.082, .007, BOLT], [.024, .007, LIP]], 24),
       transform(0, center, side * 1.2765));
-    piece(fixed, new THREE.CylinderGeometry(.021, .021, .016, 6), BOLT, transform(0, center, side * 1.2905, Math.PI / 2));
-    // Bolted cheek plate on the meridian face at the same node.
-    piece(fixed, new THREE.BoxGeometry(.012, .066, .072), BRASS, transform(-.036, center, side * 1.232));
-    for (const dy of [-.022, .022]) {
-      piece(fixed, new THREE.CylinderGeometry(.006, .006, .01, 6), BOLT, transform(-.043, center + dy, side * 1.232, 0, Math.PI / 2, 0));
-    }
+    piece(base, new THREE.CylinderGeometry(.021, .021, .016, 6), BOLT, transform(0, center, side * 1.2905, Math.PI / 2));
+    // No plate bolted to the band's face here any more: the band turns inside
+    // this bearing, so the flange, collar and nut carry the whole node.
   }
 
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .5, metalness: .4 });
@@ -159,11 +192,20 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = name; mesh.castShadow = shadow; mesh.receiveShadow = true; return mesh;
   }
-  const frame = merged(fixed, 'armillary-rings', true);
-  frame.userData.ringCount = 3; frame.userData.radii = [...radii]; group.add(frame);
+
+  // ---- assembly ----------------------------------------------------------
+  const support = merged(base, 'armillary-base', true);
+  support.userData.ringCount = radii.length; support.userData.radii = [...radii];
+  support.userData.periods = { outer: spin.outer, middle: spin.middle, inner: spin.inner, core: spin.core };
+  group.add(support);
+
+  const outer = new THREE.Group(); outer.name = 'armillary-spin-outer'; outer.position.y = center;
   const gimbal = new THREE.Group(); gimbal.name = 'armillary-gimbal';
-  gimbal.position.y = center; gimbal.rotation.z = Math.PI / 4;
-  gimbal.add(merged(moving, 'armillary-moving-band', false)); group.add(gimbal);
+  const innerSpin = new THREE.Group(); innerSpin.name = 'armillary-spin-inner';
+  outer.add(merged(outerParts, 'armillary-ring-outer', true));
+  gimbal.add(merged(middleParts, 'armillary-ring-middle', false));
+  innerSpin.add(merged(innerParts, 'armillary-ring-inner', false));
+  gimbal.add(innerSpin); outer.add(gimbal); group.add(outer);
 
   // ---- crystal -----------------------------------------------------------
   // Facets of two shades with a brighter solid core and metal-capped edges:
@@ -182,10 +224,10 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
     vertexColors: true, transparent: true, opacity: .8, roughness: .18, metalness: .04,
     emissive: 0x2e6b62, emissiveIntensity: .36, flatShading: true, depthWrite: false,
   }));
-  crystal.name = 'armillary-core'; crystal.position.y = center; crystal.rotation.y = Math.PI / 8;
+  crystal.name = 'armillary-core'; crystal.position.y = center;
 
-  const inner = [], innerCore = new THREE.OctahedronGeometry(core * .56);
-  innerCore.rotateY(.62); innerCore.rotateZ(.34); tint(innerCore, 0xcdf7ea); inner.push(innerCore);
+  const kernel = [], innerCore = new THREE.OctahedronGeometry(core * .56);
+  innerCore.rotateY(.62); innerCore.rotateZ(.34); tint(innerCore, 0xcdf7ea); kernel.push(innerCore);
   const poles = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]
     .map(v => new THREE.Vector3(...v).multiplyScalar(core * 1.012));
   for (let i = 0; i < poles.length; i++) for (let j = i + 1; j < poles.length; j++) {
@@ -194,13 +236,13 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
     const rib = new THREE.CylinderGeometry(.0056, .0056, a.distanceTo(b), 4, 1);
     rib.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()));
     rib.translate(middle.x, middle.y, middle.z);
-    piece(inner, rib, 0xe6fff8);
+    piece(kernel, rib, 0xe6fff8);
   }
-  const innerMesh = new THREE.Mesh(mergeGeometries(inner), new THREE.MeshStandardMaterial({
+  const innerMesh = new THREE.Mesh(mergeGeometries(kernel), new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: .3, metalness: .03, flatShading: true,
     emissive: 0x37907f, emissiveIntensity: .5,
   }));
-  inner.forEach(g => g.dispose());
+  kernel.forEach(g => g.dispose());
   innerMesh.name = 'armillary-core-inner'; crystal.add(innerMesh);
 
   const outline = [new THREE.EdgesGeometry(shell), new THREE.EdgesGeometry(new THREE.OctahedronGeometry(core * .56))];
@@ -212,12 +254,16 @@ export function createArmillary({ center, radii, tube, band, core, ringSpeed, co
   outline.forEach(g => g.dispose());
   edges.name = 'armillary-core-edges'; crystal.add(edges); group.add(crystal);
 
+  // One accumulated clock drives all four turns; each angle is reduced to
+  // [0, 2pi) so nothing drifts after hours of idling.
   let elapsed = 0;
+  const tau = Math.PI * 2;
   return { mesh: group, update(dt = 0) {
     if (dt <= 0 || !group.visible) return;
-    elapsed = (elapsed + dt) % (Math.PI * 2 / ringSpeed);
-    // Bounded motion keeps the gimbal seated in its Z-axis bearings.
-    gimbal.rotation.z = Math.PI / 4 + .035 * Math.sin(elapsed * ringSpeed);
-    crystal.rotation.y = (crystal.rotation.y + dt * coreSpeed) % (Math.PI * 2);
+    elapsed += dt;
+    outer.rotation.z = (elapsed * tau / spin.outer) % tau;
+    gimbal.rotation.y = (elapsed * tau / spin.middle) % tau;
+    innerSpin.rotation.x = (elapsed * tau / spin.inner) % tau;
+    crystal.rotation.y = (elapsed * tau / spin.core) % tau;
   } };
 }

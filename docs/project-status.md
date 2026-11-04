@@ -17,13 +17,13 @@ implementation checkpoints.
 
 ## Current implementation
 
-- The local central exhibit now follows the larger plan A armillary design:
-  three graduated brass bands, a cyan crystal with an inner kernel and edge
-  ribs, a bolted bed-plate with a four-arm fork on a bearing-mounted gimbal,
-  two stone tiers and restrained circular inlay. This visual revision is not
-  yet committed or uploaded. See the
-  [implementation and checks](research/2026-11-04-armillary-plan-a.md) and the
-  [precision pass](research/2026-11-04-armillary-precision.md).
+- The local central exhibit follows the larger plan A armillary design: three
+  graduated brass bands, a cyan crystal with an inner kernel and edge ribs, a
+  bolted bed-plate with a four-arm fork, two stone tiers and restrained
+  circular inlay. It is committed locally but not uploaded. See the
+  [implementation and checks](research/2026-11-04-armillary-plan-a.md), the
+  [precision pass](research/2026-11-04-armillary-precision.md) and the
+  [motion pass](research/2026-11-05-armillary-motion.md).
 
 - Three matching west-facing doors lead to the library, `/friends/` directory
   and `/about/` profile: the reading room closes the hall axis from the east,
@@ -46,13 +46,16 @@ implementation checkpoints.
   height (`layout.js` `floorAt`), not a collider: both low stone tiers can be
   crossed without an invisible full-height obstacle. The enlarged armillary
   replaces the former small glass pyramid: three graduated brass bands surround
-  a pale cyan octahedral core, with a slow bearing-mounted gimbal and separate
-  core rotation. The local plan A revision adds a second stone tier and
-  restrained orbital inlay; the precision pass adds the graduations, riveted
-  band borders, the four-arm fork over a bolted brass bed-plate and a
-  five-degree floor dial. See the scoped
+  a pale cyan octahedral core. The local plan A revision adds a second stone
+  tier and restrained orbital inlay; the precision pass adds the graduations,
+  riveted band borders, the four-arm fork over a bolted brass bed-plate and a
+  five-degree floor dial; the motion pass pins each band on a diametral axle
+  carried by the next hoop out, so the outer band turns once in 20 s, the
+  middle in 40 s, the inner in 60 s and the crystal in 10 s, while the mounting
+  stays still. See the scoped
   [plan A record](research/2026-11-04-armillary-plan-a.md) and
-  [precision pass](research/2026-11-04-armillary-precision.md).
+  [precision pass](research/2026-11-04-armillary-precision.md) and
+  [motion pass](research/2026-11-05-armillary-motion.md).
 - The violet transition uses a shared boot script. Return checkpoints preserve
   the approach side; both BFCache and reloaded browser history are checked.
 - The former friend lounge is replaced by a data-driven HTML directory. Its
