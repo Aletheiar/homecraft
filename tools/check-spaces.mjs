@@ -6,6 +6,7 @@ const out = 'tools/.check/pyramid'; mkdirSync(out, { recursive: true });
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
 const errors = [], results = [];
+await page.route('https://giscus.app/client.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
 page.on('pageerror', e => errors.push(e.message));
 async function ready(hub = false) {
   await page.waitForFunction(hub => window.__homeStartupError || (hub ? window.__home?.world.pyramid?.sceneryReady : window.__home?.world.roomReady), hub, { timeout: 60000 });
@@ -60,17 +61,17 @@ try {
     await atStation('plaza');
     assert.equal(await page.locator('#courtyard-audio').evaluate(a => a.paused), true);
     assert.equal(await page.locator('[data-music-frame]').count(), 0);
+    assert.equal(await page.locator('[data-music-playlist]').count(), 0);
+    assert.equal(await page.locator('#panel .music-station [data-music-files]').count(), 1);
     const rotation = await page.evaluate(() => __home.world.foyer.record.rotation.y);
     await page.waitForTimeout(200);
     assert.equal(await page.evaluate(() => __home.world.foyer.record.rotation.y), rotation);
     await page.locator('#panel .close').click();
   });
-  await check('observatory changes the engine time of day', async () => {
+  await check('guestbook station embeds the local reading page', async () => {
     await atStation('observatory');
-    await page.locator('#panel [data-time="night"]').click();
-    assert.equal(await page.evaluate(() => __home.getTimeMode()), 'night');
+    assert.equal(await page.locator('#panel .body > iframe').getAttribute('src'), new URL('guestbook/', base).href);
     await page.locator('#panel .close').click();
-    await page.evaluate(() => __home.setTimeMode('morning'));
   });
   await check('suspended generated illustration loads', async () => {
     await page.waitForFunction(() => __home.world.gallery.ready || __home.world.gallery.error);

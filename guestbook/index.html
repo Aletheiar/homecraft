@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="only light">
+<meta name="darkreader-lock">
+<title>庭院留言簿 · 玻璃金字塔</title>
+<meta name="description" content="在庭院留下一张明信片。使用 GitHub 登录留言，与其他来访者共享这本留言簿。">
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/guestbook.css">
+</head>
+<body>
+<main class="guestbook">
+  <a class="guestbook-back" data-guestbook-back href="../">← 回到玻璃金字塔</a>
+  <header class="guestbook-heading"><span class="guestbook-envelope" aria-hidden="true">✉</span><div><p class="guestbook-kicker">POSTCARDS / FROM VISITORS</p><h1>庭院留言簿</h1></div></header>
+  <p class="guestbook-intro">路过这里，留下一张明信片吧。</p>
+  <p class="guestbook-description">可以聊聊今天的心情，推荐一首歌，或告诉我你在这座庭院里发现了什么。</p>
+  <div class="guestbook-account"><b>使用 GitHub 登录后留言</b><span>无需另外注册本站账号。留言和 GitHub 用户名会公开展示。</span></div>
+  <div class="guestbook-service"><p data-guestbook-status data-state="loading" role="status" aria-live="polite">正在连接 GitHub 留言簿…</p><button data-guestbook-retry type="button" hidden>重新连接</button></div>
+  <div class="giscus" aria-label="GitHub 留言与回复"></div>
+  <footer class="guestbook-footer"><a data-guestbook-github href="https://github.com/Aletheiar/homecraft/discussions/categories/announcements" target="_blank" rel="noopener noreferrer">在 GitHub 打开留言区 ↗</a><span>留言保存在 GitHub Discussions · 由 giscus 提供评论功能</span></footer>
+  <noscript><p>启用 JavaScript 即可在这里查看和发表留言，也可以使用上方 GitHub 链接。</p></noscript>
+</main>
+<script type="module" src="./widget.js"></script>
+</body>
+</html>

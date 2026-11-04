@@ -1,5 +1,5 @@
-// The owner supplies the URL. Restrict it to real web pages; isolate embedded
-// scripts from top navigation. The header link remains usable if a remote
+// The owner supplies the URL. Restrict it to real web pages; remote embedded
+// scripts cannot navigate the top page. The header link remains usable if a remote
 // site refuses framing (iframe load/error cannot reliably detect that).
 export function pageURL(value) {
   try {
@@ -13,7 +13,11 @@ export function mountEmbed(body, url, title) {
   const frame = document.createElement('iframe');
   frame.src = url.href; frame.title = title;
   frame.referrerPolicy = 'strict-origin-when-cross-origin';
-  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
+  const sandbox = ['allow-scripts', 'allow-same-origin', 'allow-forms', 'allow-popups', 'allow-popups-to-escape-sandbox'];
+  // Trusted pages belonging to this site may start an OAuth flow on a user
+  // click. Remote embeds retain the restriction on top-level navigation.
+  if (url.origin === location.origin) sandbox.push('allow-top-navigation-by-user-activation');
+  frame.setAttribute('sandbox', sandbox.join(' '));
   frame.setAttribute('allow', 'fullscreen');
   body.append(frame);
 }

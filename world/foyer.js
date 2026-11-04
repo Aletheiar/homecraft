@@ -12,6 +12,7 @@ export function buildFoyer(layer) {
     obstacles.push({ x0: x - 1.4, x1: x + 1.4, z0: z - 1.4, z1: z + 1.4, level: 0 });
     const map = canvasTexture(512, 192, (ctx, w, h) => {
       ctx.fillStyle = '#f5f0df'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#bda57a'; ctx.lineWidth = 5; ctx.strokeRect(9, 9, w - 18, h - 18);
       ctx.fillStyle = '#274b43'; ctx.font = 'bold 44px "Microsoft YaHei",sans-serif'; ctx.fillText(title, 23, 75);
       ctx.fillStyle = '#6d7c6b'; ctx.font = '24px "Microsoft YaHei",sans-serif'; ctx.fillText(subtitle, 23, 137);
     });
@@ -19,7 +20,7 @@ export function buildFoyer(layer) {
     sign.position.set(x + 1.5, 1.4, z); sign.rotation.y = Math.PI / 2; planes.push(sign);
     hotspots.push({ id, box: new THREE.Box3(new THREE.Vector3(x - 1.5, 0, z - 1.5), new THREE.Vector3(x + 1.8, 3.4, z + 1.5)) });
   }
-  plinth('plaza', -28, -8, '庭院音乐台', '网易云歌单 · 本地唱片', 0x526853);
+  plinth('plaza', -28, -8, '庭院音乐台', '庭院唱片 · 随选随播', 0x526853);
   // A walnut console, paired speakers and a brass tonearm, all inside the
   // previous sculpture's footprint. Most details share the furniture batches.
   B.box(-28, .67, -8, 1.85, .62, 2.16, { tex: 'walnut' });
@@ -37,14 +38,25 @@ export function buildFoyer(layer) {
   const record = new THREE.Group(); record.position.set(-28, 1.42, -8); record.name = 'foyer-record';
   const disc = new THREE.Mesh(new THREE.CylinderGeometry(.52, .52, .035, 24), new THREE.MeshStandardMaterial({ color: 0x17221c, roughness: .5 }));
   const label = new THREE.Mesh(new THREE.CylinderGeometry(.17, .17, .038, 16), new THREE.MeshStandardMaterial({ color: 0xb99b60, roughness: .8 }));
+  const spindle = new THREE.Mesh(new THREE.CylinderGeometry(.026, .026, .07, 10), new THREE.MeshStandardMaterial({ color: 0xc2a468, roughness: .35, metalness: .55 }));
+  spindle.position.y = .035;
   // The asymmetric label makes real rotation visible from above.
-  label.position.set(.035, .012, 0); record.add(disc, label); planes.push(record); state.record = record;
-  plinth('observatory', -28, 9, '庭院观测台', '清晨 · 黄昏 · 星夜', 0xc7ac72);
-  B.box(-28, .67, 9, 1.3, .06, 1.3, { tex: 'black_metal' });
-  for (let i = 0; i < 8; i++) {
-    const angle = i * Math.PI / 4;
-    B.box(-28 + Math.cos(angle) * .55, .73, 9 + Math.sin(angle) * .55, .12, .12, .12, { tex: 'paint', tint: 0xf2dca3, emissive: .7 });
+  label.position.set(.035, .012, 0); record.add(disc, label, spindle); planes.push(record); state.record = record;
+  plinth('observatory', -28, 9, '庭院留言亭', '留一张明信片 · GitHub', 0x526853);
+  // An outdoor postbox and postcard board, within the former pedestal bounds.
+  B.box(-28, .67, 9, 1.5, .75, 1.8, { tex: 'walnut' });
+  B.box(-28, 1.42, 9, 1.6, .1, 1.95, { tex: 'oak' });
+  B.box(-28.48, 1.52, 9, .18, 1.05, 1.85, { tex: 'walnut' });
+  B.box(-28.37, 1.63, 9, .05, .8, 1.65, { tex: 'paint', tint: 0x526853 });
+  B.box(-28.37, 2.57, 9, .58, .12, 2.15, { tex: 'walnut' });
+  for (const [z, y, tint] of [[8.55, 1.75, 0xeee4ca], [9.35, 1.87, 0xf3ead8]]) {
+    B.box(-28.33, y, z, .025, .4, .54, { tex: 'paint', tint });
+    B.box(-28.31, y + .25, z + .15, .025, .09, .09, { tex: 'paint', tint: 0xaa8151 });
+    B.box(-28.31, y + .1, z - .05, .025, .025, .27, { tex: 'paint', tint: 0x88927b });
   }
+  B.box(-27.8, 1.52, 9, .72, .43, 1.05, { tex: 'paint', tint: 0x365846 });
+  B.box(-27.42, 1.8, 9, .02, .055, .73, { tex: 'black_metal' });
+  B.box(-27.4, 1.57, 9, .025, .12, .4, { tex: 'paint', tint: 0xe7d6a4 });
   for (const z of [-4, 4]) {
     B.box(-35, .08, z, 1.1, .42, 3, { tex: 'walnut' });
     B.box(-35.4, .5, z, .25, .55, 3, { tex: 'walnut' });
@@ -55,12 +67,5 @@ export function buildFoyer(layer) {
 
 export function attachFoyerControls(state) {
   const music = createMusicStation(document.querySelector('#panel'));
-  document.addEventListener('click', event => {
-    const button = event.target.closest('[data-foyer-action]');
-    if (!button) return;
-    if (button.dataset.foyerAction === 'time') {
-      window.__home?.setTimeMode(button.dataset.time);
-    }
-  });
   return { update(dt = 0) { if (music.playing && dt > 0 && state.record.visible) state.record.rotation.y += dt * 1.4; } };
 }

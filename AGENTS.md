@@ -195,7 +195,12 @@ Implementation examples: `world/build.js` (empty island with trees), `world/furn
 
 ## Guestbook
 
-The guestbook entry opens the visitor's email app. This site ships no mailbox worker; in-site submission would need one deployed separately.
+The courtyard guestbook uses giscus and GitHub Discussions. Its standalone page
+is `guestbook/`, also embedded by the former observatory station. Public repo
+and category IDs live in `guestbook/config.js`; visitors authenticate through
+giscus/GitHub. The stable mapping term keeps local and deployed views on the
+same discussion. No OAuth secrets or personal access tokens belong in this
+static site. The inherited email mailbox is separate and remains unconfigured.
 
 ## Performance Budget
 

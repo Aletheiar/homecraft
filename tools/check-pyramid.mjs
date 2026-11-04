@@ -11,6 +11,8 @@ const report = { views: [], failures: [] };
 for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } }, { name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }]) {
   const context = await browser.newContext(view);
   const page = await context.newPage();
+  // This suite checks the courtyard. External comments have their own checks.
+  await page.route('https://giscus.app/client.js', route => route.fulfill({ contentType: 'application/javascript', body: '' }));
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
