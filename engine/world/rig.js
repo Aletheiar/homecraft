@@ -30,7 +30,7 @@ export function createRig(camera, world) {
   const HOME_VIEW = portrait ? [0.1, 0.4, 8.5] : [0.14, 0.035, 8];
   let [yaw, pitch, distance] = HOME_VIEW;
   let yawGoal = yaw, pitchGoal = pitch, distanceGoal = distance;
-  let intro = null;
+  let intro = null, introSkipped = false;
   // A held shot (the mountain from over the roof): the camera glides there,
   // stays until any input, then glides back behind the player.
   let show = null;
@@ -79,6 +79,7 @@ export function createRig(camera, world) {
     intro = { t: 0, from, player };
   }
   function skipIntro() {
+    introSkipped = true;
     if (intro) intro.t = Math.max(intro.t, INTRO_HOLD + INTRO_SWOOP / 2);
     if (show && show.back < 0) show.back = 0;
   }
@@ -275,6 +276,7 @@ export function createRig(camera, world) {
     // Looking up through the player's eyes from the pool's floor (wholly or easing in).
     get gazing() { return gazeT > 0; }, get gazeAmount() { return gazeT; },
     get introActive() { return !!intro; },
+    get introSkipped() { return introSkipped; },
     get showcaseActive() { return !!show && show.back < 0; },
     get distance() { return distance; },
     reset() { [yawGoal, pitchGoal, distanceGoal] = HOME_VIEW; },

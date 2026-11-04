@@ -142,6 +142,7 @@ export function setup({ player, rig, stage, world }) {
       portals.update(dt); foyer.update(dt);
       const message = pyramidState.error ? '模型读取失败，请刷新页面重试' : pyramidState.sceneryReady ? 'NewHeaven · 本地预览' : pyramidState.ready ? '正在载入外围景观…' : '正在载入金字塔…';
       if (message !== lastMessage) { status.textContent = message; lastMessage = message; }
+      if (rig.introSkipped) introduced = true;
       if (pyramidState.ready && !introduced && window.__home && !rig.introActive) {
         introduced = true; rig.skipIntro(); view();
         window.__home.setTimeMode('morning'); window.__home.setWeatherMode('clear');
