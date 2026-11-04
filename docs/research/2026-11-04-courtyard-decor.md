@@ -1,5 +1,9 @@
 # Courtyard monument and gallery update
 
+Historical layout: the later [courtyard refinement](2026-11-04-courtyard-polish.md)
+refines the devil, removes the two side artworks and exterior benches, and
+assigns a distinct link icon to Friends. That note describes the current layout.
+
 Checked on 2026-11-04, Asia/Shanghai. This describes the local working revision.
 
 ## Devil Room monument
