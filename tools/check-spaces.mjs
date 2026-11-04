@@ -65,7 +65,8 @@ try {
     assert.equal(await page.locator('[data-music-playlist]').count(), 0);
     assert.equal(await page.locator('#panel .music-station [data-music-files]').count(), 1);
     const rotation = await page.evaluate(() => __home.world.foyer.record.rotation.y);
-    await page.waitForTimeout(200);
+    // Check the production update, independent of software-GPU frame rate.
+    await page.evaluate(() => __home.extras.update(.5));
     assert.ok(await page.evaluate(() => __home.world.foyer.record.rotation.y) > rotation);
     await page.locator('#panel .close').click();
   });

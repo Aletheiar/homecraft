@@ -74,3 +74,8 @@ contexts close before the next case. Native and forced-software opening
 checks, the 11 camera unit tests and site checks pass locally. Production
 camera code and scene behavior are unchanged. A new remote run verifies the
 integrated result separately.
+
+The following remote attempt exposed the same wall-clock assumption in the
+music-record motion assertion in `check-spaces.mjs`: 200 ms could pass without
+a rendered frame. That assertion now advances the real world update by 0.5
+simulation seconds. Music implementation and playback behavior remain unchanged.
