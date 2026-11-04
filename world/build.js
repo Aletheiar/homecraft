@@ -12,6 +12,7 @@ import { revealArrival } from './portal-transition.js';
 import { buildFoyer, attachFoyerControls } from './foyer.js';
 import { buildGallery } from './gallery.js';
 import { buildStatues } from './statues.js';
+import { buildForecourt } from './forecourt.js';
 
 export function build({ grid, layer, scene, stage }) {
   // The imported shell is dense enough to shadow itself across the flat courtyard
@@ -28,6 +29,7 @@ export function build({ grid, layer, scene, stage }) {
   const portals = buildPortals(layer, HUB_PORTALS), foyer = buildFoyer(layer), gallery = buildGallery(layer), statues = buildStatues(layer);
   hall.obstacles.push(...portals.obstacles, ...foyer.obstacles);
   hall.planes.push(...portals.planes, ...foyer.planes, ...gallery.planes);
+  hall.planes.push(buildForecourt());
   hall.hotspots.push(...portals.hotspots, ...foyer.hotspots, ...gallery.hotspots);
   // The fence follows the former pool perimeter. Restored small pyramids and
   // their complete original bases remain outside this walkable boundary.
