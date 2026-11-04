@@ -370,7 +370,7 @@ async function boot() {
   // a card down. Both ends of the press must miss the cards and controls,
   // so a drag that wanders off a card does not count and text on a card
   // stays selectable.
-  const keepsOpen = target => target.closest('.work-deck > li, .about, .world-directory, button, a, form');
+  const keepsOpen = target => target.closest('.work-deck > li, .about, .world-directory, [data-panel-content], button, a, form');
   let pressedOutside = false;
   panel.addEventListener('pointerdown', e => { pressedOutside = !keepsOpen(e.target); });
   panel.addEventListener('click', e => { if (pressedOutside && !keepsOpen(e.target)) closePage(); });

@@ -56,14 +56,13 @@ try {
     __home.openPage(id);
     await new Promise(r => setTimeout(r, 350));
   }, id);
-  await check('crystal control changes the actual animation state', async () => {
+  await check('music station is ready without playing automatically', async () => {
     await atStation('plaza');
-    const prior = await page.evaluate(() => __home.world.foyer.rotating);
-    await page.locator('#panel [data-foyer-action="crystal"]').click();
-    assert.equal(await page.evaluate(() => __home.world.foyer.rotating), !prior);
-    const rotation = await page.evaluate(() => __home.world.foyer.crystal.rotation.y);
+    assert.equal(await page.locator('#courtyard-audio').evaluate(a => a.paused), true);
+    assert.equal(await page.locator('[data-music-frame]').count(), 0);
+    const rotation = await page.evaluate(() => __home.world.foyer.record.rotation.y);
     await page.waitForTimeout(200);
-    assert.equal(await page.evaluate(() => __home.world.foyer.crystal.rotation.y), rotation);
+    assert.equal(await page.evaluate(() => __home.world.foyer.record.rotation.y), rotation);
     await page.locator('#panel .close').click();
   });
   await check('observatory changes the engine time of day', async () => {

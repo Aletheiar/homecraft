@@ -22,6 +22,61 @@ follow-up work; functional acceptance does not certify those areas.
 - The pyramid slope, entry and capstone supply walking/landing surfaces.
   Low raised surfaces beside water can now hand walking movement to the pool;
   high outside ledges and airborne movement do not trigger this short dive.
+- The former wind crystal is now a walnut music console with speakers, a
+  turntable and an interactive sign. Its card accepts NetEase playlists and
+  multiple local audio files. The observatory has not been replaced yet.
+
+## Music station
+
+The default playlist is the owner's `18559092586`, configured in
+`world/music-source.js`. Only the playlist ID is saved; sharing tokens are
+discarded. Loading the official player requires an explicit click and uses
+`auto=0`. No music service is contacted on initial arrival.
+
+Local playback uses a persistent native audio element: play/pause, seeking,
+volume, a selectable queue, previous/next and automatic advance. Closing or
+reopening cards preserves this element and the remote iframe. Switching
+sources stops the other source, and a stop button remains available outside
+the card. Files stay in the current browser tab and are not uploaded. Reloads
+and portal navigations end playback; cross-page persistence is not implemented.
+
+The record rotates only during actual local playback. The site cannot inspect
+playback inside a cross-origin NetEase frame and does not claim to do so.
+Live verification loaded the supplied playlist on desktop and at 390 px.
+However, clicking play did not advance playback or produce a media request;
+the official `st.music.163.com/browser-get/getBrowser.js` also raised a
+cross-origin `device__browser_update` error in the embed. A standalone-player
+probe did not establish playback either. NetEase integration is therefore
+available with an original-page link, but successful NetEase audio playback is
+not certified. Local audio decoding and playback were verified with real WAV
+and MP3 media; other supported formats depend on the browser's codecs.
+
+`tools/check-music.mjs` checks real local playback, queue changes, end-of-track
+advance, record animation, source isolation, invalid links, persistence across
+card closure, and desktop/mobile layout. The external response in this suite
+is a deterministic fixture: it verifies integration, not NetEase streaming.
+
+## Door-top descent regression
+
+Descending above the west doorway at offsets near +/-3.8 to +/-4.6 m could
+leave the player stuck. The imported surface drops from a door ledge toward
+the hall floor. While falling, the player still called the ground-walking
+solver using that landing floor's height, so the adjacent low glass rejected
+horizontal movement even while the body was above it.
+
+Air movement now checks collisions at the body's actual height and refreshes
+the floor below after horizontal movement. This fixes the fall rather than
+altering the imported model, doorway, pool geometry or shoreline rules.
+`tools/check-entry-descent.mjs` reproduced 20 failures in 38 routes before the
+fix. It covers both sides of the doorway, its centre and neighboring ordinary
+slopes at desktop/mobile widths, plus the real W-key input path.
+
+The 2026-11-04 acceptance passed the complete standalone suite, including 42
+Node tests and 40 door-top descent checks. The added music and descent checks
+also passed with software rendering. Native sign clicks open the music card,
+and actual WAV/MP3 playback was verified at both viewport widths. The static
+build passed. Existing scenery still exceeds the triangle budget; external
+NetEase streaming retains the limitation described above.
 
 ## Shoreline regression
 
@@ -85,7 +140,8 @@ npm run check:all -- http://127.0.0.1:8765/
 
 The full command runs site checks, all Node test files, desktop/mobile startup,
 the courtyard, space journeys, all seven pools, portal/profile integration,
-camera regression, both history paths and the raised-shore regression. It
+camera regression, both history paths, the raised-shore and door-top descent
+regressions, and the music station. It
 stops on any failing command. Reports and screenshots are in `tools/.check/`
 and are ignored by Git.
 
@@ -143,9 +199,14 @@ The owner supplied these requests on 2026-11-04:
 - [ ] Add a pattern to the empty forecourt in front of the pyramid. Decide the
   artwork, coverage and palette before implementation; keep the west entrance,
   paths and pool edges clear.
-- [ ] Redesign both interactive forecourt props: the crystal and observatory
-  are currently too simple. Define their visual form, purpose and feedback
-  together before building replacements.
+- [x] Replace the crystal with the courtyard music console. NetEase streaming
+  remains subject to the external-player limitation above.
+- [ ] Replace the observatory with a visitor-message location. The proposed
+  design is a postcard kiosk with a short message, optional nickname and date,
+  plus readable previous messages. Shared messages require persistent storage
+  accessible by other visitors. The current site has no such backend;
+  localStorage would only show messages in the same browser. This is a proposal,
+  not an implemented guestbook or a deployed service.
 
-These are a future design pass. No room redesign, new floor artwork or prop
-replacement was implemented during the shoreline fix.
+The room redesign, floor artwork and postcard kiosk remain future work. The
+music console was implemented after the earlier shoreline closeout.

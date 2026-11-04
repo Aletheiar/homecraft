@@ -21,6 +21,6 @@ export const STATIONS = [
   // The fan artwork hangs above the hall, so this station stands on the floor
   // below it: the card is what the visitor reads, the painting is what they see.
   { id: 'miku', name: '玻璃之下', en: 'Miku', icon: 'about', at: [-2.4, .4], look: [1, 0] },
-  { id: 'plaza', name: '风中的晶体', en: 'Crystal', icon: 'map', at: [-20, -6.4], look: [-22.4, -6.4] },
+  { id: 'plaza', name: '庭院音乐台', en: 'Music', icon: 'map', at: [-20, -6.4], look: [-22.4, -6.4] },
   { id: 'observatory', name: '庭院观测台', en: 'Observatory', icon: 'map', at: [-20, 7.2], look: [-22.4, 7.2] },
 ].map(s => ({ ...s, at: s.at.map(n => n * 1.25), look: s.look.map(n => n * 1.25) }));

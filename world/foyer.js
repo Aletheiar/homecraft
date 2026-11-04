@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { canvasTexture } from '@engine/world/textures.js';
+import { createMusicStation } from './music.js';
 
 export function buildFoyer(layer) {
   const B = new BoxBatch(layer), planes = [], obstacles = [], hotspots = [];
-  const state = { rotating: true, crystal: null };
+  const state = { record: null };
   function plinth(id, x, z, title, subtitle, tint) {
     B.box(x, .02, z, 2.6, .55, 2.6, { tex: 'travertine' });
     B.box(x, .57, z, 2.7, .1, 2.7, { tex: 'paint', tint });
@@ -18,9 +19,26 @@ export function buildFoyer(layer) {
     sign.position.set(x + 1.5, 1.4, z); sign.rotation.y = Math.PI / 2; planes.push(sign);
     hotspots.push({ id, box: new THREE.Box3(new THREE.Vector3(x - 1.5, 0, z - 1.5), new THREE.Vector3(x + 1.8, 3.4, z + 1.5)) });
   }
-  plinth('plaza', -28, -8, '风中的晶体', '点击查看', 0x78bbb0);
-  const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(.9), new THREE.MeshStandardMaterial({ color: 0x6ad4ce, roughness: .25, metalness: .35 }));
-  crystal.position.set(-28, 2.2, -8); crystal.name = 'foyer-crystal'; planes.push(crystal); state.crystal = crystal;
+  plinth('plaza', -28, -8, '庭院音乐台', '网易云歌单 · 本地唱片', 0x526853);
+  // A walnut console, paired speakers and a brass tonearm, all inside the
+  // previous sculpture's footprint. Most details share the furniture batches.
+  B.box(-28, .67, -8, 1.85, .62, 2.16, { tex: 'walnut' });
+  B.box(-28, 1.29, -8, 1.95, .1, 2.25, { tex: 'oak' });
+  for (const z of [-8.77, -7.23]) {
+    B.box(-28, 1.39, z, 1.05, .56, .51, { tex: 'walnut' });
+    B.box(-27.46, 1.44, z, .025, .43, .41, { tex: 'black_metal' });
+    for (let i = 0; i < 5; i++) B.box(-27.44, 1.48 + i * .075, z, .025, .025, .35, { tex: 'paint', tint: 0x8b805d });
+  }
+  B.box(-27.05, .81, -8, .04, .29, 1.47, { tex: 'black_metal' });
+  for (let i = 0; i < 7; i++) B.box(-27.02, .85, -8.6 + i * .2, .035, .2, .045, { tex: 'paint', tint: i % 2 ? 0xac8a53 : 0x6c876e });
+  B.box(-28.39, 1.4, -7.56, .1, .08, .12, { tex: 'paint', tint: 0xbca26a });
+  B.box(-28.18, 1.48, -7.65, .47, .035, .04, { tex: 'paint', tint: 0xbca26a }, { ry: -.45 });
+  B.box(-27.96, 1.46, -7.75, .12, .065, .08, { tex: 'black_metal' });
+  const record = new THREE.Group(); record.position.set(-28, 1.42, -8); record.name = 'foyer-record';
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(.52, .52, .035, 24), new THREE.MeshStandardMaterial({ color: 0x17221c, roughness: .5 }));
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(.17, .17, .038, 16), new THREE.MeshStandardMaterial({ color: 0xb99b60, roughness: .8 }));
+  // The asymmetric label makes real rotation visible from above.
+  label.position.set(.035, .012, 0); record.add(disc, label); planes.push(record); state.record = record;
   plinth('observatory', -28, 9, '庭院观测台', '清晨 · 黄昏 · 星夜', 0xc7ac72);
   B.box(-28, .67, 9, 1.3, .06, 1.3, { tex: 'black_metal' });
   for (let i = 0; i < 8; i++) {
@@ -36,16 +54,13 @@ export function buildFoyer(layer) {
 }
 
 export function attachFoyerControls(state) {
+  const music = createMusicStation(document.querySelector('#panel'));
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-foyer-action]');
     if (!button) return;
-    if (button.dataset.foyerAction === 'crystal') {
-      state.rotating = !state.rotating;
-      button.textContent = state.rotating ? '暂停晶体旋转' : '继续晶体旋转';
-      button.setAttribute('aria-pressed', String(!state.rotating));
-    } else if (button.dataset.foyerAction === 'time') {
+    if (button.dataset.foyerAction === 'time') {
       window.__home?.setTimeMode(button.dataset.time);
     }
   });
-  return { update(dt = 0) { if (state.rotating && dt > 0) state.crystal.rotation.y += dt * .4; } };
+  return { update(dt = 0) { if (music.playing && dt > 0 && state.record.visible) state.record.rotation.y += dt * 1.4; } };
 }
