@@ -5,14 +5,14 @@ import { mergeGeometries } from '../vendor/three/addons/utils/BufferGeometryUtil
 // and near-black engraving: the graduations have to survive the distance
 // between the west entrance and the centre of the hall.
 const BRASS = 0xb9975f, LIP = 0xdcc28c, SHOULDER = 0x8f7444, FACE = 0xad8e58,
-  RIM = 0xe8d1a0, ENGRAVED = 0x453921, BOLT = 0xe8d2a4, HUB = 0xd2b47c;
+  RIM = 0xf2ddaf, ENGRAVED = 0x453921, BOLT = 0xf0dbb2, HUB = 0xd2b47c;
 
 // Three graduated bands turning on real gimbal axles. A hoop is only unchanged
 // by a spin about its own normal, so every band is instead pinned through two
 // rim points and turns about that diameter: it tumbles like a coin, and the
 // bearing that pins it sits on the rim the band already has, which leaves the
 // floating crystal a clear sphere and keeps the hardware honest.
-export function createArmillary({ center, radii, tube, band, core, spin }, plinthTop) {
+export function createArmillary({ center, radii, tube, band, core, spin, glow }, plinthTop) {
   const group = new THREE.Group(); group.name = 'hall-exhibit'; group.position.set(0, plinthTop, 0);
   // Fixed mounting, then one geometry per band: each band has to turn on its
   // own axle, so each one is merged separately.
@@ -185,7 +185,9 @@ export function createArmillary({ center, radii, tube, band, core, spin }, plint
     // this bearing, so the flange, collar and nut carry the whole node.
   }
 
-  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .5, metalness: .4 });
+  // Polished but not mirror-like: a tighter highlight on the machined rims and
+  // a little more metal, with no environment map and no emission of its own.
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .42, metalness: .36 });
   function merged(parts, name, shadow) {
     const geometry = mergeGeometries(parts); parts.forEach(p => p.dispose());
     geometry.computeBoundingBox(); geometry.computeBoundingSphere();
@@ -220,9 +222,13 @@ export function createArmillary({ center, radii, tube, band, core, spin }, plint
     }
   }
   shell.setAttribute('color', new THREE.BufferAttribute(shadesArray, 3));
+  // The glow is emissive only: no bloom, no shell, no extra light. A faint
+  // slow breath on two intensities is the whole "live core" effect, and each
+  // frame only writes a number, so nothing is allocated after construction.
+  const CRYSTAL_GLOW = .44, KERNEL_GLOW = 1.3;
   const crystal = new THREE.Mesh(shell, new THREE.MeshStandardMaterial({
-    vertexColors: true, transparent: true, opacity: .8, roughness: .18, metalness: .04,
-    emissive: 0x2e6b62, emissiveIntensity: .36, flatShading: true, depthWrite: false,
+    vertexColors: true, transparent: true, opacity: .76, roughness: .18, metalness: .04,
+    emissive: 0x2e7a70, emissiveIntensity: CRYSTAL_GLOW, flatShading: true, depthWrite: false,
   }));
   crystal.name = 'armillary-core'; crystal.position.y = center;
 
@@ -240,7 +246,7 @@ export function createArmillary({ center, radii, tube, band, core, spin }, plint
   }
   const innerMesh = new THREE.Mesh(mergeGeometries(kernel), new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: .3, metalness: .03, flatShading: true,
-    emissive: 0x37907f, emissiveIntensity: .5,
+    emissive: 0x54cbbb, emissiveIntensity: KERNEL_GLOW,
   }));
   kernel.forEach(g => g.dispose());
   innerMesh.name = 'armillary-core-inner'; crystal.add(innerMesh);
@@ -249,13 +255,14 @@ export function createArmillary({ center, radii, tube, band, core, spin }, plint
   outline[0].applyMatrix4(new THREE.Matrix4().makeScale(1.004, 1.004, 1.004));
   outline[1].applyMatrix4(new THREE.Matrix4().makeRotationZ(.34).multiply(new THREE.Matrix4().makeRotationY(.62)));
   const edges = new THREE.LineSegments(mergeGeometries(outline), new THREE.LineBasicMaterial({
-    color: 0xd6fff3, transparent: true, opacity: .45, depthWrite: false,
+    color: 0xd6fff3, transparent: true, opacity: .56, depthWrite: false,
   }));
   outline.forEach(g => g.dispose());
   edges.name = 'armillary-core-edges'; crystal.add(edges); group.add(crystal);
 
   // One accumulated clock drives all four turns; each angle is reduced to
-  // [0, 2pi) so nothing drifts after hours of idling.
+  // [0, 2pi) so nothing drifts after hours of idling. The same clock carries
+  // the crystal breath, which only writes two numbers per frame.
   let elapsed = 0;
   const tau = Math.PI * 2;
   return { mesh: group, update(dt = 0) {
@@ -265,5 +272,8 @@ export function createArmillary({ center, radii, tube, band, core, spin }, plint
     gimbal.rotation.y = (elapsed * tau / spin.middle) % tau;
     innerSpin.rotation.x = (elapsed * tau / spin.inner) % tau;
     crystal.rotation.y = (elapsed * tau / spin.core) % tau;
+    const breath = 1 + glow.depth * Math.sin(elapsed * tau / glow.breath);
+    crystal.material.emissiveIntensity = CRYSTAL_GLOW * breath;
+    innerMesh.material.emissiveIntensity = KERNEL_GLOW * breath;
   } };
 }

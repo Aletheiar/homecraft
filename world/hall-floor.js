@@ -18,14 +18,19 @@ const SEAM_Y = PAVING + .006;
 const EMBLEM_Y = PAVING + .012;
 
 // Multiplied into the floor, so these are "how much darker than the stone":
-// a few percent for the medallion, about a quarter for the inlay lines. The
-// palette stays a low-saturation pale gold grey so it reads as inlaid stone
-// and brass rather than as paint.
+// a few percent for the medallion, a tenth for the inlay lines. The palette
+// stays a low-saturation pale gold grey so it reads as inlaid stone and brass
+// rather than as paint, and it sits close to the paving tone on purpose: the
+// emblem should be a lit metal wire in the stone, not a painted pattern.
 const MEDALLION = '#f5f0e4';
 const OUTER = '#c0b39a';
 const HAIRLINE = '#ded8c9';
 const INNER = '#b9ad97';
 const DIAL = '#c2b294';
+// The catch-light along a principal ring. It cannot be painted into the
+// multiplied texture (that one can only darken the stone), so the lit lines
+// live in a second, additively blended decal at a tenth of full strength.
+const SHINE = '#e8cf9e';
 
 function paintEmblem(ctx, w, h) {
   const cx = w / 2, cy = h / 2, px = w / (HALL_EMBLEM.radius * 2);
@@ -39,7 +44,7 @@ function paintEmblem(ctx, w, h) {
   // outer ring so the circle is legible from across the hall.
   ctx.beginPath(); ctx.arc(cx, cy, (radius - .3) * px, 0, Math.PI * 2);
   ctx.fillStyle = MEDALLION; ctx.fill();
-  // Outer construction ring: two hairlines, the inner one much fainter.
+  // Outer construction ring: the inlay, then a much fainter second hairline.
   ring(radius - .34, .09, OUTER);
   ring(radius - .62, .02, HAIRLINE);
   // A guide ring between the two circles, as a plan keeps its setting-out.
@@ -61,9 +66,11 @@ function paintEmblem(ctx, w, h) {
     ctx.lineTo(cx + Math.cos(a) * 2.69 * px, cy + Math.sin(a) * 2.69 * px);
     ctx.stroke();
   }
-  ctx.strokeStyle = '#bfae8e'; ctx.lineWidth = .018 * px;
+  // Thirty-two fine ticks; the eight on the ordinals carry a touch more metal.
+  ctx.lineWidth = .018 * px;
   for (let i = 0; i < 32; i++) {
     const a = i * Math.PI / 16, r0 = i % 4 === 0 ? 2.31 : 2.36, r1 = 2.43;
+    ctx.strokeStyle = '#bfae8e';
     ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0 * px, cy + Math.sin(a) * r0 * px);
     ctx.lineTo(cx + Math.cos(a) * r1 * px, cy + Math.sin(a) * r1 * px); ctx.stroke();
   }
@@ -94,6 +101,37 @@ function paintEmblem(ctx, w, h) {
     ctx.moveTo(cx + Math.cos(a) * 1.40 * px, cy + Math.sin(a) * 1.40 * px);
     ctx.lineTo(cx + Math.cos(a) * 2.52 * px, cy + Math.sin(a) * 2.52 * px); ctx.stroke();
   }
+}
+
+// The additive layer: only the principal rings, the four instrument axes, the
+// eight ordinal ticks and the twelve major dial marks catch the light. It is
+// static — no running highlight, no rotation — so the inlay reads as brass
+// wire set in stone rather than as a lit pattern. One extra draw call, no
+// per-frame cost, and the multiplied layer keeps the contrast.
+function paintShine(ctx, w, h) {
+  const cx = w / 2, cy = h / 2, px = w / (HALL_EMBLEM.radius * 2);
+  const radius = HALL_EMBLEM.radius;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = SHINE;
+  const ring = (r, width) => {
+    ctx.beginPath(); ctx.arc(cx, cy, r * px, 0, Math.PI * 2);
+    ctx.lineWidth = width * px; ctx.stroke();
+  };
+  ring(radius - .34, .052);
+  ring(2.95, .012);
+  ring(2.72, .01);
+  ring(2.5, .026);
+  ring(2.24, .013);
+  const spoke = (a, r0, r1, width) => {
+    ctx.lineWidth = width * px;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r0 * px, cy + Math.sin(a) * r0 * px);
+    ctx.lineTo(cx + Math.cos(a) * r1 * px, cy + Math.sin(a) * r1 * px);
+    ctx.stroke();
+  };
+  for (let i = 0; i < 4; i++) spoke(i * Math.PI / 2, 1.40, 2.52, .013);
+  for (let i = 0; i < 8; i++) spoke(i * Math.PI / 4, 2.31, 2.43, .01);
+  for (let i = 0; i < 72; i += 6) spoke(i * Math.PI / 36, 2.53, 2.69, .012);
 }
 
 // A pale seam from the emblem edge toward (tx, tz), rotated to its direction.
@@ -133,5 +171,20 @@ export function buildHallFloor(layer) {
   emblem.position.set(x, EMBLEM_Y, z);
   emblem.renderOrder = 1;
   planes.push(emblem);
+  // The lit wire, one millimetre above the inlay and framed to the same square
+  // so both decals map exactly onto the same circle.
+  const shine = new THREE.Mesh(
+    new THREE.PlaneGeometry(radius * 2, radius * 2),
+    new THREE.MeshBasicMaterial({
+      map: canvasTexture(1024, 1024, paintShine, { pixelated: false }),
+      blending: THREE.AdditiveBlending, transparent: true, opacity: .18,
+      depthWrite: false, toneMapped: false,
+    }),
+  );
+  shine.name = 'hall-emblem-shine';
+  shine.rotation.x = -Math.PI / 2;
+  shine.position.set(x, EMBLEM_Y + .001, z);
+  shine.renderOrder = 2;
+  planes.push(shine);
   return { batches: { hallFloor: B }, planes };
 }

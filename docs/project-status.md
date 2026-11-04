@@ -20,10 +20,14 @@ implementation checkpoints.
 - The local central exhibit follows the larger plan A armillary design: three
   graduated brass bands, a cyan crystal with an inner kernel and edge ribs, a
   bolted bed-plate with a four-arm fork, two stone tiers and restrained
-  circular inlay. It is committed locally but not uploaded. See the
+  circular inlay, carrying a restrained museum glow: the crystal lights from
+  its inner kernel and breathes on a five-second cycle, the plinth corners hold
+  dim amber panes, and the floor emblem gains one additive catch-light. It is
+  committed locally but not uploaded. See the
   [implementation and checks](research/2026-11-04-armillary-plan-a.md), the
-  [precision pass](research/2026-11-04-armillary-precision.md) and the
-  [motion pass](research/2026-11-05-armillary-motion.md).
+  [precision pass](research/2026-11-04-armillary-precision.md), the
+  [motion pass](research/2026-11-05-armillary-motion.md) and the
+  [glow pass](research/2026-11-05-armillary-glow.md).
 
 - Three matching west-facing doors lead to the library, `/friends/` directory
   and `/about/` profile: the reading room closes the hall axis from the east,
@@ -52,7 +56,11 @@ implementation checkpoints.
   five-degree floor dial; the motion pass pins each band on a diametral axle
   carried by the next hoop out, so the outer band turns once in 20 s, the
   middle in 40 s, the inner in 60 s and the crystal in 10 s, while the mounting
-  stays still. See the scoped
+  stays still. The glow pass keeps every lamp in the shader: the crystal is
+  emissive with a breathing kernel, the four corner lanterns are dim emissive
+  panes that light nothing, the emblem adds one static additive wire layer, and
+  the brass is retuned to darker roughness with brighter rims. No light was
+  added to the scene. See the scoped
   [plan A record](research/2026-11-04-armillary-plan-a.md) and
   [precision pass](research/2026-11-04-armillary-precision.md) and
   [motion pass](research/2026-11-05-armillary-motion.md).

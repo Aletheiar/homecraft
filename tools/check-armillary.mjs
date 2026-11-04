@@ -85,12 +85,20 @@ try {
           span:Math.max(box.max.x-box.min.x,box.max.z-box.min.z),
           nested:gimbal.parent===outer&&innerSpin.parent===gimbal});
       }
+      // The crystal glow is emissive only: sample the breath across ten
+      // half-second steps and count what actually glows in the exhibit.
+      const shell=core.material,kernelMaterial=core.getObjectByName('armillary-core-inner').material,breathe=[];
+      for(let i=0;i<20;i++){h.world.exhibit.update(.5);breathe.push(shell.emissiveIntensity)}
+      let glowMeshes=0;group.traverse(o=>{if(o.isMesh&&o.material.emissive&&o.material.emissive.getHex()!==0)glowMeshes++});
+      const shine=h.stage.scene.getObjectByName('hall-emblem-shine');
+      const glow={lo:Math.min(...breathe),hi:Math.max(...breathe),kernelKernel:kernelMaterial.emissiveIntensity>shell.emissiveIntensity,glowMeshes,
+        shine:!!shine,shineAdditive:!!shine&&shine.material.blending===THREE.AdditiveBlending,shineOpacity:shine?shine.material.opacity:0};
       h.player.teleport(-2.2,0);let peak=0;
       for(let i=0;i<90;i++){h.player.update(1/60,{x:1,z:0,run:false},0);h.extras.update(1/60);peak=Math.max(peak,h.player.y)}
       const crossing={x:h.player.pos.x,y:h.player.y,peak};
       let oldCones=0,lights=0;group.traverse(o=>{if(o.geometry?.type==='ConeGeometry')oldCones++;if(o.isLight)lights++});
       let triangles=0;group.traverse(o=>{if(o.isMesh)triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;});
-      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
+      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,glow,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
     });
     report.push({viewport,state,errors});
     assert.ok(state.installed, 'The new instrument state is exported to the real update loop');
@@ -102,6 +110,14 @@ try {
     assert.ok(state.cycle.every(s=>s.span<2.75&&s.top<3.5),'The turning bands stay inside the plinth footprint and under the ceiling line');
     assert.ok(Math.max(...state.cycle.map(s=>s.top))>3.2,'The instrument still fills the hall at some phase of its cycle');
     assert.deepEqual(state.period, { outer: 20, middle: 40, inner: 60, core: 10 });
+    // A quiet core: the glow breathes, nothing else in the exhibit glows, and
+    // the floor's catch-light is additive rather than a light source.
+    assert.ok(state.glow.hi > state.glow.lo, 'The crystal does not breathe');
+    assert.ok(state.glow.hi / state.glow.lo > 1.05 && state.glow.hi / state.glow.lo < 1.2, 'The breath is no longer shallow');
+    assert.equal(state.glow.glowMeshes, 2, 'Only the glass shell and its kernel glow');
+    assert.ok(state.glow.kernelKernel, 'The inner layer is the brighter one');
+    assert.ok(state.glow.shine && state.glow.shineAdditive, 'The floor emblem keeps its lit metal wire');
+    assert.ok(state.glow.shineOpacity > 0 && state.glow.shineOpacity <= .25, 'The floor catch-light stays a whisper');
     assert.ok(state.rotation.every((r,i)=>Math.abs(r-state.expectedHalf[i])<1e-9),'Every band turns on its own axle at its own period');
     assert.ok(state.cycle.every(s=>s.still&&s.nested&&s.coreClear&&s.supportClear&&s.delta.every((d,k)=>Math.abs(d-s.expected[k])<1e-9)),'The support stays fixed, the axles stay nested and the 120 s cycle clears the crystal and the sight line');
     // A tumbling hoop of this size crosses the high sight line to the reading

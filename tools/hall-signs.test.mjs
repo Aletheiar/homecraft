@@ -169,6 +169,69 @@ test('each band turns on its own axle, at its own period, and nothing else moves
   assert.ok(half.every((d, i) => Math.abs(d - want[i]) < 1e-9), 'the motion steps by time, not by frames');
 });
 
+test('the crystal glows from inside and breathes without ever being a lamp', () => {
+  const instrument = hall.exhibit.mesh;
+  const glow = HALL_EXHIBIT.armillary.glow;
+  assert.deepEqual(glow, { breath: 5, depth: .07 });
+  const core = instrument.getObjectByName('armillary-core');
+  const kernel = instrument.getObjectByName('armillary-core-inner');
+  const edges = instrument.getObjectByName('armillary-core-edges');
+  assert.ok(kernel?.isMesh && kernel.parent === core, 'the lit kernel sits inside the glass shell');
+  assert.ok(core.material.emissive.getHex() !== 0, 'the shell carries its own colour, not a lamp');
+  assert.ok(core.material.emissiveIntensity > .2 && core.material.emissiveIntensity < .8);
+  assert.ok(kernel.material.emissiveIntensity > core.material.emissiveIntensity, 'the inner core is the brighter layer');
+  // Breathing: one slow cycle, a few percent either side, and no flicker. It
+  // is sampled over 10 s so both the crest and the trough are seen.
+  const base = { shell: core.material.emissiveIntensity, kernel: kernel.material.emissiveIntensity };
+  const seen = [];
+  for (let i = 0; i < 20; i++) {
+    hall.exhibit.update(.5);
+    seen.push(core.material.emissiveIntensity / base.shell);
+  }
+  const low = Math.min(...seen), high = Math.max(...seen);
+  assert.ok(high - low > .05 && high - low < .3, 'the breath is present but shallow');
+  // The ratio between crest and trough is independent of the instant the
+  // sample base happens to fall on, so it is what the depth is checked against.
+  const spread = high / low, want = (1 + glow.depth) / (1 - glow.depth);
+  assert.ok(Math.abs(spread - want) < .01, 'the breath follows its configured depth');
+  const kernelRatio = kernel.material.emissiveIntensity / base.kernel;
+  assert.ok(Math.abs(kernelRatio - seen[seen.length - 1]) < 1e-9, 'the shell and the kernel breathe together');
+  assert.ok(edges?.isLineSegments, 'the edge wires stay available to catch the glow');
+  // Nothing else in the exhibit is emissive, so the glow stays a core effect.
+  let emissive = 0;
+  instrument.traverse(o => { if (o.isMesh && o.material.emissive && o.material.emissive.getHex() !== 0) emissive++ });
+  assert.equal(emissive, 2, 'only the glass shell and its kernel are emissive; the brass never glows');
+});
+
+test('the plinth corners carry dim warm panes and the floor emblem gains one lit wire layer', () => {
+  const position = new THREE.Vector3();
+  const atCorner = i => {
+    position.setFromMatrixPosition(i.matrix);
+    return Math.abs(Math.abs(position.x) - 1.19) < 1e-6 && Math.abs(Math.abs(position.z) - 1.19) < 1e-6;
+  };
+  const lamps = hall.batches.hall.items.opaque.filter(i => atCorner(i) && i.emissive > 0);
+  assert.equal(lamps.length, 4, 'one lantern pane in each corner');
+  for (const lamp of lamps) {
+    assert.ok(Math.abs(lamp.emissive - HALL_EXHIBIT.lantern.emissive) < 1e-9, 'every corner burns at the same value');
+    assert.ok(lamp.emissive > .3 && lamp.emissive <= .6, 'the pane stays a decoration, not a streetlight');
+    const { r, g, b } = lamp.color;
+    assert.ok(r > g && g > b, 'the pane is warm amber rather than white');
+    assert.equal(lamp.shadow, false, 'an emissive pane casts no shadow of its own');
+  }
+  // The floor keeps its multiplied inlay and adds exactly one additive layer,
+  // so the wire catches light without a light being added to the scene.
+  assert.deepEqual(floor.planes.map(p => p.name), ['hall-emblem', 'hall-emblem-shine']);
+  const [inlay, shine] = floor.planes;
+  assert.equal(inlay.material.blending, THREE.MultiplyBlending);
+  assert.equal(shine.material.blending, THREE.AdditiveBlending);
+  assert.ok(shine.material.opacity <= .25, 'the catch-light is a whisper');
+  assert.ok(shine.material.transparent && shine.material.depthWrite === false, 'nothing writes depth, so nothing z-fights');
+  assert.ok(shine.position.y > inlay.position.y, 'the lit layer sits above the inlay');
+  const lights = [];
+  for (const plane of floor.planes) plane.traverse?.(o => { if (o.isLight) lights.push(o) });
+  assert.equal(lights.length, 0, 'the emblem ships no light of its own');
+});
+
 test('the centre plinth leaves a wide walk around it and both sides of the lane open', () => {
   const navs = nav();
   for (const x of [-14, -8, -4, -2.5, 2.5, 6, 9.5]) assert.ok(navs.canStand(x, 0), `centre lane blocked at ${x},0`);
