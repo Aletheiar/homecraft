@@ -489,6 +489,8 @@ async function boot() {
     const hit = new THREE.Vector3();
     for (const h of hotspots) {
       if (!ray.ray.intersectBox(h.box, hit)) continue;
+      // Optional precise picking for a fixture whose own parts can occlude it.
+      if (h.hitTest && !h.hitTest(ray.ray)) continue;
       const t = hit.distanceTo(o);
       if (block && t > block.t + 0.35) continue;
       if (!best || t < best.t) best = { t, h };

@@ -7,11 +7,41 @@ import. The current courtyard, portals, profile, friend directory and guestbook 
 implemented. Content, rendering budgets and public deployment are separate
 follow-up work; functional acceptance does not certify those areas.
 
+The 2026-11-04 hall integration includes the latest crouched Devil Room
+sculpture, three-door layout and entrance buffer, central armillary, and
+industrial GitHub workstation. Full local acceptance passes with 55 Node
+tests and all browser suites. See the
+[integration record](research/2026-11-04-hall-release.md) for scope and
+validation. Earlier local-only publication notes describe their original
+implementation checkpoints.
+
 ## Current implementation
 
-- Four matching west-facing doors lead to the library, studio, `/friends/`
-  directory and `/about/` profile. Dock buttons approach doors; walking through
-  either face enters them. Reading cards remain clickable.
+- Three matching west-facing doors lead to the library, `/friends/` directory
+  and `/about/` profile: the reading room closes the hall axis from the east,
+  the directory and profile doors flank the west entrance. Dock buttons approach
+  doors; walking through either face enters them. Reading cards remain
+  clickable. The studio has no door in the hall; its card link still opens the
+  studio room directly.
+- The hall is laid out as a museum foyer: a compass-and-pyramid floor emblem
+  under the low plinth and armillary exhibit, an industrial three-screen
+  workstation in the north-east corner (the main display opens the owner's
+  GitHub profile through the existing external-link path) and a two-bench
+  lounge in the south-east corner. The workstation adds a ventilated PC,
+  short server rack, keyboard, headphones and dark seat within its original
+  corner; its terminal and hardware panels are explicitly decorative simulations.
+  Precise picking rejects rays occluded by either auxiliary display housing.
+  The other furniture, planters and shelves keep their walnut/travertine
+  vocabulary and the walking lanes stay clear. See the scoped
+  [workstation record](research/2026-11-04-netrunner-workstation.md).
+  The exhibit plinth is real floor
+  height (`layout.js` `floorAt`), not a collider: a visitor steps onto it and
+  jumps or flies over the glass pyramid, so the display never bristles with an
+  invisible column. The armillary replaces the former small glass pyramid:
+  three matte bronze rings surround a pale cyan octahedral core, with slow
+  rotation driven through the exported exhibit update state. The existing
+  stone base and floor remain unchanged. See the scoped
+  [replacement record](research/2026-11-04-central-armillary.md).
 - The violet transition uses a shared boot script. Return checkpoints preserve
   the approach side; both BFCache and reloaded browser history are checked.
 - The former friend lounge is replaced by a data-driven HTML directory. Its
@@ -277,6 +307,10 @@ Updating GitHub source does not constitute deployment.
 
 The owner supplied these requests on 2026-11-04:
 
+- [x] Redesign the glass pyramid hall interior: three doors, a centre floor
+  emblem and exhibit, the north-east workbench and the south-east lounge. The
+  studio door was removed from the hall; studio content stays reachable from
+  its reading card.
 - [ ] Update the spaces inside the portals, starting with the library and
   studio layouts, furnishings and content presentation. Preserve navigation,
   return behavior and mobile access.

@@ -14,6 +14,7 @@ import { buildFoyer, attachFoyerControls } from './foyer.js';
 import { buildGallery } from './gallery.js';
 import { buildStatues } from './statues.js';
 import { buildForecourt } from './forecourt.js';
+import { attachWorkstationControls } from './workstation.js';
 
 export function build({ grid, layer, scene, stage }) {
   // The imported shell is dense enough to shadow itself across the flat courtyard
@@ -66,13 +67,14 @@ export function build({ grid, layer, scene, stage }) {
   // sampler answers undefined and the analytic cone stands in for it.
   useShellSurface((x, z) => pyramidState.shellTop ? pyramidState.shellTop(x, z) : undefined);
   loadPyramid(scene, stage.renderer);
-  return { ...hall, batches: { ...hall.batches, ...floor.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata, exhibit: hall.exhibit } };
+  return { ...hall, batches: { ...hall.batches, ...floor.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata, exhibit: hall.exhibit, workstation: hall.workstation } };
 }
 
 export function setup({ player, rig, stage, world }) {
   let introduced = false, lastMessage = '', lastSafeX = SPAWN.x, lastSafeZ = SPAWN.z;
   // Only the central instrument rotates; the plinth and hall remain fixed.
   const exhibit = world.exhibit;
+  const workstation = attachWorkstationControls(world.workstation, { stage, rig, player });
   const leave = gate => {
     saveHubReturn(player, rig, gate);
     history.replaceState({ ...history.state, hubReturnPending: true }, '', location.href);
@@ -146,6 +148,7 @@ export function setup({ player, rig, stage, world }) {
       else if (player.mode === 'ground') { lastSafeX = player.pos.x; lastSafeZ = player.pos.z; }
       portals.update(dt); foyer.update(dt);
       exhibit?.update(dt);
+      world.workstation.update(dt); workstation.update();
       const message = pyramidState.error ? '模型读取失败，请刷新页面重试' : pyramidState.sceneryReady ? 'NewHeaven · 本地预览' : pyramidState.ready ? '正在载入外围景观…' : '正在载入金字塔…';
       if (message !== lastMessage) { status.textContent = message; lastMessage = message; }
       if (rig.introSkipped) introduced = true;

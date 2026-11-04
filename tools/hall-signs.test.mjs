@@ -23,6 +23,7 @@ const { HUB_PORTALS, HALL_EMBLEM, HALL_SPOTS, HALL_EXHIBIT } = await import('../
 const { createNav } = await import('../engine/world/nav.js');
 const { VoxelGrid } = await import('../engine/world/voxels.js');
 const hall = furnishHall({ walnut: 0, paint: 1, plaster: 2, bookshelf: 3, travertine: 4, linen: 5, terracotta: 6, leaves: 7, black_metal: 8, deepslate: 9 });
+const THREE = await import('three');
 const floor = buildHallFloor({ paint: 1 });
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
@@ -53,9 +54,33 @@ test('the workbench and the floor drawing are the only interior fixtures with a 
   assert.equal(hall.bakes.length, 1);
   assert.equal(hall.planes.some(p => p.name?.startsWith('hall-sign-')), false);
   const names = [...hall.planes, ...floor.planes].map(p => p.name).filter(Boolean);
-  for (const name of ['hall-exhibit', 'hall-workbench-plate', 'hall-emblem']) assert.ok(names.includes(name), `missing ${name}`);
+  for (const name of ['hall-exhibit', 'hall-workstation', 'hall-emblem']) assert.ok(names.includes(name), `missing ${name}`);
   assert.equal((index.match(/data-station="workbench"/g) || []).length, 1);
-  assert.match(index, /data-link="https:\/\/github\.com\/Aletheiar\/homecraft"/);
+  assert.match(index, /data-link="https:\/\/github\.com\/Aletheiar"/);
+});
+
+test('the workstation has three textured screens but only the main screen is clickable', () => {
+  const station = hall.workstation;
+  assert.ok(station, 'the old single monitor is replaced by a workstation');
+  assert.equal(station.screens.length, 3);
+  assert.ok(station.mesh.getObjectByName('workstation-screens').material.map.isCanvasTexture);
+  const main = station.screens.find(s => s.id === 'main');
+  const target = hall.hotspots.find(h => h.id === 'workbench').box;
+  assert.ok(target.containsPoint(main.position));
+  for (const s of station.screens.filter(s => s.id !== 'main')) assert.equal(target.containsPoint(s.position), false);
+  assert.ok(target.max.z - target.min.z < .03, 'the target hugs the main display face');
+  assert.ok(target.max.x - target.min.x <= main.width + .001);
+  assert.ok(station.mesh.getObjectByName('workstation-status-leds'));
+});
+
+test('auxiliary housings occlude the main target from an oblique side view', () => {
+  const target=hall.workstation.hotspot;
+  const origin=new THREE.Vector3(15.2,1.3,-12.73),aux=new THREE.Vector3(14.32,1.3,-12.84);
+  const ray=new THREE.Ray(origin,aux.clone().sub(origin).normalize());
+  assert.ok(ray.intersectBox(target.box,new THREE.Vector3()), 'the former box-only hit leaked through');
+  assert.equal(target.hitTest?.(ray) ?? true,false,'the auxiliary housing must reject the main-screen hit');
+  const front=new THREE.Vector3(13.3,1.32,-10.5);
+  assert.equal(target.hitTest(new THREE.Ray(front,hall.workstation.screens[0].position.clone().sub(front).normalize())),true);
 });
 
 test('the floor emblem is a quarter of the hall and never blocks a walk', () => {

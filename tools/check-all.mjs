@@ -24,7 +24,7 @@ function run(args) {
 }
 await run(['tools/check-site.mjs']);
 await run(['--test', ...readdirSync('tools').filter(name => name.endsWith('.test.mjs')).sort().map(name => `tools/${name}`)]);
-for (const name of ['check', 'check-pyramid', 'check-spaces', 'check-swimming', 'check-followup', 'check-camera', 'check-opening', 'check-history', 'check-shore', 'check-entry-descent', 'check-music', 'check-music-autoplay', 'check-guestbook', 'check-decor', 'check-forecourt', 'check-armillary']) {
+for (const name of ['check', 'check-pyramid', 'check-spaces', 'check-swimming', 'check-followup', 'check-camera', 'check-opening', 'check-history', 'check-shore', 'check-entry-descent', 'check-music', 'check-music-autoplay', 'check-guestbook', 'check-decor', 'check-forecourt', 'check-armillary', 'check-workstation']) {
   await run([`tools/${name}.mjs`, base]);
 }
 console.log('All standalone site checks passed. Rendering warnings remain informational.');
