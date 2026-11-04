@@ -169,6 +169,57 @@ test('each band turns on its own axle, at its own period, and nothing else moves
   assert.ok(half.every((d, i) => Math.abs(d - want[i]) < 1e-9), 'the motion steps by time, not by frames');
 });
 
+test('each driven band carries one short comet arc, never a glowing hoop', () => {
+  const instrument = hall.exhibit.mesh;
+  const spec = HALL_EXHIBIT.armillary.trails;
+  const outer = instrument.getObjectByName('armillary-trail-outer');
+  const middle = instrument.getObjectByName('armillary-trail-middle');
+  assert.ok(outer?.isMesh && middle?.isMesh, 'both driven bands carry a trail');
+  // The arcs hang off the turning groups, so they ride the real motion without a
+  // single per-frame write; the fixed band and the mounting stay dark.
+  assert.equal(outer.parent, instrument.getObjectByName('armillary-spin-outer'));
+  assert.equal(middle.parent, instrument.getObjectByName('armillary-gimbal'));
+  assert.equal(instrument.getObjectByName('armillary-spin-inner').children.some(o => /trail/.test(o.name ?? '')), false);
+  assert.equal(outer.material, middle.material, 'one shared additive material covers both arcs');
+  const material = outer.material;
+  assert.equal(material.blending, THREE.AdditiveBlending, 'light adds to what is behind it');
+  assert.equal(material.transparent, true);
+  assert.equal(material.depthWrite, false, 'the glow leaves no depth of its own');
+  assert.equal(material.toneMapped, false);
+  assert.equal(material.side, THREE.DoubleSide, 'the ribbon reads from both faces of the ring');
+  assert.equal(material.forceSinglePass, true, 'one draw per arc, not a back-face plus front-face pass');
+  assert.equal(outer.castShadow, false); assert.equal(middle.castShadow, false);
+  for (const [mesh, wanted] of [[outer, spec.outer], [middle, spec.middle]]) {
+    const geometry = mesh.geometry;
+    const colour = geometry.getAttribute('color');
+    assert.equal(colour.itemSize, 4, 'the fade lives in the vertex alpha channel');
+    const position = geometry.getAttribute('position');
+    const rows = 5, segs = colour.count / rows - 1;
+    assert.equal(segs, 30, 'one baked ribbon, thirty segments');
+    assert.equal(geometry.index.count / 3, 240, 'a 240-triangle arc, not a second ring');
+    const alphaAt = i => colour.getW(i * rows + 2);
+    assert.ok(alphaAt(segs) > 8 * alphaAt(0), 'the head is far brighter than the tail, so the arc has a direction');
+    // The arc spans the configured degrees and sits outside the machined rim.
+    const head = new THREE.Vector3().fromBufferAttribute(position, 2);
+    const tail = new THREE.Vector3().fromBufferAttribute(position, segs * rows + 2);
+    const chord = head.distanceTo(tail), radius = head.length();
+    const span = 2 * Math.asin(chord / (2 * radius)) * 180 / Math.PI;
+    assert.ok(Math.abs(span - wanted.arc) < 1, `arc spans ${span.toFixed(1)} degrees, wanted ${wanted.arc}`);
+    const rim = HALL_EXHIBIT.armillary.radii[[outer, middle].indexOf(mesh)];
+    assert.ok(radius > rim + HALL_EXHIBIT.armillary.band / 2, 'the arc rides clear of the rim');
+    assert.ok(radius < rim + .2, 'but stays close enough to read as part of the instrument');
+    // Pale cyan outside, warm gold inside, and never a saturated neon.
+    const r = colour.getX(segs * rows + 2), g = colour.getY(segs * rows + 2), b = colour.getZ(segs * rows + 2);
+    if (mesh === outer) assert.ok(g >= r && b >= r, 'the outer arc is pale cyan');
+    else assert.ok(r > g && g > b, 'the middle arc is warm gold');
+    assert.ok(Math.max(r, g, b) < 2, 'the arc stays under a bloom threshold; there is no bloom to feed anyway');
+  }
+  // Nothing may be rebuilt while the rings turn: the animation moves groups only.
+  const baked = [outer.geometry, middle.geometry, outer.material, middle.material];
+  for (let i = 0; i < 12; i++) hall.exhibit.update(1.7);
+  assert.deepEqual([outer.geometry, middle.geometry, outer.material, middle.material], baked, 'the arcs are baked once');
+});
+
 test('the crystal glows from inside without ever being a lamp', () => {
   const instrument = hall.exhibit.mesh;
   assert.equal(HALL_EXHIBIT.armillary.glow, undefined, 'the crystal glow is a constant, not a tuned rhythm');

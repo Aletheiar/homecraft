@@ -85,6 +85,24 @@ try {
           span:Math.max(box.max.x-box.min.x,box.max.z-box.min.z),
           nested:gimbal.parent===outer&&innerSpin.parent===gimbal});
       }
+      // The trails are baked ribbons hanging off the turning groups: they must
+      // move with their band, stay outside the rim and cost nothing per frame.
+      const trailOf=n=>h.stage.scene.getObjectByName(n);
+      const outerTrail=trailOf('armillary-trail-outer'),middleTrail=trailOf('armillary-trail-middle');
+      const trailState=n=>{const m=trailOf(n),g=m?.geometry,p=m?.parent;
+        if(!m||!g||!p)return null;const pos=g.getAttribute('position');
+        const v=new THREE.Vector3().fromBufferAttribute(pos,2);
+        return {parent:p.name,radius:+v.length().toFixed(4),tris:g.index.count/3,
+          additive:m.material.blending===THREE.AdditiveBlending,depthWrite:m.material.depthWrite,
+          straight:(()=>{const c=new THREE.Vector3().fromBufferAttribute(pos,30*5+2);
+            return Math.abs(c.length()-v.length())<1e-6;})()};};
+      const trails={outer:trailState('armillary-trail-outer'),middle:trailState('armillary-trail-middle')};
+      // Riding the band means a point on the arc swings with the band's axle, so
+      // turning the band must carry the same arc vertex around with it.
+      const arcPoint=new THREE.Vector3().fromBufferAttribute(outerTrail.geometry.getAttribute('position'),2);
+      const arcAt=angle=>{outer.rotation.z=angle;h.stage.scene.updateMatrixWorld(true);
+        return arcPoint.clone().applyMatrix4(outerTrail.matrixWorld);};
+      const trailMoved=arcAt(.9).distanceTo(arcAt(1.4))>.5;
       // The crystal glow is emissive only and holds steady; count what glows and
       // confirm nothing animates the two intensities.
       const shell=core.material,kernelMaterial=core.getObjectByName('armillary-core-inner').material;
@@ -100,7 +118,7 @@ try {
       const crossing={x:h.player.pos.x,y:h.player.y,peak};
       let oldCones=0,lights=0;group.traverse(o=>{if(o.geometry?.type==='ConeGeometry')oldCones++;if(o.isLight)lights++});
       let triangles=0;group.traverse(o=>{if(o.isMesh)triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;});
-      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,glow,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
+      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,glow,trails,trailMoved,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
     });
     report.push({viewport,state,errors});
     assert.ok(state.installed, 'The new instrument state is exported to the real update loop');
@@ -119,6 +137,18 @@ try {
     assert.ok(state.glow.kernelKernel, 'The inner layer is the brighter one');
     assert.ok(state.glow.shine && state.glow.shineAdditive, 'The floor emblem keeps its lit metal wire');
     assert.ok(state.glow.shineOpacity > 0 && state.glow.shineOpacity <= .25, 'The floor catch-light stays a whisper');
+    // Two comet arcs, one per driven band, each hanging off that band's axle.
+    for (const [key, parent] of [['outer', 'armillary-spin-outer'], ['middle', 'armillary-gimbal']]) {
+      const t = state.trails[key];
+      assert.ok(t, `The ${key} band has lost its trail`);
+      assert.equal(t.parent, parent, `The ${key} trail no longer rides its own band`);
+      assert.equal(t.tris, 240, 'A trail is one short ribbon, not a second ring');
+      assert.ok(t.additive && t.depthWrite === false, 'The trail adds light and writes no depth');
+      const rim = state.config.radii[key === 'outer' ? 0 : 1] + state.config.band / 2;
+      assert.ok(t.radius > rim && t.radius < rim + .2, 'The trail rides just outside the machined rim');
+      assert.ok(t.straight, 'The trail stays in its band plane instead of drifting in space');
+    }
+    assert.ok(state.trailMoved, 'The trails follow the band they are mounted on');
     assert.ok(state.rotation.every((r,i)=>Math.abs(r-state.expectedHalf[i])<1e-9),'Every band turns on its own axle at its own period');
     assert.ok(state.cycle.every(s=>s.still&&s.nested&&s.coreClear&&s.supportClear&&s.delta.every((d,k)=>Math.abs(d-s.expected[k])<1e-9)),'The support stays fixed, the axles stay nested and the 120 s cycle clears the crystal and the sight line');
     // A tumbling hoop of this size crosses the high sight line to the reading

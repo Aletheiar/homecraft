@@ -34,6 +34,13 @@ export const HALL_EXHIBIT = {
   armillary: {
     center: 1.60, radii: [1.232, 1.134, 1.036], tube: .027, band: .078, core: .3375,
     spin: { outer: 20, middle: 40, inner: 60, core: 10 },
+    // Comet arcs riding the two driven bands: `arc` in degrees, `width` in
+    // metres beyond the rim. They are geometry with baked vertex alpha, so these
+    // four numbers are the whole tuning surface.
+    trails: {
+      outer: { arc: 58, width: .038, color: 0x9ff0e4 },
+      middle: { arc: 38, width: .028, color: 0xffd08a },
+    },
   },
 };
 

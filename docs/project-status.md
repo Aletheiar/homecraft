@@ -24,11 +24,15 @@ implementation checkpoints.
   its inner kernel, the plinth corners hold dim amber panes, and the floor
   emblem gains one additive catch-light. The crystal glow is a constant: a
   breathing version measured only a 2.3% swing in screen luminance, so it was
-  removed rather than tuned. It is committed locally but not uploaded. See the
+  removed rather than tuned. Each driven band also carries one baked comet arc
+  (pale cyan outside, warm gold inside) that rides the band's own axle, adds a
+  single draw call apiece and writes nothing per frame. It is committed locally
+  but not uploaded. See the
   [implementation and checks](research/2026-11-04-armillary-plan-a.md), the
   [precision pass](research/2026-11-04-armillary-precision.md), the
-  [motion pass](research/2026-11-05-armillary-motion.md) and the
-  [glow pass](research/2026-11-05-armillary-glow.md).
+  [motion pass](research/2026-11-05-armillary-motion.md), the
+  [glow pass](research/2026-11-05-armillary-glow.md) and the
+  [trail pass](research/2026-11-05-armillary-trails.md).
 
 - Three matching west-facing doors lead to the library, `/friends/` directory
   and `/about/` profile: the reading room closes the hall axis from the east,

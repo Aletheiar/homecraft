@@ -12,7 +12,7 @@ const BRASS = 0xb9975f, LIP = 0xdcc28c, SHOULDER = 0x8f7444, FACE = 0xad8e58,
 // rim points and turns about that diameter: it tumbles like a coin, and the
 // bearing that pins it sits on the rim the band already has, which leaves the
 // floating crystal a clear sphere and keeps the hardware honest.
-export function createArmillary({ center, radii, tube, band, core, spin }, plinthTop) {
+export function createArmillary({ center, radii, tube, band, core, spin, trails }, plinthTop) {
   const group = new THREE.Group(); group.name = 'hall-exhibit'; group.position.set(0, plinthTop, 0);
   // Fixed mounting, then one geometry per band: each band has to turn on its
   // own axle, so each one is merged separately.
@@ -208,6 +208,64 @@ export function createArmillary({ center, radii, tube, band, core, spin }, plint
   gimbal.add(merged(middleParts, 'armillary-ring-middle', false));
   innerSpin.add(merged(innerParts, 'armillary-ring-inner', false));
   gimbal.add(innerSpin); outer.add(gimbal); group.add(outer);
+
+  // ---- light trails -------------------------------------------------------
+  // One short comet arc per driven band, in that band's own plane and just
+  // outside its machined rim. Each arc is one 240-triangle ribbon with a baked
+  // vertex-alpha gradient, so it rides the band's motion with no per-frame
+  // geometry, material or uniform writes, and costs one additive draw call
+  // apiece. Additive but depth-tested: the metal still occludes it, and it writes
+  // no depth, so it neither hides the crystal nor leaves a stencil behind.
+  const trailMaterial = new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, depthWrite: false, toneMapped: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    // A two-sided transparent material otherwise draws back faces then front
+    // faces; the ribbon is flat and additive, so one pass is both correct and
+    // half the cost.
+    forceSinglePass: true,
+  });
+  function trail(radius, matrix, width, arc, color, strength) {
+    const segs = 30, from = Math.PI * .34, span = arc * Math.PI / 180;
+    // Five rows: a bright core with two soft shoulders either side, so the arc
+    // reads as light rather than as a painted stripe, and it rides clear of the
+    // rim so it never reads as a specular streak on the metal.
+    const gap = .042, profile = [[0, .04], [.3, .34], [.5, 1], [.7, .34], [1, .04]];
+    const rows = profile.map(([t, a]) => [gap + width * t, a]);
+    const shade = new THREE.Color(color), position = [], tint = [], index = [];
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs, a = from + span * u, fade = Math.pow(u, 2.4);
+      for (const [offset, weight] of rows) {
+        const r = radius + band / 2 + offset;
+        position.push(r * Math.cos(a), r * Math.sin(a), 0);
+        // The head sits at the leading end and the tail fades to nothing, so the
+        // arc reads as a direction of travel rather than a glowing hoop.
+        tint.push(shade.r * strength, shade.g * strength, shade.b * strength, fade * weight);
+      }
+    }
+    for (let i = 0; i < segs; i++) for (let row = 0; row < rows.length - 1; row++) {
+      const a = i * rows.length + row, b = a + 1, c = a + rows.length, d = c + 1;
+      index.push(a, c, b, b, c, d);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(tint, 4));
+    geometry.setIndex(index);
+    geometry.applyMatrix4(matrix);
+    geometry.computeBoundingSphere();
+    const mesh = new THREE.Mesh(geometry, trailMaterial);
+    mesh.castShadow = false; mesh.receiveShadow = false;
+    // Draw after the crystal and the other transparents so the glow lands on top
+    // of whatever it passes in front of, while depth testing still hides it
+    // behind the metal.
+    mesh.renderOrder = 2;
+    return mesh;
+  }
+  const outerTrail = trail(radii[0], transform(0, 0, 0, 0, Math.PI / 2, 0),
+    trails.outer.width, trails.outer.arc, trails.outer.color, 1.5);
+  outerTrail.name = 'armillary-trail-outer'; outer.add(outerTrail);
+  const middleTrail = trail(radii[1], new THREE.Matrix4(),
+    trails.middle.width, trails.middle.arc, trails.middle.color, .95);
+  middleTrail.name = 'armillary-trail-middle'; gimbal.add(middleTrail);
 
   // ---- crystal -----------------------------------------------------------
   // Facets of two shades with a brighter solid core and metal-capped edges:
