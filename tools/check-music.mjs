@@ -18,13 +18,14 @@ const browser=await launchBrowser(),report=[];
 try {
  for(const viewport of [{width:1280,height:800},{width:390,height:844}]) {
   const context=await browser.newContext({viewport}),page=await context.newPage(),errors=[];let netease=0,publicAudio=0;
+  await context.addInitScript(()=>{Math.random=()=>.41;});
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('https://music.163.com/**',route=>{netease++;return route.abort();});
   // Stub the collection with the short fixture so checks never stream 133MB.
   await page.route('**/assets/music/*.mp3',route=>{publicAudio++;return route.fulfill({status:200,contentType:'audio/mpeg',body:second});});
   await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await page.locator('#return-button').click();
-  assert.equal(netease,0,'No music request on arrival');
-  assert.equal(publicAudio,0,'No public audio downloads before a press');
+  assert.equal(netease,0,'No NetEase request on arrival');
+  assert.ok(publicAudio>0,'Arrival prepares the randomly chosen public track');
   await page.evaluate(async()=>{const {STATIONS}=await import('/world/layout.js');const s=STATIONS.find(s=>s.id==='plaza');__home.player.teleport(...s.at,s);__home.rig.showcase([-22,4,-3],[-28,1,-8]);for(let i=0;i<90;i++)__home.rig.update(1/60,__home.player);});
   const sign=await page.evaluate(()=>__home.project(-26.5,1.4,-8));
   await page.mouse.click(sign.x,sign.y);
@@ -37,10 +38,10 @@ try {
   assert.equal(await page.locator('#panel [data-music-queue] .music-row').count(),PUBLIC_COUNT,'The public shelf renders every track');
   assert.equal(await page.locator('#panel [data-music-public-count]').innerText(),String(PUBLIC_COUNT));
   assert.equal(await page.locator('#panel [data-music-tab="public"]').getAttribute('aria-selected'),'true');
-  assert.equal((await page.locator('#panel [data-music-title]').innerText()).trim(),FIRST_TITLE);
+  assert.equal((await page.locator('#panel [data-music-title]').innerText()).trim(),COURTYARD_TRACKS[Math.floor(.41*PUBLIC_COUNT)].title);
   assert.equal(await page.locator('#panel [data-music-empty]').isVisible(),false,'The local shelf is hidden behind its tab');
-  assert.equal(publicAudio,0,'Opening the card downloads no audio');
-  // Public playback starts only after a click.
+  assert.ok(publicAudio>0,'The arrival track is already prepared');
+  // Visitors can replace the automatic choice with any public track.
   await page.locator('#panel [data-music-queue] .music-row').nth(0).click();
   await page.waitForFunction(()=>document.querySelector('#courtyard-audio').currentTime>.2);
   assert.equal(await host.evaluate(e=>e.classList.contains('is-playing')),true);
@@ -52,6 +53,10 @@ try {
   const time=await audio.evaluate(a=>a.currentTime);await page.waitForFunction(t=>document.querySelector('#courtyard-audio').currentTime>t+.2,time);
   const floater=page.locator('[data-music-stop-float]');
   assert.equal(await floater.isVisible(),true,'Playback continues behind the card');
+  assert.equal(await page.evaluate(()=>{
+   const a=document.querySelector('[data-music-stop-float]').getBoundingClientRect(),b=document.querySelector('.pyramid-actions').getBoundingClientRect();
+   return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;
+  }),true,'The playing indicator leaves scene controls accessible');
   assert.ok((await floater.textContent()).includes(FIRST_TITLE));
   await page.evaluate(async()=>{const {STATIONS}=await import('/world/layout.js');const s=STATIONS.find(s=>s.id==='plaza');__home.player.teleport(...s.at,s);__home.rig.recenter(__home.player);__home.openPage('plaza');});
   await host.waitFor({state:'visible'});

@@ -119,7 +119,7 @@ export function createMusicStation(panel) {
       </div>
     </section>
     <p class="music-error" data-music-error role="alert"></p>
-    <p class="music-note"><span class="music-note-long">庭院唱片随站点发布；本机文件只在此浏览器播放。关闭卡片后仍会继续，刷新或进传送门会停止。</span><span class="music-note-short">庭院唱片可直接播放；本机文件只在这里响。刷新或进传送门会停止。</span></p>
+    <p class="music-note"><span class="music-note-long">庭院唱片随机起播，之后按歌单顺序；可随时切歌。关闭卡片后继续，进传送门停止。本机文件只在此浏览器播放。</span><span class="music-note-short">随机起播后按歌单顺序，可随时切歌。关卡片继续，进门停止。</span></p>
     <audio id="courtyard-audio" preload="none" aria-label="庭院音乐播放器"></audio>`;
   panel.append(host);
   panel.classList.add('has-music-station');
@@ -162,7 +162,7 @@ export function createMusicStation(panel) {
   document.body.append(floater);
 
   let files = [...PUBLIC_TRACKS];
-  let index = files.length ? 0 : -1;
+  let index = files.length ? Math.floor(Math.random() * files.length) : -1;
   let revision = 0;
   let shuffle = false;
   let repeat = 'all';
@@ -172,9 +172,11 @@ export function createMusicStation(panel) {
   let probeToken = 0;
   let pendingSeek = null;
   let dragDepth = 0;
+  let autoplayPending = false;
 
   try {
-    const stored = Number(localStorage.getItem('homecraft-music-volume'));
+    const saved = localStorage.getItem('homecraft-music-volume');
+    const stored = saved === null ? NaN : Number(saved);
     audio.volume = Number.isFinite(stored) && stored >= 0 && stored <= 1 ? stored : .8;
     audio.muted = localStorage.getItem('homecraft-music-muted') === '1';
   } catch { audio.volume = .8; }
@@ -364,16 +366,44 @@ export function createMusicStation(panel) {
     }
   }
 
-  async function startPlayback(request = ++revision) {
+  function cancelAutoplay() {
+    autoplayPending = false;
+    document.removeEventListener('click', resumeAutoplay);
+    document.removeEventListener('keydown', resumeAutoplay);
+    document.removeEventListener('pointerup', resumeAutoplay);
+    document.removeEventListener('touchend', resumeAutoplay);
+  }
+
+  function resumeAutoplay(event) {
+    // Music controls perform their own action; a global retry must not also
+    // turn a visitor's pause into play or replace their selected track.
+    if (!autoplayPending || !event.isTrusted || event.defaultPrevented
+      || event.target.closest?.('.music-station, [data-music-stop-float]')) return;
+    cancelAutoplay();
+    void startPlayback();
+  }
+
+  async function startPlayback(request = ++revision, automatic = false) {
     ensureSource(files[index]);
-    try { await audio.play(); }
+    try {
+      await audio.play();
+      if (request === revision) cancelAutoplay();
+    }
     catch (reason) {
-      if (request === revision && reason?.name !== 'AbortError') showProblem('浏览器没有开始播放。请再点一次播放，或换一首曲目。');
+      if (request !== revision || reason?.name === 'AbortError') return;
+      if (automatic && reason?.name === 'NotAllowedError') {
+        autoplayPending = true;
+        document.addEventListener('click', resumeAutoplay);
+        document.addEventListener('keydown', resumeAutoplay);
+        document.addEventListener('pointerup', resumeAutoplay);
+        document.addEventListener('touchend', resumeAutoplay);
+      } else showProblem('浏览器没有开始播放。请再点一次播放，或换一首曲目。');
     } finally { if (request === revision) sync(); }
   }
 
   async function selectTrack(position, shouldPlay = true) {
     if (!files.length) return;
+    cancelAutoplay();
     const target = ((position % files.length) + files.length) % files.length;
     const request = ++revision;
     audio.pause();
@@ -397,6 +427,7 @@ export function createMusicStation(panel) {
   }
 
   async function togglePlayback() {
+    cancelAutoplay();
     if (!files.length) { selectTab('local'); filePicker.click(); return; }
     if (index < 0) index = 0;
     ensureSource(files[index]);
@@ -463,7 +494,7 @@ export function createMusicStation(panel) {
   });
   nextButton.addEventListener('click', () => step(1));
   clearButton.addEventListener('click', clearLocal);
-  floater.addEventListener('click', () => { audio.pause(); audio.currentTime = 0; sync(); });
+  floater.addEventListener('click', () => { cancelAutoplay(); revision++; audio.pause(); audio.currentTime = 0; sync(); });
   shuffleButton.addEventListener('click', () => { shuffle = !shuffle; sync(); });
   repeatButton.addEventListener('click', () => { repeat = REPEAT_MODES[(REPEAT_MODES.indexOf(repeat) + 1) % REPEAT_MODES.length]; sync(); });
 
@@ -539,9 +570,10 @@ export function createMusicStation(panel) {
   renderLocalQueue();
   selectTab('public');
   sync();
+  if (files.length) void startPlayback(undefined, true);
   return {
     get playing() { return playing(); },
     sync,
-    dispose() { observer.disconnect(); floater.remove(); host.remove(); }
+    dispose() { cancelAutoplay(); revision++; audio.pause(); audio.removeAttribute('src'); audio.load(); observer.disconnect(); floater.remove(); host.remove(); }
   };
 }

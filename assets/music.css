@@ -561,6 +561,19 @@
 .music-stop-float:hover { background: #3c6b5b; }
 .reading .music-stop-float { display: none; }
 
+@media (min-width: 701px) and (max-width: 1000px) {
+  .music-stop-float { bottom: 184px; }
+}
+@media (max-width: 700px) {
+  .music-stop-float {
+    right: 12px;
+    bottom: 230px;
+    max-width: calc(100vw - 24px);
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}
+
 @media (max-width: 620px) {
   .music-station { gap: 13px; }
   .music-hero { gap: 16px; padding: 14px 16px; }

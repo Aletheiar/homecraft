@@ -57,15 +57,16 @@ try {
     __home.openPage(id);
     await new Promise(r => setTimeout(r, 350));
   }, id);
-  await check('music station is ready without playing automatically', async () => {
+  await check('music station plays the arrival song and animates its record', async () => {
     await atStation('plaza');
-    assert.equal(await page.locator('#courtyard-audio').evaluate(a => a.paused), true);
+    await page.waitForFunction(() => document.querySelector('#courtyard-audio').currentTime > .1);
+    assert.equal(await page.locator('#courtyard-audio').evaluate(a => a.paused), false);
     assert.equal(await page.locator('[data-music-frame]').count(), 0);
     assert.equal(await page.locator('[data-music-playlist]').count(), 0);
     assert.equal(await page.locator('#panel .music-station [data-music-files]').count(), 1);
     const rotation = await page.evaluate(() => __home.world.foyer.record.rotation.y);
     await page.waitForTimeout(200);
-    assert.equal(await page.evaluate(() => __home.world.foyer.record.rotation.y), rotation);
+    assert.ok(await page.evaluate(() => __home.world.foyer.record.rotation.y) > rotation);
     await page.locator('#panel .close').click();
   });
   await check('guestbook station embeds the local reading page', async () => {
