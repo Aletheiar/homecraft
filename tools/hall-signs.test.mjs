@@ -98,7 +98,8 @@ test('the floor emblem is a quarter of the hall and never blocks a walk', () => 
 test('the centre display is a step underfoot, never an invisible column', () => {
   // The plinth top is reported as floor, so the walker climbs on and off it.
   assert.equal(floorAt(0, 0), HALL_EXHIBIT_TOP);
-  assert.equal(floorAt(HALL_EXHIBIT.plinth / 2 - .1, 0), HALL_EXHIBIT_TOP);
+  assert.ok(floorAt(HALL_EXHIBIT.plinth / 2 - .1, 0) < HALL_EXHIBIT_TOP, 'the broad lower step is below the upper platform');
+  assert.ok(floorAt(HALL_EXHIBIT.plinth / 2 - .1, 0) > 0);
   assert.equal(floorAt(HALL_EXHIBIT.plinth / 2 + .1, 0), 0);
   // Nothing in the hall stands a collider over the centre, so a jump or a short
   // flight passes above the little glass pyramid instead of hitting a wall.
@@ -116,13 +117,27 @@ test('the central armillary replaces the cone with solid rings and a glass core'
   const core = instrument.getObjectByName('armillary-core');
   assert.ok(metal?.isMesh && core?.isMesh);
   assert.equal(metal.userData.ringCount, 3);
-  assert.ok(metal.geometry.attributes.normal && metal.geometry.index.count > 500, 'the rings have a solid lit surface');
+  assert.ok(metal.geometry.attributes.normal && (metal.geometry.index?.count??metal.geometry.attributes.position.count) > 500, 'the rings have a solid lit surface');
   assert.equal(core.geometry.type, 'OctahedronGeometry');
   assert.ok(core.material.transparent && core.material.opacity > .4 && core.material.opacity < .9);
   assert.equal(instrument.position.x, 0); assert.equal(instrument.position.z, 0);
   assert.equal(instrument.position.y, HALL_EXHIBIT_TOP, 'the existing low stone base is reused');
   let cones=0;instrument.traverse(o=>{if(o.geometry?.type==='ConeGeometry')cones++});
   assert.equal(cones, 0, 'the previous pyramid does not coexist with the new instrument');
+});
+
+test('the museum armillary has a larger banded frame, separate gimbal and defined crystal edges', () => {
+  const instrument=hall.exhibit.mesh;
+  assert.ok(HALL_EXHIBIT.armillary.radii[0]>=1.18&&HALL_EXHIBIT.armillary.radii[0]<=1.3);
+  assert.ok(HALL_EXHIBIT.armillary.tube>=.025&&HALL_EXHIBIT.armillary.tube<=.03);
+  const gimbal=instrument.getObjectByName('armillary-gimbal');
+  assert.ok(gimbal?.isGroup, 'the movable band is separate from the mechanical support');
+  assert.ok(instrument.getObjectByName('armillary-core-edges')?.isLineSegments);
+  assert.ok(instrument.getObjectByName('armillary-core').geometry.parameters.radius>=.32);
+  const frame=instrument.getObjectByName('armillary-rings'),before=frame.rotation.clone(),angle=gimbal.rotation.z;
+  hall.exhibit.update(2);
+  assert.deepEqual(frame.rotation.toArray(),before.toArray(),'the fixed support does not turn with a gimbal');
+  assert.ok(gimbal.rotation.z!==angle&&Math.abs(gimbal.rotation.z-angle)<.01);
 });
 
 test('the centre plinth leaves a wide walk around it and both sides of the lane open', () => {

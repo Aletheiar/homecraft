@@ -49,7 +49,7 @@ try {
     assert.ok(state.seatStop>-11&&state.seatStop<-10.2,'the chair stops a walk through its body');
     assert.ok(state.bounds.min[0]>10&&state.bounds.max[0]<15.6&&state.bounds.min[2]>-14&&state.bounds.max[2]<-10.7);
     assert.deepEqual(state.portals,[['writing',11,0],['friends',-5.5,6.4],['about',-5.5,-6.4]]);
-    assert.deepEqual(state.core,[0,1.54,0]);
+    assert.deepEqual([state.core[0],state.core[2]],[0,0]);
     // Intercept only the external destination; test a real click and actual popup.
     await context.route('https://github.com/**',route=>route.fulfill({contentType:'text/html',body:'<title>GitHub destination test</title>'}));
     report.push({viewport,state,errors});

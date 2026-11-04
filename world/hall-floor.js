@@ -3,7 +3,7 @@ import { BoxBatch } from '@engine/world/blocks.js';
 import { canvasTexture } from '@engine/world/textures.js';
 import { HALL_CENTER, HALL_EMBLEM } from './space-config.js';
 
-// The hall floor drawing: one compass-and-pyramid emblem under the centre
+// The hall floor drawing: one compass-and-orbit emblem under the centre
 // plinth, joined to the doors by pale stone seams. Both parts are floor
 // decoration only — no colliders, no lights, two draw calls in total.
 //
@@ -18,12 +18,14 @@ const SEAM_Y = PAVING + .006;
 const EMBLEM_Y = PAVING + .012;
 
 // Multiplied into the floor, so these are "how much darker than the stone":
-// a few percent for the medallion, about a fifth for the construction lines.
+// a few percent for the medallion, about a quarter for the inlay lines. The
+// palette stays a low-saturation pale gold grey so it reads as inlaid stone
+// and brass rather than as paint.
 const MEDALLION = '#f5f0e4';
-const OUTER = '#cec5b2';
-const HAIRLINE = '#e3ddcf';
-const INNER = '#c8bfab';
-const TRIANGLE = '#bbae94';
+const OUTER = '#c0b39a';
+const HAIRLINE = '#ded8c9';
+const INNER = '#b9ad97';
+const DIAL = '#c2b294';
 
 function paintEmblem(ctx, w, h) {
   const cx = w / 2, cy = h / 2, px = w / (HALL_EMBLEM.radius * 2);
@@ -38,12 +40,33 @@ function paintEmblem(ctx, w, h) {
   ctx.beginPath(); ctx.arc(cx, cy, (radius - .3) * px, 0, Math.PI * 2);
   ctx.fillStyle = MEDALLION; ctx.fill();
   // Outer construction ring: two hairlines, the inner one much fainter.
-  ring(radius - .34, .075, OUTER);
+  ring(radius - .34, .09, OUTER);
   ring(radius - .62, .02, HAIRLINE);
   // A guide ring between the two circles, as a plan keeps its setting-out.
-  ring(2.95, .016, HAIRLINE);
-  // Inner ring.
-  ring(2.5, .07, INNER);
+  ring(2.95, .018, HAIRLINE);
+  // Local orbital inlay around the museum plinth. The outer compass and the
+  // seams toward the doors remain unchanged outside this 2.5 m radius.
+  ring(2.72, .016, '#cabca0');
+  ring(2.5, .045, '#c1b090');
+  ring(2.24, .022, '#cbbda3');
+  // A graduated dial, five degrees a tick and a longer mark every thirty, so
+  // the floor repeats the scales cut into the armillary above it.
+  for (let i = 0; i < 72; i++) {
+    const a = i * Math.PI / 36, major = i % 6 === 0, medium = i % 2 === 0;
+    const r0 = major ? 2.53 : medium ? 2.57 : 2.6;
+    ctx.strokeStyle = major ? INNER : DIAL;
+    ctx.lineWidth = (major ? .022 : medium ? .014 : .011) * px;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r0 * px, cy + Math.sin(a) * r0 * px);
+    ctx.lineTo(cx + Math.cos(a) * 2.69 * px, cy + Math.sin(a) * 2.69 * px);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#bfae8e'; ctx.lineWidth = .018 * px;
+  for (let i = 0; i < 32; i++) {
+    const a = i * Math.PI / 16, r0 = i % 4 === 0 ? 2.31 : 2.36, r1 = 2.43;
+    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0 * px, cy + Math.sin(a) * r0 * px);
+    ctx.lineTo(cx + Math.cos(a) * r1 * px, cy + Math.sin(a) * r1 * px); ctx.stroke();
+  }
   // Eight spokes, like the drawn radii of a plan, not an ornament.
   ctx.strokeStyle = HAIRLINE; ctx.lineWidth = .026 * px; ctx.lineCap = 'round';
   for (let i = 0; i < 8; i++) {
@@ -63,18 +86,14 @@ function paintEmblem(ctx, w, h) {
     ctx.lineTo(cx + Math.cos(a) * r1 * px, cy + Math.sin(a) * r1 * px);
     ctx.stroke();
   }
-  // The pyramid itself, drawn as a single equilateral wireframe.
-  const R = 1.62;
-  ctx.beginPath();
-  for (let i = 0; i < 3; i++) {
-    const a = -Math.PI / 2 + i * Math.PI * 2 / 3;
-    const x = cx + Math.cos(a) * R * px, y = cy + Math.sin(a) * R * px;
-    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  // The four axes of the instrument run out of the plinth and into the dial,
+  // so the stone platform sits in the same setting-out as the brass above it.
+  ctx.strokeStyle = '#bfae8e'; ctx.lineWidth = .022 * px;
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2; ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * 1.40 * px, cy + Math.sin(a) * 1.40 * px);
+    ctx.lineTo(cx + Math.cos(a) * 2.52 * px, cy + Math.sin(a) * 2.52 * px); ctx.stroke();
   }
-  ctx.closePath();
-  ctx.lineWidth = .08 * px; ctx.strokeStyle = TRIANGLE; ctx.lineJoin = 'round'; ctx.stroke();
-  // Apex point, the only solid mark on the floor.
-  ctx.beginPath(); ctx.arc(cx, cy, .055 * px, 0, Math.PI * 2); ctx.fillStyle = TRIANGLE; ctx.fill();
 }
 
 // A pale seam from the emblem edge toward (tx, tz), rotated to its direction.

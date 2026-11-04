@@ -17,13 +17,21 @@ implementation checkpoints.
 
 ## Current implementation
 
+- The local central exhibit now follows the larger plan A armillary design:
+  three graduated brass bands, a cyan crystal with an inner kernel and edge
+  ribs, a bolted bed-plate with a four-arm fork on a bearing-mounted gimbal,
+  two stone tiers and restrained circular inlay. This visual revision is not
+  yet committed or uploaded. See the
+  [implementation and checks](research/2026-11-04-armillary-plan-a.md) and the
+  [precision pass](research/2026-11-04-armillary-precision.md).
+
 - Three matching west-facing doors lead to the library, `/friends/` directory
   and `/about/` profile: the reading room closes the hall axis from the east,
   the directory and profile doors flank the west entrance. Dock buttons approach
   doors; walking through either face enters them. Reading cards remain
   clickable. The studio has no door in the hall; its card link still opens the
   studio room directly.
-- The hall is laid out as a museum foyer: a compass-and-pyramid floor emblem
+- The hall is laid out as a museum foyer: a compass-and-orbit floor emblem
   under the low plinth and armillary exhibit, an industrial three-screen
   workstation in the north-east corner (the main display opens the owner's
   GitHub profile through the existing external-link path) and a two-bench
@@ -35,13 +43,16 @@ implementation checkpoints.
   vocabulary and the walking lanes stay clear. See the scoped
   [workstation record](research/2026-11-04-netrunner-workstation.md).
   The exhibit plinth is real floor
-  height (`layout.js` `floorAt`), not a collider: a visitor steps onto it and
-  jumps or flies over the glass pyramid, so the display never bristles with an
-  invisible column. The armillary replaces the former small glass pyramid:
-  three matte bronze rings surround a pale cyan octahedral core, with slow
-  rotation driven through the exported exhibit update state. The existing
-  stone base and floor remain unchanged. See the scoped
-  [replacement record](research/2026-11-04-central-armillary.md).
+  height (`layout.js` `floorAt`), not a collider: both low stone tiers can be
+  crossed without an invisible full-height obstacle. The enlarged armillary
+  replaces the former small glass pyramid: three graduated brass bands surround
+  a pale cyan octahedral core, with a slow bearing-mounted gimbal and separate
+  core rotation. The local plan A revision adds a second stone tier and
+  restrained orbital inlay; the precision pass adds the graduations, riveted
+  band borders, the four-arm fork over a bolted brass bed-plate and a
+  five-degree floor dial. See the scoped
+  [plan A record](research/2026-11-04-armillary-plan-a.md) and
+  [precision pass](research/2026-11-04-armillary-precision.md).
 - The violet transition uses a shared boot script. Return checkpoints preserve
   the approach side; both BFCache and reloaded browser history are checked.
 - The former friend lounge is replaced by a data-driven HTML directory. Its

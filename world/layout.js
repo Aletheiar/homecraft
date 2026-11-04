@@ -13,12 +13,12 @@ export const INTRO = { pos: [-83, 53, 88], portrait: [-70, 95, 170], look: [0, 5
 export const POOL = { x0: -39, x1: 39, z0: -39, z1: 39, water: -.015, bed: -3, polygons };
 // The centre display is a step, not a wall. Its stone top is real floor, so a
 // visitor walks on and off the plinth (and jumps or flies over it) instead of
-// meeting an invisible column above a 37 cm slab. The glass pyramid standing on
-// it is decoration: nothing here blocks the body, only the height underfoot.
-// The top is the plinth box at y = .02 + height plus the .05 cap.
-export const HALL_EXHIBIT_TOP = .02 + HALL_EXHIBIT.height + .05;
+// meeting an invisible column. Both stone tiers report their real local height;
+// the instrument is decorative, so there is no full-height body blocker.
+export const HALL_EXHIBIT_TOP = .02 + HALL_EXHIBIT.height + HALL_EXHIBIT.gap + HALL_EXHIBIT.upperHeight + HALL_EXHIBIT.capHeight;
 export function floorAt(x, z) {
-  return Math.abs(x) <= HALL_EXHIBIT.plinth / 2 && Math.abs(z) <= HALL_EXHIBIT.plinth / 2 ? HALL_EXHIBIT_TOP : 0;
+  if(Math.abs(x)<=HALL_EXHIBIT.cap/2&&Math.abs(z)<=HALL_EXHIBIT.cap/2)return HALL_EXHIBIT_TOP;
+  return Math.abs(x)<=HALL_EXHIBIT.plinth/2&&Math.abs(z)<=HALL_EXHIBIT.plinth/2 ? .02+HALL_EXHIBIT.height : 0;
 }
 // Positions are world blocks: +x east, +z south. The three doors face the west
 // opening, so each station stands in front of its door and looks east at it.

@@ -20,11 +20,11 @@ export const HALL_SPOTS = {
   lounge: { x: 13.9, z: 13.4 },
   exhibit: { x: HALL_CENTER.x, z: HALL_CENTER.z },
 };
-// The central armillary reuses the existing low stone plinth. Instrument
-// dimensions are relative to its top; the hall anchors and floor stay fixed.
+// Museum exhibit dimensions are local to the upper stone platform. The hall
+// centre, all stations and the three portal definitions stay fixed.
 export const HALL_EXHIBIT = {
-  plinth: 1.9, height: .3, cap: 2.02,
-  armillary: { center: 1.17, radii: [.88, .81, .74], tube: .018, core: .27, ringSpeed: .008, coreSpeed: .012 },
+  plinth: 2.75, height: .17, cap: 2.23, upperWidth: 2.15, upperHeight: .2, capHeight: .045, gap: .01,
+  armillary: { center: 1.60, radii: [1.232, 1.134, 1.036], tube: .027, band: .078, core: .3375, ringSpeed: .006, coreSpeed: .004 },
 };
 
 export const HUB_PORTALS = [

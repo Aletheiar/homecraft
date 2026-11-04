@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { launchBrowser, finishOpening } from './browser.mjs';
 
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
-const out = 'tools/.check/armillary'; mkdirSync(out, { recursive: true });
+const out = 'tools/.check/armillary-a'; mkdirSync(out, { recursive: true });
 const browser = await launchBrowser(), report = [];
 try {
   for (const viewport of [{ width: 1440, height: 950 }, { width: 390, height: 844 }]) {
@@ -17,13 +17,16 @@ try {
     const state = await page.evaluate(async () => {
       const h = __home, THREE = await import('three');
       const { STATIONS } = await import('/world/layout.js');
+      const { HALL_EXHIBIT_TOP } = await import('/world/layout.js');
+      const { HALL_EXHIBIT } = await import('/world/space-config.js');
       const group = h.stage.scene.getObjectByName('hall-exhibit');
       if (!group?.isGroup || !h.world.exhibit) return { installed: false };
       const metal = group.getObjectByName('armillary-rings'), core = group.getObjectByName('armillary-core');
+      const gimbal=group.getObjectByName('armillary-gimbal');
       h.player.teleport(-13, 0); h.rig.skipIntro(); h.rig.setFirstPerson(false);
-      const before = [metal.rotation.y, core.rotation.y];
+      const before = [gimbal.rotation.z, core.rotation.y];
       h.extras.update(.5);
-      const rotation = [metal.rotation.y - before[0], core.rotation.y - before[1]];
+      const rotation = [gimbal.rotation.z - before[0], core.rotation.y - before[1]];
       group.updateWorldMatrix(true, true);
       const bounds = new THREE.Box3().setFromObject(group), size = bounds.getSize(new THREE.Vector3());
       const conflicts = h.world.obstacles.filter(o => o.x0 < bounds.max.x && o.x1 > bounds.min.x && o.z0 < bounds.max.z && o.z1 > bounds.min.z);
@@ -34,27 +37,47 @@ try {
       const signBlocked = [-1.4,0,1.4].some(z=>{
         const target=new THREE.Vector3(11,3.76,z),direction=target.clone().sub(origin);
         ray.set(origin,direction.normalize()); ray.far=origin.distanceTo(target);
-        return ray.intersectObject(group,true).length>0;
+        return ray.intersectObject(group,true).some(h=>h.object.isMesh);
       });
+      // The whole slow cycle must remain on its bearings and leave the core
+      // volume empty of support geometry. Sampling advances production updates.
+      const cycle=[];
+      for(let i=0;i<12;i++){
+        h.world.exhibit.update(Math.PI*2/HALL_EXHIBIT.armillary.ringSpeed/12);
+        group.updateWorldMatrix(true,true);
+        const c=core.getWorldPosition(new THREE.Vector3()),probe=new THREE.Raycaster();
+        const coreClear=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].every(d=>{
+          probe.set(c,new THREE.Vector3(...d));probe.far=HALL_EXHIBIT.armillary.core*1.15;
+          return probe.intersectObjects([metal,...gimbal.children],false).length===0;
+        });
+        const libraryClear=[-1.4,0,1.4].every(z=>{
+          const t=new THREE.Vector3(11,3.76,z);ray.set(origin,t.clone().sub(origin).normalize());ray.far=origin.distanceTo(t);
+          return !ray.intersectObject(group,true).some(h=>h.object.isMesh);
+        });
+        cycle.push({angle:gimbal.rotation.z,coreClear,libraryClear,fixed:metal.rotation.y});
+      }
       h.player.teleport(-2.2,0);let peak=0;
       for(let i=0;i<90;i++){h.player.update(1/60,{x:1,z:0,run:false},0);h.extras.update(1/60);peak=Math.max(peak,h.player.y)}
       const crossing={x:h.player.pos.x,y:h.player.y,peak};
       let oldCones=0,lights=0;group.traverse(o=>{if(o.geometry?.type==='ConeGeometry')oldCones++;if(o.isLight)lights++});
-      return {installed:true,position:group.position.toArray(),core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,ringCount:metal.userData.ringCount,triangles:metal.geometry.index.count/3+core.geometry.attributes.position.count/3,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
+      let triangles=0;group.traverse(o=>{if(o.isMesh)triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;});
+      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,cycle,ringCount:metal.userData.ringCount,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
     });
     assert.ok(state.installed, 'The new instrument state is exported to the real update loop');
     assert.equal(state.ringCount, 3); assert.equal(state.oldCones, 0); assert.equal(state.lights, 0);
-    assert.deepEqual(state.position, [0,.37,0]);
-    assert.ok(state.size[0] < 2.02 && state.size[2] < 2.02 && state.bounds.max[1] < 2.6);
+    assert.deepEqual(state.position, [0,state.plinthTop,0]);
+    assert.ok(state.size[0]<2.75&&state.size[2]<2.75&&state.bounds.max[1]>3.2&&state.bounds.max[1]<3.5);
     assert.ok(state.rotation.every(r=>r>0&&r<.02),'Actual production updates rotate slowly');
+    assert.ok(state.cycle.every(s=>s.angle>.74&&s.angle<.83&&s.coreClear&&s.libraryClear&&s.fixed===0),'The support stays fixed and the full gimbal cycle clears the crystal and library sign');
     assert.deepEqual(state.conflicts,[]);assert.ok(state.clear&&state.routes.every(r=>r.path));assert.equal(state.signBlocked,false);
-    assert.ok(state.crossing.x>2&&Math.abs(state.crossing.y)<.05&&state.crossing.peak<.4,'The existing low step and crossing remain usable');
+    assert.ok(state.crossing.x>2&&Math.abs(state.crossing.y)<.05&&state.crossing.peak<=state.plinthTop+.01,'Both low tiers and the crossing remain usable');
     assert.deepEqual(state.portals,[['writing',11,0],['friends',-5.5,6.4],['about',-5.5,-6.4]]);
     const view=async(position,look,file)=>{
       await page.evaluate(({position,look})=>{__home.player.teleport(-4,2);__home.rig.showcase(position,look);for(let i=0;i<100;i++)__home.rig.update(1/60,__home.player)},{position,look});
       await page.waitForTimeout(220);await page.screenshot({path:`${out}/${viewport.width}-${file}.png`});
     };
-    await view([-4.4,2.8,4.5],[0,1.1,0],'detail');
+    await view([-5.4,3.1,5.5],[0,1.5,0],'detail');
+    await view([-6.5,2.3,1.5],[0,1.7,0],'front');
     await view([-13,1.7,0],[11,2.2,0],'entrance');
     await view([-9,7,9],[1,0,0],'hall');
     assert.deepEqual(errors,[]);report.push({viewport,state,errors});await context.close();
