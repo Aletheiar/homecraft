@@ -85,17 +85,22 @@ try {
           span:Math.max(box.max.x-box.min.x,box.max.z-box.min.z),
           nested:gimbal.parent===outer&&innerSpin.parent===gimbal});
       }
-      // The trails are baked ribbons hanging off the turning groups: they must
+      // The trails are baked tubes hanging off the turning groups: they must
       // move with their band, stay outside the rim and cost nothing per frame.
       const trailOf=n=>h.stage.scene.getObjectByName(n);
       const outerTrail=trailOf('armillary-trail-outer'),middleTrail=trailOf('armillary-trail-middle');
       const trailState=n=>{const m=trailOf(n),g=m?.geometry,p=m?.parent;
-        if(!m||!g||!p)return null;const pos=g.getAttribute('position');
-        const v=new THREE.Vector3().fromBufferAttribute(pos,2);
-        return {parent:p.name,radius:+v.length().toFixed(4),tris:g.index.count/3,
+        if(!m||!g||!p)return null;
+        // Every cross-section centre must sit on the reported radius, which is
+        // what keeps the arc on its band instead of drifting in space.
+        const pos=g.getAttribute('position'),{centreline,sides,segs,shells}=m.userData;
+        let onArc=true;
+        for(let i=0;i<=segs;i++){const v=new THREE.Vector3();
+          for(let s=0;s<sides;s++)v.add(new THREE.Vector3().fromBufferAttribute(pos,i*sides+s));
+          if(Math.abs(v.length()/sides-centreline)>1e-5){onArc=false;break}}
+        return {parent:p.name,radius:+centreline.toFixed(4),tris:g.index.count/3,
           additive:m.material.blending===THREE.AdditiveBlending,depthWrite:m.material.depthWrite,
-          straight:(()=>{const c=new THREE.Vector3().fromBufferAttribute(pos,30*5+2);
-            return Math.abs(c.length()-v.length())<1e-6;})()};};
+          tube:sides>=5&&shells>=2&&g.getAttribute('position').count===shells*(segs+1)*sides,onArc};};
       const trails={outer:trailState('armillary-trail-outer'),middle:trailState('armillary-trail-middle')};
       // Riding the band means a point on the arc swings with the band's axle, so
       // turning the band must carry the same arc vertex around with it.
@@ -142,11 +147,12 @@ try {
       const t = state.trails[key];
       assert.ok(t, `The ${key} band has lost its trail`);
       assert.equal(t.parent, parent, `The ${key} trail no longer rides its own band`);
-      assert.equal(t.tris, 240, 'A trail is one short ribbon, not a second ring');
+      assert.equal(t.tris, 840, 'A trail is one short tube, not a second ring');
+      assert.ok(t.tube, 'The trail is a closed tube, so it keeps its width when the band turns edge-on');
       assert.ok(t.additive && t.depthWrite === false, 'The trail adds light and writes no depth');
       const rim = state.config.radii[key === 'outer' ? 0 : 1] + state.config.band / 2;
       assert.ok(t.radius > rim && t.radius < rim + .2, 'The trail rides just outside the machined rim');
-      assert.ok(t.straight, 'The trail stays in its band plane instead of drifting in space');
+      assert.ok(t.onArc, 'The trail stays on its arc instead of drifting off the band');
     }
     assert.ok(state.trailMoved, 'The trails follow the band they are mounted on');
     assert.ok(state.rotation.every((r,i)=>Math.abs(r-state.expectedHalf[i])<1e-9),'Every band turns on its own axle at its own period');

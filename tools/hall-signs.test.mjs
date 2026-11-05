@@ -186,30 +186,38 @@ test('each driven band carries one short comet arc, never a glowing hoop', () =>
   assert.equal(material.transparent, true);
   assert.equal(material.depthWrite, false, 'the glow leaves no depth of its own');
   assert.equal(material.toneMapped, false);
-  assert.equal(material.side, THREE.DoubleSide, 'the ribbon reads from both faces of the ring');
+  assert.equal(material.side, THREE.DoubleSide, 'the tube keeps its width from either side');
   assert.equal(material.forceSinglePass, true, 'one draw per arc, not a back-face plus front-face pass');
   assert.equal(outer.castShadow, false); assert.equal(middle.castShadow, false);
   for (const [mesh, wanted] of [[outer, spec.outer], [middle, spec.middle]]) {
     const geometry = mesh.geometry;
+    const { arc, centreline, segs, sides, shells, triangles } = mesh.userData;
     const colour = geometry.getAttribute('color');
     assert.equal(colour.itemSize, 4, 'the fade lives in the vertex alpha channel');
-    const position = geometry.getAttribute('position');
-    const rows = 5, segs = colour.count / rows - 1;
-    assert.equal(segs, 30, 'one baked ribbon, thirty segments');
-    assert.equal(geometry.index.count / 3, 240, 'a 240-triangle arc, not a second ring');
-    const alphaAt = i => colour.getW(i * rows + 2);
+    assert.equal(arc, wanted.arc, 'the arc reports the span it was baked with');
+    assert.equal(segs, 30); assert.equal(sides, 7); assert.equal(shells, 2);
+    assert.equal(triangles, 840, 'a two-shell tube, not a second ring');
+    assert.equal(geometry.index.count / 3, triangles);
+    // A tube, not a flat ribbon: every cross-section is a closed ring, so the arc
+    // still has thickness when its plane turns edge-on to the viewer.
+    assert.equal(geometry.getAttribute('position').count, shells * (segs + 1) * sides);
+    const alphaAt = i => geometry.getAttribute('color').getW(i * sides);
     assert.ok(alphaAt(segs) > 8 * alphaAt(0), 'the head is far brighter than the tail, so the arc has a direction');
-    // The arc spans the configured degrees and sits outside the machined rim.
-    const head = new THREE.Vector3().fromBufferAttribute(position, 2);
-    const tail = new THREE.Vector3().fromBufferAttribute(position, segs * rows + 2);
-    const chord = head.distanceTo(tail), radius = head.length();
-    const span = 2 * Math.asin(chord / (2 * radius)) * 180 / Math.PI;
+    // The centreline spans the configured degrees and rides outside the rim.
+    const centreOf = i => {
+      const p = geometry.getAttribute('position'), v = new THREE.Vector3();
+      for (let s = 0; s < sides; s++) v.add(new THREE.Vector3().fromBufferAttribute(p, i * sides + s));
+      return v.divideScalar(sides);
+    };
+    const head = centreOf(0), tail = centreOf(segs);
+    assert.ok(Math.abs(head.length() - centreline) < 1e-6, 'the tube is centred on its reported radius');
+    const span = 2 * Math.asin(head.distanceTo(tail) / (2 * centreline)) * 180 / Math.PI;
     assert.ok(Math.abs(span - wanted.arc) < 1, `arc spans ${span.toFixed(1)} degrees, wanted ${wanted.arc}`);
     const rim = HALL_EXHIBIT.armillary.radii[[outer, middle].indexOf(mesh)];
-    assert.ok(radius > rim + HALL_EXHIBIT.armillary.band / 2, 'the arc rides clear of the rim');
-    assert.ok(radius < rim + .2, 'but stays close enough to read as part of the instrument');
+    assert.ok(centreline > rim + HALL_EXHIBIT.armillary.band / 2, 'the arc rides clear of the rim');
+    assert.ok(centreline < rim + .2, 'but stays close enough to read as part of the instrument');
     // Pale cyan outside, warm gold inside, and never a saturated neon.
-    const r = colour.getX(segs * rows + 2), g = colour.getY(segs * rows + 2), b = colour.getZ(segs * rows + 2);
+    const r = geometry.getAttribute('color').getX(segs * sides), g = geometry.getAttribute('color').getY(segs * sides), b = geometry.getAttribute('color').getZ(segs * sides);
     if (mesh === outer) assert.ok(g >= r && b >= r, 'the outer arc is pale cyan');
     else assert.ok(r > g && g > b, 'the middle arc is warm gold');
     assert.ok(Math.max(r, g, b) < 2, 'the arc stays under a bloom threshold; there is no bloom to feed anyway');

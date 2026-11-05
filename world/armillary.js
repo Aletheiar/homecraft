@@ -211,40 +211,45 @@ export function createArmillary({ center, radii, tube, band, core, spin, trails 
 
   // ---- light trails -------------------------------------------------------
   // One short comet arc per driven band, in that band's own plane and just
-  // outside its machined rim. Each arc is one 240-triangle ribbon with a baked
+  // outside its machined rim. Each arc is a tapered tube with a baked
   // vertex-alpha gradient, so it rides the band's motion with no per-frame
   // geometry, material or uniform writes, and costs one additive draw call
-  // apiece. Additive but depth-tested: the metal still occludes it, and it writes
-  // no depth, so it neither hides the crystal nor leaves a stencil behind.
+  // apiece. A tube rather than a ribbon is deliberate: a flat ribbon vanishes
+  // when its plane turns edge-on to the viewer, which is most of the cycle for
+  // a ring that tumbles, while a tube keeps its width from every angle.
+  // Additive but depth-tested: the metal still occludes it, and it writes no
+  // depth, so it neither hides the crystal nor leaves a stencil behind.
   const trailMaterial = new THREE.MeshBasicMaterial({
     vertexColors: true, transparent: true, depthWrite: false, toneMapped: false,
     blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
     // A two-sided transparent material otherwise draws back faces then front
-    // faces; the ribbon is flat and additive, so one pass is both correct and
-    // half the cost.
+    // faces; the tube is additive, so one pass is both correct and half the cost.
     forceSinglePass: true,
   });
   function trail(radius, matrix, width, arc, color, strength) {
-    const segs = 30, from = Math.PI * .34, span = arc * Math.PI / 180;
-    // Five rows: a bright core with two soft shoulders either side, so the arc
-    // reads as light rather than as a painted stripe, and it rides clear of the
-    // rim so it never reads as a specular streak on the metal.
-    const gap = .042, profile = [[0, .04], [.3, .34], [.5, 1], [.7, .34], [1, .04]];
-    const rows = profile.map(([t, a]) => [gap + width * t, a]);
+    const segs = 30, sides = 7, from = Math.PI * .34, span = arc * Math.PI / 180;
+    const gap = .042, centreline = radius + band / 2 + gap;
     const shade = new THREE.Color(color), position = [], tint = [], index = [];
-    for (let i = 0; i <= segs; i++) {
-      const u = i / segs, a = from + span * u, fade = Math.pow(u, 2.4);
-      for (const [offset, weight] of rows) {
-        const r = radius + band / 2 + offset;
-        position.push(r * Math.cos(a), r * Math.sin(a), 0);
-        // The head sits at the leading end and the tail fades to nothing, so the
-        // arc reads as a direction of travel rather than a glowing hoop.
-        tint.push(shade.r * strength, shade.g * strength, shade.b * strength, fade * weight);
+    // A bright core inside a wider, fainter halo: two steps of falloff are what
+    // make an additive tube read as light instead of as a plastic rod.
+    const shells = [[.55, 1], [1.55, .3]];
+    for (const [factor, alpha] of shells) {
+      const base = position.length / 3;
+      for (let i = 0; i <= segs; i++) {
+        const u = i / segs, a = from + span * u, fade = Math.pow(u, 2);
+        // Thick head, thin tail, so the arc carries a direction of travel.
+        const rad = width * factor * (.4 + .6 * u);
+        const ca = Math.cos(a), sa = Math.sin(a);
+        for (let s = 0; s < sides; s++) {
+          const t = s / sides * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t);
+          position.push(centreline * ca + rad * ct * ca, centreline * sa + rad * ct * sa, rad * st);
+          tint.push(shade.r * strength, shade.g * strength, shade.b * strength, fade * alpha);
+        }
       }
-    }
-    for (let i = 0; i < segs; i++) for (let row = 0; row < rows.length - 1; row++) {
-      const a = i * rows.length + row, b = a + 1, c = a + rows.length, d = c + 1;
-      index.push(a, c, b, b, c, d);
+      for (let i = 0; i < segs; i++) for (let s = 0; s < sides; s++) {
+        const a0 = base + i * sides + s, b0 = base + i * sides + (s + 1) % sides;
+        index.push(a0, a0 + sides, b0, b0, a0 + sides, b0 + sides);
+      }
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
@@ -258,13 +263,16 @@ export function createArmillary({ center, radii, tube, band, core, spin, trails 
     // of whatever it passes in front of, while depth testing still hides it
     // behind the metal.
     mesh.renderOrder = 2;
+    // Geometry facts the checks assert against, so they never have to walk the
+    // vertex buffer by hand.
+    mesh.userData = { arc, centreline, width, segs, sides, shells: shells.length, triangles: geometry.index.count / 3 };
     return mesh;
   }
   const outerTrail = trail(radii[0], transform(0, 0, 0, 0, Math.PI / 2, 0),
-    trails.outer.width, trails.outer.arc, trails.outer.color, 1.5);
+    trails.outer.width, trails.outer.arc, trails.outer.color, 1.1);
   outerTrail.name = 'armillary-trail-outer'; outer.add(outerTrail);
   const middleTrail = trail(radii[1], new THREE.Matrix4(),
-    trails.middle.width, trails.middle.arc, trails.middle.color, .95);
+    trails.middle.width, trails.middle.arc, trails.middle.color, .7);
   middleTrail.name = 'armillary-trail-middle'; gimbal.add(middleTrail);
 
   // ---- crystal -----------------------------------------------------------

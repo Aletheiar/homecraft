@@ -38,8 +38,8 @@ export const HALL_EXHIBIT = {
     // metres beyond the rim. They are geometry with baked vertex alpha, so these
     // four numbers are the whole tuning surface.
     trails: {
-      outer: { arc: 58, width: .038, color: 0x9ff0e4 },
-      middle: { arc: 38, width: .028, color: 0xffd08a },
+      outer: { arc: 64, width: .034, color: 0x9ff0e4 },
+      middle: { arc: 44, width: .026, color: 0xffd08a },
     },
   },
 };
