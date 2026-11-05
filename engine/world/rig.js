@@ -37,6 +37,8 @@ export function createRig(camera, world) {
   const look = new THREE.Vector3();
   let firstPerson = false, lookPitch = -0.12;
   const EYE = 1.62;
+  let eyeHeight = EYE, transition = null;
+  const transitionFrom = new THREE.Vector3(), transitionTurn = new THREE.Quaternion();
   // Looking up from the pool's floor: how far the camera has gone into their
   // eyes (0 to 1), and where it looks from there.
   let gazeT = 0, lying = false;
@@ -65,10 +67,27 @@ export function createRig(camera, world) {
   }
 
   // Entering first person looks where the player faces; leaving puts the camera behind them.
-  function setFirstPerson(on, heading) {
+  function beginTransition() {
+    transitionFrom.copy(camera.position); transitionTurn.copy(camera.quaternion);
+    show = null; intro = null;
+    transition = still.matches ? null : 0;
+  }
+  function setFirstPerson(on, heading, options = {}) {
+    if (options.transition) beginTransition();
     if (on && heading !== undefined) yaw = yawGoal = heading + Math.PI;
     if (on) lookPitch = -0.12;
+    eyeHeight = options.eyeHeight ?? EYE;
     firstPerson = on;
+  }
+
+  function captureView() {
+    return { yaw: yawGoal, pitch: pitchGoal, distance: distanceGoal, lookPitch, firstPerson, eyeHeight };
+  }
+  function restoreView(saved, options = {}) {
+    if (options.transition) beginTransition();
+    yaw = yawGoal = saved.yaw; pitch = pitchGoal = saved.pitch;
+    distance = distanceGoal = saved.distance; lookPitch = saved.lookPitch;
+    firstPerson = saved.firstPerson; eyeHeight = saved.eyeHeight;
   }
 
   // The opening shot: the whole island from high up, then a swoop down behind
@@ -132,7 +151,7 @@ export function createRig(camera, world) {
     out.copy(focus).addScaledVector(dir, reach);
   }
 
-  function update(dt, player) {
+  function updateView(dt, player) {
     target.set(player.pos.x, player.y + 1.25, player.pos.z);
     if (!focus.lengthSq()) focus.copy(target);
     focus.lerp(target, 1 - Math.exp(-dt * 7));
@@ -176,7 +195,7 @@ export function createRig(camera, world) {
       // Swimming, the eyes are wherever the stroke puts them, but kept out
       // of the water while the player swims on top.
       const e = player.swimming ? player.eye : null;
-      camera.position.set(player.pos.x, player.y + EYE, player.pos.z);
+      camera.position.set(player.pos.x, player.y + eyeHeight, player.pos.z);
       if (e) camera.position.set(e.x, player.swim?.surface ? Math.max(e.y, POOL.water + 0.12) : e.y, e.z);
       const cp = Math.cos(lookPitch), p = camera.position;
       camera.lookAt(p.x - Math.sin(yaw) * cp, p.y + Math.sin(lookPitch), p.z - Math.cos(yaw) * cp);
@@ -196,6 +215,16 @@ export function createRig(camera, world) {
       return;
     }
     cutaway(player, camera.position);
+  }
+
+  function update(dt, player) {
+    updateView(dt, player);
+    if (transition === null) return;
+    transition = Math.min(1, transition + dt / .55);
+    const amount = ease(transition);
+    camera.position.lerpVectors(transitionFrom, camera.position, amount);
+    camera.quaternion.slerpQuaternions(transitionTurn, camera.quaternion, amount);
+    if (transition === 1) transition = null;
   }
 
   // Lying on the pool's floor: ease from wherever the camera was into their
@@ -262,7 +291,7 @@ export function createRig(camera, world) {
   }
 
   return {
-    update, orbit, zoom, startIntro, skipIntro, setFirstPerson, showcase,
+    update, orbit, zoom, startIntro, skipIntro, setFirstPerson, showcase, captureView, restoreView,
     recenter(player, faceStation = false) {
       intro = null; gazeT = 0; lying = false;
       focus.set(player.pos.x, player.y + 1.25, player.pos.z);

@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { canvasTexture } from '@engine/world/textures.js';
 import { mergeGeometries } from '../vendor/three/addons/utils/BufferGeometryUtils.js';
 import { PROFILE } from '../about/profile.js';
+import { WORKSTATION_LAYOUT as L, workbenchPoint } from './space-config.js';
 
-// The north-east corner is a self-contained industrial room inside the glass
-// hall: a layered back wall, two framed official posters, a long desk with the
+// The north-east corner is an open industrial workspace inside the glass
+// hall: a stepped back wall, a turned poster wing, a long desk with the
 // triple display, a server rack, a marked floor and a warm/teal light set.
 // Everything static is BoxBatch boxes, so the whole room costs one batch mesh
-// plus four small meshes of its own: the screen atlas, the posters, the light
+// plus five small meshes of its own: the screen atlas, the two posters, the light
 // strips and the rack indicators.
 const METAL = { tex: 'black_metal', tint: 0x69757d };
 const STEEL = { tex: 'black_metal', tint: 0x9aa6ae };
@@ -67,72 +68,84 @@ function screenAtlas() {
   });
 }
 
-export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box, solid }) {
+export function buildWorkstation(anchor, { box, solid: addSolid }) {
+  const {deskX:x,deskZ:z,chairZ,approach,yaw=0}=anchor;
+  const c=Math.cos(yaw),s=Math.sin(yaw),at=(dx,dz)=>workbenchPoint(dx,dz,anchor);
+  const turn=new THREE.Matrix4().makeTranslation(x,0,z)
+    .multiply(new THREE.Matrix4().makeRotationY(yaw)).multiply(new THREE.Matrix4().makeTranslation(-x,0,-z));
   const mesh = new THREE.Group(); mesh.name = 'hall-workstation';
-  const b = (dx,y,dz,w,h,d,mat=METAL,opts={}) => box(x+dx,y,z+dz,w,h,d,mat,{...opts,tag:'workstation'});
-  // Wall plane: the front face the posters and conduits hang on.
-  const wallZ = -.93, front = -.86;
+  const b=(dx,y,dz,w,h,d,mat=METAL,opts={})=>{
+    const p=at(dx,dz);box(p.x,y,p.z,w,h,d,mat,{...opts,ry:(opts.ry||0)+yaw,tag:'workstation'});
+  };
+  // The existing walking system accepts axis-aligned footprints. Small tiles
+  // cover each turned solid without blocking its large empty corner wedges.
+  const solid=(cx,cz,w,d)=>{
+    if(!yaw){addSolid(cx,cz,w,d);return;}
+    const cols=Math.ceil(w/.24),rows=Math.ceil(d/.24),tw=w/cols,td=d/rows;
+    const width=Math.abs(c)*tw+Math.abs(s)*td,depth=Math.abs(s)*tw+Math.abs(c)*td;
+    for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){
+      const p=at(cx-x-w/2+(i+.5)*tw,cz-z-d/2+(j+.5)*td);
+      addSolid(p.x,p.z,width,depth);
+    }
+  };
+  const wallZ=L.wall.dz,front=wallZ+.08;
+  // A stepped service wall, with open joints around the central upper panel.
+  // The desk is 0.7 m forward of it; neither side becomes a full-height wall.
+  b(-.1,.12,wallZ,3.65,1.22,.16,PANEL);
+  b(-.1,1.72,wallZ,3.65,2.32,.16,PANEL);
+  b(-2.65,.08,wallZ,1.0,1.98,.16,DARK);
+  b(2,.08,wallZ,.6,2.2,.16,PANEL);
+  solid(x+L.wall.dx,z+wallZ,L.wall.width,.18);
+  b(L.wall.dx,.04,wallZ,5.6,.08,.22,EDGE);
+  for(const dx of [-1.94,1.74]){
+    b(dx,.04,wallZ,.12,4.02,.21,EDGE);
+    b(dx,.1,front+.035,.025,3.87,.025,STEEL);
+    for(const dy of [.24,1.55,3.85])b(dx,dy,front+.045,.16,.06,.05,PLATE);
+  }
+  b(-.1,4.04,wallZ,3.7,.08,.2,EDGE);
+  b(-.1,4.07,front+.03,3.62,.018,.035,STEEL);
+  b(-.1,1.52,front+.09,3.7,.12,.22,EDGE);
+  b(-.1,1.59,front+.21,3.4,.025,.025,WARN);
+  for(let i=0;i<9;i++)b(-1.6+i*.38,1.54,front+.22,.15,.035,.012,STEEL);
+  // Lower service hatches, vents and conduits surround rather than cover the art.
+  for(const [dx,w] of [[-2.65,.76],[2,.48]]){
+    b(dx,.35,front+.03,w,.9,.04,EDGE);
+    for(let i=0;i<8;i++)b(dx,.44+i*.09,front+.06,w-.1,.025,.02,PLATE);
+    b(dx,1.48,front+.03,w,.07,.03,WARN);
+  }
+  for(const dx of [-1.82,1.62]){
+    b(dx,.2,front+.09,.045,1.38,.045,METAL);
+    for(const dy of [.4,.95,1.4])b(dx,dy,front+.1,.09,.055,.07,STEEL);
+  }
+  // The left wing turns inward by 60 degrees and extends towards the visitor.
+  // Its poster, ribs and feet share the same rigid frame.
+  const wing=L.wing,cw=Math.cos(wing.yaw),sw=Math.sin(wing.yaw);
+  const wb=(u,y,v,w,h,d,mat=METAL)=>b(wing.dx+u*cw+v*sw,y,wing.dz-u*sw+v*cw,w,h,d,mat,{ry:wing.yaw});
+  wb(0,.12,0,wing.width,1.05,.14,DARK);
+  wb(0,1.46,0,wing.width,1.34,.14,PANEL);
+  for(const u of [-wing.width/2,wing.width/2]){
+    wb(u,.04,0,.10,2.88,.2,EDGE);wb(u,.1,.11,.025,2.7,.025,STEEL);
+    wb(u,.02,.04,.4,.07,.6,EDGE);
+  }
+  wb(0,2.8,0,wing.width+.12,.09,.2,EDGE);
+  wb(0,1.34,.04,wing.width,.07,.18,EDGE);
+  for(let i=0;i<8;i++)wb(0,.28+i*.09,.086,1.46,.035,.025,PLATE);
+  wb(0,.14,.09,1.6,.035,.025,WARN);
+  for(let i=0;i<5;i++){
+    const u=-wing.width/2+i*wing.width/4;
+    solid(x+wing.dx+u*cw,z+wing.dz-u*sw,.32,.4);
+  }
 
-  // ---- industrial back wall: a low full-width band with a taller centre
-  // panel and two shorter shoulders, so daylight still shows at the corners ----
-  b(-.5,0,wallZ,5.2,2.06,.14,PANEL);
-  b(-.5,0,wallZ-.02,5.2,.1,.18,DARK);
-  b(.05,2.06,wallZ,2.9,1.09,.14,PANEL);
-  b(-2.25,2.06,wallZ,1.5,.74,.14,PANEL);
-  b(1.8,2.06,wallZ,.56,.56,.14,PANEL);
-  for (const dx of [-2.25,.05,1.8]) b(dx,2.06,front-.02,.06,.05,.05,EDGE);
-  // Seam ribs, a horizontal cable tray and a yellow warning band.
-  for (const dy of [1.04,1.6]) b(-.5,dy,front-.012,5.2,.028,.028,EDGE);
-  b(-.5,1.86,front-.03,4.9,.07,.09,EDGE);
-  b(-.5,1.99,front-.006,5.2,.035,.012,WARN);
-  // Vent bank on the right shoulder, power trunking on the left.
-  for (let i=0;i<7;i++) b(1.42,.78+i*.086,front-.01,.9,.05,.05,RUBBER);
-  b(1.42,.6,front-.015,.98,.72,.03,DARK);
-  for (const dx of [1.36,1.48]) b(dx,2.3,front-.01,.06,.42,.07,EDGE);
-  // Conduits in the two gaps between panels, clamped to the wall.
-  for (const dx of [-1.44,1.5]) {
-    b(dx,.12,front-.03,.052,2.92,.052,METAL);
-    for (const dy of [.5,1.2,1.9]) b(dx,dy,front-.03,.09,.06,.09,EDGE);
-  }
-  // Bolted corner plates and a service hatch below the desk line.
-  for (const dx of [-2.6,1.6]) for (const dy of [.16,1.92]) b(dx,dy,front-.008,.09,.09,.02,WARN);
-  b(-.5,.12,front-.006,4.6,.06,.014,WARN);
-  // Frame the slab so it reads as built structure, not a black billboard:
-  // two edge columns, a steel cap and a plinth rail catch the hall's daylight.
-  for (const dx of [-3.02,2.02]) {
-    b(dx,.02,front-.01,.13,3.1,.17,EDGE);
-    b(dx,.02,front+.005,.035,3.08,.02,STEEL);
-    for (const dy of [.24,1.34,2.5]) b(dx,dy,front+.01,.17,.05,.03,PLATE);
-  }
-  b(-.5,3.12,front-.02,5.4,.09,.11,EDGE);
-  b(-.5,3.12,front+.01,5.4,.02,.02,STEEL);
-  b(-.5,.02,front+.005,5.24,.15,.05,PLATE);
-  b(-.5,.15,front+.005,5.24,.018,.06,STEEL);
-  // Two bolted service plates on the shoulders, and a hazard rail low on the wall.
-  for (const [dx,dy,w,h] of [[-2.3,.86,.62,.34],[1.72,.9,.5,.28]]) {
-    b(dx,dy,front+.002,w,h,.03,PLATE);
-    b(dx,dy+h-.012,front+.006,w,.012,.02,STEEL);
-    for (const ox of [-.24,.24]) b(dx+ox,dy+.06,front+.016,.03,.03,.02,STEEL);
-  }
-  b(-.5,.52,front+.002,4.9,.03,.02,WARN);
-  // A cable run across the top cap, clamped every metre — the wall reads as
-  // something that was wired up, not moulded in one piece.
-  for (const [i,mat] of [[0,RUBBER],[1,DARK]]) {
-    b(-.5,3.02-i*.05,front+.005,4.9,.03,.03,mat);
-    for (const dx of [-2.3,-.9,.5,1.7]) b(dx,3.0-i*.05,front+.008,.05,.07,.05,STEEL);
-  }
-
-  // ---- two framed official posters on the wall ----
+  // A dominant central print, with V confined to the turned equipment wing.
   const posters = [
-    { id: 'poster-pyramid', dx: 0, y: 2.42, w: 2.05, h: 2.05 * 800 / 1280, file: 'cyberpunk-pyramid.webp' },
-    { id: 'poster-v', dx: -2.25, y: 2.42, w: 1.0, h: 1.0 * 540 / 960, file: 'cyberpunk-v.webp' },
+    { id:'poster-pyramid',...L.posters.main,h:L.posters.main.w*800/1280,file:'cyberpunk-pyramid.webp' },
+    { id:'poster-v',dx:wing.dx+.09*sw,dz:wing.dz+.09*cw,yaw:wing.yaw,...L.posters.side,h:L.posters.side.w*540/960,file:'cyberpunk-v.webp' },
   ];
   for (const p of posters) {
-    const bottom = p.y - p.h / 2;
-    for (const side of [-1, 1]) b(p.dx + side * (p.w / 2 + .04), bottom - .02, front - .03, .08, p.h + .1, .06, EDGE);
-    b(p.dx, bottom - .06, front - .03, p.w + .24, .08, .06, EDGE);
-    b(p.dx, bottom + p.h + .02, front - .03, p.w + .24, .08, .06, EDGE);
-    b(p.dx, bottom - .07, front - .01, p.w + .24, .02, .02, WARN);
+    const bottom=p.y-p.h/2,c=Math.cos(p.yaw),s=Math.sin(p.yaw);
+    const frame=(u,y,w,h)=>b(p.dx+u*c-.025*s,y,p.dz-u*s-.025*c,w,h,.055,EDGE,{ry:p.yaw});
+    for(const side of [-1,1])frame(side*(p.w/2+.035),bottom-.02,.07,p.h+.1);
+    frame(0,bottom-.065,p.w+.2,.075);frame(0,bottom+p.h+.025,p.w+.2,.075);
   }
   const posterMaterial = (file) => {
     const texture = new THREE.TextureLoader().load(`assets/posters/${file}`);
@@ -143,7 +156,7 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
   const posterGroup = new THREE.Group(); posterGroup.name = 'workstation-posters';
   for (const p of posters) {
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.h), posterMaterial(p.file));
-    plane.name = p.id; plane.position.set(x + p.dx, p.y, z + front + .012);
+    plane.name=p.id;plane.position.set(x+p.dx,p.y,z+p.dz);plane.rotation.y=p.yaw;
     plane.userData = { file: p.file, credit: 'CD PROJEKT RED' };
     posterGroup.add(plane);
     p.mesh = plane;
@@ -152,9 +165,9 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
 
   // ---- the marked floor: a dark mat, yellow edge tape and red markings.
   // 12 mm above the paving so nothing z-fights, and no collider of its own. ----
-  b(-.1,.026,.22,4.34,.012,2.3,MAT);
-  for (const dz of [-.92,.92]) b(-.1,.038,.22+dz,4.3,.004,.06,WARN);
-  for (const dx of [-2.17,1.97]) b(dx,.038,.22,.06,.004,1.86,WARN);
+  b(-.1,.026,-.08,5.35,.012,2.85,MAT);
+  for(const dz of [-1.47,1.31])b(-.1,.038,dz,5.28,.004,.045,WARN);
+  for(const dx of [-2.74,2.54])b(dx,.038,-.08,.045,.004,2.78,WARN);
   b(-.1,.038,-.62,2.5,.004,.1,RED);
   b(-.1,.038,-.5,2.5,.004,.03,RED);
   for (const dx of [-1.62,1.42]) b(dx,.038,-.34,.5,.004,.03,EDGE);
@@ -179,7 +192,7 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
   }
   b(-1.62,.02,-.06,.5,.68,.92,PANEL);
   b(-1.62,.36,.41,.42,.44,.03,EDGE);
-  b(-1.62,.56,.6,2.9,.03,.02,TEAL);
+  b(0,.68,.58,3.34,.025,.025,TEAL);
   // Hazard ticks on the desk lip and a plant on the right drawers so the corner
   // keeps some green life next to the glass.
   for (let i=0;i<6;i++) b(-1.32+i*.5,.735,.577,.16,.02,.012,WARN);
@@ -231,25 +244,37 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
   for(const dx of [-1.42,-1.12])b(dx,.82,.12,.085,.18,.15,RUBBER);
   b(-1.27,1.04,.12,.25,.045,.055,EDGE);
   for(const dx of [-1.4,-1.14])b(dx,.98,.12,.045,.07,.055,EDGE);
-  b(1.9,.06,-.3,.34,.5,.6,WARN);
-  b(1.9,.16,-.3,.36,.05,.62,EDGE);
+  const cabinet=L.cabinet;
+  b(cabinet.dx,.04,cabinet.dz,.58,.86,1.12,PANEL);
+  b(cabinet.dx,.88,cabinet.dz,.68,.05,1.22,EDGE);
+  for(let i=0;i<3;i++){
+    b(cabinet.dx,.14+i*.23,cabinet.dz+.57,.48,.18,.028,DARK);
+    b(cabinet.dx,.22+i*.23,cabinet.dz+.59,.16,.018,.02,WARN);
+  }
+  b(cabinet.dx,.94,cabinet.dz-.15,.38,.57,.38,DARK);
+  for(let i=0;i<6;i++)b(cabinet.dx,1.02+i*.065,cabinet.dz+.05,.27,.025,.02,PLATE);
+  b(cabinet.dx,1.48,cabinet.dz+.055,.13,.012,.02,TEAL);
+  solid(x+cabinet.dx,z+cabinet.dz,.68,1.22);
   // Ventilated PC below the table, and a separate short rack on its west side.
   b(.98,.06,-.02,.4,.58,.67,DARK);
   b(.98,.065,.32,.43,.58,.035,EDGE);
   for(let i=0;i<7;i++)b(.98,.15+i*.055,.343,.31,.015,.009,RUBBER);
   b(1.17,.12,.343,.014,.43,.01,CYAN);
-  b(-2.05,.03,-.08,.7,1.18,.79,DARK);solid(x-2.05,z-.08,.7,.79);
-  for(const dx of [-2.37,-1.73])b(dx,.07,.33,.045,1.09,.05,EDGE);
+  const rack=L.rack,rz=rack.dz+.08;
+  const rb=(dx,y,dz,w,h,d,mat)=>b(dx,y,dz+rz,w,h,d,mat);
+  rb(-2.05,.03,-.08,.7,1.18,.79,DARK);solid(x+rack.dx,z+rack.dz,.7,.79);
+  for(const dx of [-2.37,-1.73])rb(dx,.07,.33,.045,1.09,.05,EDGE);
   for(let i=0;i<4;i++) {
-    b(-2.05,.13+i*.255,.327,.56,.21,.038,EDGE);
-    for(let j=0;j<5;j++)b(-2.12+j*.055,.17+i*.255,.35,.018,.11,.012,DARK);
+    rb(-2.05,.13+i*.255,.327,.56,.21,.038,EDGE);
+    for(let j=0;j<5;j++)rb(-2.12+j*.055,.17+i*.255,.35,.018,.11,.012,DARK);
   }
   // Rack detail: cooling grille, breakers, a power switch and a box on top.
-  for (let i=0;i<8;i++) b(-2.05,1.02+i*.018,.35,.52,.012,.012,RUBBER);
-  b(-2.05,1.2,-.08,.72,.09,.81,EDGE);
-  b(-2.3,.28,.36,.12,.2,.03,PANEL);
-  b(-2.3,.36,.375,.05,.05,.014,WARN);
-  b(-1.92,1.31,-.08,.36,.16,.4,{tex:'paint',tint:0x4a5259});
+  for(let i=0;i<8;i++)rb(-2.05,1.02+i*.018,.35,.52,.012,.012,RUBBER);
+  rb(-2.05,1.2,-.08,.72,.09,.81,EDGE);
+  rb(-2.3,.28,.36,.12,.2,.03,PANEL);
+  rb(-2.3,.36,.375,.05,.05,.014,WARN);
+  rb(-1.92,1.31,-.08,.36,.16,.4,{tex:'paint',tint:0x4a5259});
+  b(-2.05,.06,-.35,.055,.045,1.15,RUBBER);
   // Exposed cables follow angular routes; no curved high-poly tubing.
   for(const [i,mat] of [[0,RUBBER],[1,CYAN]]) {
     b(-.55,.86,-.53-i*.04,1.9,.025,.025,mat);
@@ -266,9 +291,9 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
   b(-.15,.59,cz+.2,.44,.38,.025,RUBBER);
   b(-.15,.93,cz+.26,.42,.02,.03,TEAL);
   for(const dx of [-.43,.13])for(const dz of [-.26,.26])b(dx,.02,cz+dz,.09,.06,.09,DARK);
-  // Only the backrest blocks: the seat itself has to stay free, otherwise the
-  // collision resolver keeps pushing a seated visitor out of their own chair.
-  solid(x-.15,chairZ-.32,.62,.3);
+  // Walking collides with the actual chair footprint. The explicit seated
+  // state owns its position instead of running the walking collision solver.
+  solid(x-.15,chairZ,.76,.75);
   // A small stack of books preserves the personal, inhabited character.
   for(let i=0;i<3;i++)b(-1.21,.8+i*.045,.38,.37,.04,.22,{tex:'paint',tint:[0x987753,0x536d70,0xb2a78c][i]});
   // A yellow cable ramp and a red floor marking keep the mat from reading flat.
@@ -277,33 +302,27 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
 
   // ---- light set: one emissive mesh, vertex coloured, dimmed by one material
   const stripGeometries = [], stripColours = [];
-  const strip = (dx, y, dz, w, h, d, hex) => {
-    const g = new THREE.BoxGeometry(w, h, d); g.translate(x + dx, y + h / 2, z + dz);
+  const strip = (dx, y, dz, w, h, d, hex, yaw=0) => {
+    const g = new THREE.BoxGeometry(w, h, d);g.rotateY(yaw);g.translate(x + dx, y + h / 2, z + dz);
     stripGeometries.push(g); stripColours.push(hex);
   };
-  strip(-.5,3.02,front-.03,3.3,.05,.04,0xffb45e);      // wall cove
-  strip(-2.25,2.9,front-.03,1.2,.04,.04,0xffb45e);     // shoulder cove
-  strip(1.62,2.72,front-.03,.8,.04,.04,0xffb45e);
+  strip(-.1,4.055,front+.035,3.35,.025,.04,0xffb45e); // overhead service light
+  strip(wing.dx+.11*sw,2.84,wing.dz+.11*cw,1.65,.025,.025,0xffb45e,wing.yaw);
+  strip(2,2.25,front+.035,.4,.025,.04,0xffb45e);
   strip(0,.72,.6,2.6,.035,.05,0x49d8c8);               // under-desk
-  strip(-2.05,1.06,.36,.52,.04,.03,0xffc068);          // rack header
+  strip(-2.05,1.06,.36+rz,.52,.04,.03,0xffc068);       // rack header
   strip(1.55,.62,.6,.5,.04,.03,0x49d8c8);              // drawer kick
   // Edge lighting: the corner sits in the pyramid's shade, so the structure is
   // read by a few self-lit lines rather than by another light source.
-  strip(-3.02,1.9,front+.012,.05,.98,.03,0xffb45e);    // left column accent
-  strip(2.02,1.9,front+.012,.05,.98,.03,0xffb45e);     // right column accent
-  strip(-.5,.152,front+.022,5.2,.018,.018,0xffc068);   // plinth rail
-  // The big poster is back-lit like the reference: a thin warm halo on its frame.
-  const pp = posters[0], pb = pp.y - pp.h / 2;
-  strip(pp.dx,pb-.05,front+.006,pp.w+.2,.016,.016,0xffcf7a);
-  strip(pp.dx,pp.y+pp.h/2+.034,front+.006,pp.w+.2,.016,.016,0xffcf7a);
-  strip(pp.dx-pp.w/2-.09,pb-.034,front+.006,.016,pp.h+.068,.016,0xffcf7a);
-  strip(pp.dx+pp.w/2+.09,pb-.034,front+.006,.016,pp.h+.068,.016,0xffcf7a);
-  strip(-2.39,.1,.33,.028,1.06,.028,0x49d8c8);         // rack side accents
-  strip(-1.71,.1,.33,.028,1.06,.028,0x49d8c8);
+  strip(-1.94,1.7,front+.13,.025,.27,.025,0xffb45e);
+  strip(1.74,1.7,front+.13,.025,.27,.025,0xffb45e);
+  strip(cabinet.dx,.1,cabinet.dz+.625,.5,.02,.025,0x49d8c8);
+  strip(-2.39,.1,.33+rz,.028,1.06,.028,0x49d8c8);
+  strip(-1.71,.1,.33+rz,.028,1.06,.028,0x49d8c8);
   // The switch itself: three lamps, one per mode, lit by the light mesh.
   const switchPos = { dx: 1.62, y: 1.44 };
-  b(switchPos.dx,switchPos.y,front-.02,.19,.26,.03,PANEL);
-  for (let i=0;i<3;i++) b(switchPos.dx-.05+i*.05,switchPos.y+.06,front-.035,.026,.03,.02,i===0?WARN:EDGE);
+  b(switchPos.dx,switchPos.y,front+.035,.19,.26,.03,PANEL);
+  for (let i=0;i<3;i++) b(switchPos.dx-.05+i*.05,switchPos.y+.06,front+.055,.026,.03,.02,i===0?WARN:EDGE);
   const lightGeometry = mergeGeometries(stripGeometries.map((g, i) => {
     const n = g.attributes.position.count, colour = new Float32Array(n * 3), c = new THREE.Color(stripColours[i]);
     for (let k = 0; k < n; k++) c.toArray(colour, k * 3);
@@ -318,35 +337,50 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
   // Rack indicators: their own tiny emissive mesh so a simulated boot can blink.
   const lampGeometries = [];
   for(let i=0;i<4;i++) {
-    const g=new THREE.BoxGeometry(.035,.028,.012);g.translate(x-1.91,.23+i*.255,z+.356);lampGeometries.push(g);
+    const g=new THREE.BoxGeometry(.035,.028,.012);g.translate(x-1.91,.23+i*.255,z+.356+rz);lampGeometries.push(g);
   }
   for(let i=0;i<3;i++) {
-    const g=new THREE.BoxGeometry(.02,.02,.01);g.translate(x-1.86,.2+i*.08,z+.356);lampGeometries.push(g);
+    const g=new THREE.BoxGeometry(.02,.02,.01);g.translate(x-1.86,.2+i*.08,z+.356+rz);lampGeometries.push(g);
   }
   const ledMaterial = new THREE.MeshBasicMaterial({ color: 0xd4a45d, transparent: true, opacity: .7, toneMapped: false });
   const leds=new THREE.Mesh(mergeGeometries(lampGeometries), ledMaterial);
   lampGeometries.forEach(g=>g.dispose());leds.name='workstation-status-leds';mesh.add(leds);
 
+  mesh.applyMatrix4(turn);mesh.updateMatrixWorld(true);
+  for(const display of screens){
+    display.housingPosition=new THREE.Vector3(display.position.x,display.y,display.position.z-.038).applyMatrix4(turn);
+    display.position.applyMatrix4(turn);display.yaw+=yaw;
+  }
+  const posterFaces=posters.map(p=>({...p,position:p.mesh.getWorldPosition(new THREE.Vector3()),yaw:p.yaw+yaw,width:p.w,height:p.h}));
+
   // ---- interaction boxes, world space, one per thing a visitor can touch ----
-  const half = s => s.width / 2;
   const box3 = (cx, y, cz, w, h, d) => new THREE.Box3(
     new THREE.Vector3(cx - w / 2, y - h / 2, cz - d / 2),
     new THREE.Vector3(cx + w / 2, y + h / 2, cz + d / 2));
-  const main = screens[0];
-  const hotspot = { id: 'workbench', box: new THREE.Box3(
-    new THREE.Vector3(main.position.x-half(main), main.position.y-main.height/2, main.position.z-.006),
-    new THREE.Vector3(main.position.x+half(main), main.position.y+main.height/2, main.position.z+.006)) };
+  const faceRay=new THREE.Ray(),faceHit=new THREE.Vector3(),facePlane=new THREE.Plane(new THREE.Vector3(0,0,1),0);
+  const faceBounds=f=>box3(f.position.x,f.position.y,f.position.z,
+    f.width*Math.abs(Math.cos(f.yaw))+.012,f.height+.012,f.width*Math.abs(Math.sin(f.yaw))+.012);
+  const intersectFace=f=>{
+    const transform=new THREE.Matrix4().makeRotationY(f.yaw).setPosition(f.position),inverse=transform.clone().invert();
+    return(ray,out)=>{
+      faceRay.copy(ray).applyMatrix4(inverse);
+      if(faceRay.direction.z>=0||!faceRay.intersectPlane(facePlane,faceHit)||Math.abs(faceHit.x)>f.width/2||Math.abs(faceHit.y)>f.height/2)return false;
+      out.copy(faceHit).applyMatrix4(transform);return true;
+    };
+  };
+  const main=screens[0],mainFace=intersectFace(main);
+  const hotspot={id:'workbench',box:faceBounds(main)};
   // The engine's broad-phase box alone sees through furniture. Test the two
   // real, tilted auxiliary housings in their local coordinates before accepting
   // a main-screen ray; the same predicate is used by hover and native clicks.
   const housings=screens.slice(1).map(s=>({
-    inverse:new THREE.Matrix4().makeRotationY(s.yaw).setPosition(s.position.x,s.y,s.position.z-.038).invert(),
+    inverse:new THREE.Matrix4().makeRotationY(s.yaw).setPosition(s.housingPosition).invert(),
     bounds:new THREE.Box3(new THREE.Vector3(-(s.width+.07)/2,-(s.height+.07)/2,-.0325),
       new THREE.Vector3((s.width+.07)/2,(s.height+.07)/2,.0325)),
   }));
   const localRay=new THREE.Ray(),point=new THREE.Vector3();
   hotspot.hitTest=ray=>{
-    if(ray.direction.z>=0||!ray.intersectBox(hotspot.box,point))return false;
+    if(!mainFace(ray,point))return false;
     const mainDistance=point.distanceToSquared(ray.origin);
     for(const housing of housings){
       localRay.copy(ray).applyMatrix4(housing.inverse);
@@ -356,16 +390,19 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
   };
   const fixtures = [
     { id: 'main', page: 'workbench', label: '访问 GitHub ↗', box: hotspot.box, precise: true },
-    { id: 'terminal', page: 'terminal', label: '终端 · 模拟', box: box3(screens[1].position.x, screens[1].position.y, screens[1].position.z, .84, .7, .5) },
-    { id: 'status', page: 'status', label: '系统状态', box: box3(screens[2].position.x, screens[2].position.y, screens[2].position.z, .84, .7, .5) },
-    { id: 'rack', page: 'rack', label: '服务器机柜', box: box3(x-2.05, .6, z-.08, .86, 1.32, .95) },
-    { id: 'poster-pyramid', page: 'poster-pyramid', label: '海报 · 玻璃金字塔', box: box3(x, 2.42, z+front, 2.2, 1.44, .12) },
-    { id: 'poster-v', page: 'poster-v', label: '海报 · V', box: box3(x-2.25, 2.42, z+front, 1.16, .72, .12) },
-    { id: 'lights', label: '灯光模式', box: box3(x+switchPos.dx, switchPos.y+.13, z+front, .34, .42, .14) },
-    { id: 'seat', label: '坐下', box: box3(x-.15, .55, chairZ, .9, 1.1, .95) },
+    { id: 'terminal', page: 'terminal', label: '终端 · 模拟', box:faceBounds(screens[1]) },
+    { id: 'status', page: 'status', label: '系统状态', box:faceBounds(screens[2]) },
+    { id: 'rack', page: 'rack', label: '服务器机柜', box:box3(x+rack.dx,.6,z+rack.dz,.86,1.32,.95).applyMatrix4(turn) },
+    ...posterFaces.map(p=>({id:p.id,page:p.id,label:p.id==='poster-v'?'海报 · V':'海报 · 玻璃金字塔',box:faceBounds(p)})),
+    { id: 'lights', label: '灯光模式', box:box3(x+switchPos.dx,switchPos.y+.13,z+front,.34,.42,.14).applyMatrix4(turn) },
+    { id: 'seat', label: '坐下', box:box3(x-.15,.55,chairZ,.9,1.1,.95).applyMatrix4(turn) },
   ];
-  const seat = { x: x-.15, z: chairZ + .08 };
-  const stand = { x: x-.15, z: chairZ + .92 };
+  // Intersect display faces in local space. Broad AABBs alone overlap from
+  // oblique angles and can select a screen that the cursor never touches.
+  for(const f of [...screens,...posterFaces]) {
+    fixtures.find(item=>item.id===f.id).intersect=intersectFace(f);
+  }
+  const seat=at(-.15,chairZ-z-.04),stand=at(-.15,chairZ-z+.92);
   const faceDesk = Math.atan2(x - seat.x, z - seat.z);
   let elapsed = 0, mode = 0, boot = 0;
   // One place owns the corner's decorative light level, so the switch, the boot
@@ -375,8 +412,9 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
     lightMaterial.color.setScalar(g);
     ledMaterial.opacity = g === 0 ? .12 : .62 + .2 * Math.sin(elapsed * Math.PI / 2.5);
   };
-  return { mesh, screens, hotspot, fixtures, approach, href: PROFILE.accounts.find(a=>a.id==='github').href,
-    seat, stand, faceDesk, lightModes: LIGHT_MODES,
+  return { mesh, screens, hotspot, fixtures, approach, layout:L, href: PROFILE.accounts.find(a=>a.id==='github').href,
+    seat,stand,faceDesk,yaw,at,lightModes:LIGHT_MODES,
+    toLocal(p){const dx=p.x-x,dz=p.z-z;return {x:dx*c-dz*s,z:dx*s+dz*c};},
     get lightMode() { return LIGHT_MODES[mode].id; },
     cycleLights() { mode = (mode + 1) % LIGHT_MODES.length; applyLights(); return LIGHT_MODES[mode]; },
     applyLights,
@@ -398,9 +436,11 @@ export function buildWorkstation({ deskX: x, deskZ: z, chairZ, approach }, { box
 // The engine keeps its own workbench hotspot for the main display, so nothing
 // here duplicates the GitHub binding or the page system: pages open by
 // dispatching the project's existing `[data-open]` links.
-export function attachWorkstationControls(station,{stage,rig,player}) {
+export function attachWorkstationControls(station,{stage,rig,player,nav}) {
   const canvas=stage.renderer.domElement,tip=document.querySelector('#tooltip');
   const panel=document.querySelector('#panel'),map=document.querySelector('#bigmap');
+  const weatherMenu=document.querySelector('#weatherMenu');
+  const modalOpen=()=>panel.open||!map.hidden||!weatherMenu.hidden;
   const page=document.querySelector('[data-station="workbench"]');
   page.dataset.link=station.href;
   page.querySelector('a').href=station.href;
@@ -411,93 +451,148 @@ export function attachWorkstationControls(station,{stage,rig,player}) {
   const proxies=new Map();
   for(const id of ['workbench','terminal','status','rack','poster-pyramid','poster-v']){
     const a=document.createElement('a');a.dataset.open=id;a.href='#';proxyHost.appendChild(a);proxies.set(id,a);
-    // The engine's own handler listens on the document and only needs the
-    // event, so cancel the anchor's default jump to "#" and keep the URL clean.
+    // The panel's existing handler owns activation. Cancel the anchor's
+    // default fragment navigation so opening an auxiliary card keeps the URL.
     a.addEventListener('click',e=>e.preventDefault());
   }
   const open=id=>{const a=proxies.get(id);if(a)a.click();};
-  const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),hit=new THREE.Vector3(),centre=new THREE.Vector3();
-  let px=-1,py=-1,ownsTip=false,seated=false,pointerDown=null;
+  const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),hit=new THREE.Vector3();
+  let px=-1,py=-1,ownsTip=false,seated=false,savedView=null;
+  const exit=document.createElement('button');
+  exit.type='button';exit.className='nr-seat-exit';exit.hidden=true;
+  exit.textContent='点击离开座位';exit.setAttribute('aria-label','离开座椅');
+  document.querySelector('#hud').appendChild(exit);
+  // A pointer:coarse device has no F key, so it gets tappable affordances. On a
+  // fine pointer the prompt is a plain read-out: pressing F is the only way in
+  // and the only way out.
+  const touchLike=matchMedia('(pointer: coarse)').matches;
+  const seatPrompt=document.createElement('button');
+  seatPrompt.type='button';seatPrompt.id='nr-seat-prompt';
+  seatPrompt.className='nr-seat-prompt'+(touchLike?' is-touch':'');
+  seatPrompt.hidden=true;
+  if(!touchLike)seatPrompt.tabIndex=-1;
+  document.querySelector('#hud').appendChild(seatPrompt);
+  const feedback=document.createElement('div');feedback.className='nr-feedback';
+  feedback.setAttribute('role','status');feedback.hidden=true;document.querySelector('#hud').appendChild(feedback);
+  let feedbackTime=0;
+  const notify=text=>{feedback.textContent=text;feedback.hidden=false;feedbackTime=2;};
+  const focusScene=()=>{canvas.tabIndex=-1;canvas.focus({preventScroll:true});};
   const hide=()=>{if(ownsTip){tip.hidden=true;canvas.style.cursor='';ownsTip=false;}};
   // Reach is measured from the desk itself, so the approach point, the seat and
   // the standing spot after leaving are all inside the same radius.
-  const near=()=>Math.hypot(player.pos.x-station.seat.x,player.pos.z-station.seat.z)<3.4;
+  const near=()=>Math.hypot(player.pos.x-station.seat.x,player.pos.z-station.seat.z)<3.4
+    &&Math.abs(player.y)<.7&&!player.flying;
+  // Keep the inherited GitHub hotspot under the same reach rule. Otherwise a
+  // rejected local tap could fall through to the engine and open it remotely.
+  const mainHit=station.hotspot.hitTest;
+  station.hotspot.hitTest=ray=>near()&&mainHit(ray);
+  // Both mouse-wheel and two-finger pinch zoom arrive through this method.
+  const zoom=rig.zoom;
+  rig.zoom=f=>{if(!seated)zoom(f);};
+  const reachPoint=new THREE.Vector3();
   function pick(clientX,clientY){
     if(!near())return null;
     ndc.set(clientX/innerWidth*2-1,-(clientY/innerHeight)*2+1);ray.setFromCamera(ndc,stage.camera);
-    let best=null;
+    let best=null,distance=Infinity;
+    reachPoint.set(player.pos.x,player.y+1.28,player.pos.z);
     for(const f of station.fixtures){
       // The seat is only an invitation from the floor beside it.
       if(f.id==='seat'&&seated)continue;
-      if(!ray.ray.intersectBox(f.box,hit))continue;
+      if(f.box.distanceToPoint(reachPoint)>3.1)continue;
+      if(f.intersect?!f.intersect(ray.ray,hit):!ray.ray.intersectBox(f.box,hit))continue;
       if(f.precise&&!station.hotspot.hitTest(ray.ray))continue;
-      // Screen-sized targets overlap in screen space from a side angle, so the
-      // winner is the box the cursor points *through* most centrally, not the one
-      // whose front face happens to be nearest.
-      f.box.getCenter(centre);
-      const score=ray.ray.distanceSqToPoint(centre)+.02*hit.distanceTo(ray.ray.origin);
-      if(!best||score<best.score)best={score,f};
+      if(!f.intersect&&f.id!=='seat'&&ray.ray.direction.x*Math.sin(station.yaw)+ray.ray.direction.z*Math.cos(station.yaw)>=0)continue;
+      const d=hit.distanceToSquared(ray.ray.origin);
+      if(d<distance){best=f;distance=d;}
     }
-    return best?.f||null;
+    return best;
   }
   function seatLabel(){return seated?'起身离开':'坐下 · 操作工作台';}
   function sit(){
-    if(seated)return;
-    seated=true;player.cancel();
+    if(seated||modalOpen()||!near()||Math.hypot(player.pos.x-station.seat.x,player.pos.z-station.seat.z)>1.8)return;
+    savedView=rig.captureView();player.cancel();
     player.teleport(station.seat.x,station.seat.z);
+    player.pos.x=station.seat.x;player.pos.z=station.seat.z;
+    seated=true;
     rig.skipIntro();
-    // Face the desk from the chair, then hand the eye back to the seated heading
-    // after recentering (recenter re-derives the yaw from the walking heading).
-    rig.setFirstPerson(true,station.faceDesk);
-    rig.recenter(player);
-    rig.setFirstPerson(true,station.faceDesk);
+    rig.setFirstPerson(true,station.faceDesk,{eyeHeight:1.28,transition:true});
     document.body.classList.add('seated');
+    exit.hidden=!touchLike;
   }
   function stand(){
     if(!seated)return;
-    seated=false;player.cancel();
-    player.teleport(station.stand.x,station.stand.z);
-    rig.setFirstPerson(false);rig.recenter(player);
+    const target=nav.nearestStand(station.stand.x,station.stand.z);
+    if(!target||!nav.canStand(target.x,target.z))return;
+    player.cancel();
+    if(!player.teleport(target.x,target.z))return;
+    seated=false;
+    rig.restoreView(savedView,{transition:true});savedView=null;
     document.body.classList.remove('seated');
+    exit.hidden=true;hide();focusScene();
   }
-  // While seated the chair owns the visitor's position: the walk input is zeroed
-  // and the seat is re-asserted after the collision pass, so the chair's own
-  // collider can never push a seated visitor back out of it.
+  exit.addEventListener('click',()=>{if(touchLike)stand();});
+  seatPrompt.addEventListener('click',()=>{
+    if(!touchLike)return;
+    if(seated)stand();else sit();
+  });
+  // One line of guidance beside the chair: how to get in, and how to get out.
+  // Nothing here is clickable with a fine pointer.
+  function updatePrompt(){
+    // A touch screen shows one affordance at a time: the prompt to sit, then the
+    // exit button that replaces it while seated.
+    const show=!modalOpen()&&!rig.introActive&&!rig.showcaseActive&&near()&&!(touchLike&&seated);
+    seatPrompt.hidden=!show;
+    if(!show)return;
+    const text=seated?(touchLike?'点击离开':'按 F 起身'):(touchLike?'点击坐下':'按 F 坐下');
+    if(seatPrompt.textContent!==text)seatPrompt.textContent=text;
+  }
+  // While seated, bypass walking physics and keep the visitor at the seat.
+  // The physical chair remains solid for everyone walking around it.
   const baseUpdate=player.update;
   player.update=(dt,move,yaw,fp)=>{
     if(!seated)return baseUpdate(dt,move,yaw,fp);
-    baseUpdate(dt,{x:0,z:0,run:false,up:false,down:false},yaw,fp);
+    player.cancel();
     player.pos.x=station.seat.x;player.pos.z=station.seat.z;
   };
 
   canvas.addEventListener('pointermove',e=>{px=e.clientX;py=e.clientY;if(e.buttons){px=-1;hide();}});
   canvas.addEventListener('pointerleave',()=>{px=-1;hide();});
-  // Capture phase: a fixture click must not also walk the player.
-  document.addEventListener('click',e=>{
-    if(e.target!==canvas)return;
-    const f=pick(e.clientX,e.clientY);
-    if(!f){if(seated){e.stopImmediatePropagation();e.preventDefault();hide();}return;}
-    e.stopImmediatePropagation();e.preventDefault();
-    pointerDown=null;
-    if(f.id==='seat'){seated?stand():sit();hide();return;}
-    if(f.id==='lights'){station.cycleLights();hide();return;}
-    hide();open(f.page);
-  },true);
-  // F sits at the chair when the visitor is standing right beside it.
+  // The engine's existing tap recognizer calls this once, only after a real
+  // tap (never a drag, pinch or right click), before walking or another hotspot.
+  function tap(x,y){
+    if(modalOpen())return false;
+    const f=pick(x,y);
+    if(!f)return seated;
+    if(f.id==='seat')sit();
+    else if(f.id==='lights')notify('灯光 · '+station.cycleLights().name);
+    else {if(f.id==='main')notify('GitHub ↗ Aletheiar');open(f.page);}
+    hide();return true;
+  }
+  // Modal input takes priority; typing never invokes a world shortcut.
   addEventListener('keydown',e=>{
-    if(e.key!=='f'&&e.key!=='F')return;
+    if(modalOpen())return;
+    if(e.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
+    if(e.ctrlKey||e.altKey||e.metaKey)return;
+    const key=e.key.toLowerCase();
+    // F owns the seat: it sits the visitor down beside the chair and stands them
+    // up again. Escape stays with the engine so it can still close a panel.
+    if(key==='f'&&(seated||(near()&&Math.hypot(player.pos.x-station.seat.x,player.pos.z-station.seat.z)<1.8))){
+      e.stopImmediatePropagation();e.preventDefault();if(!e.repeat)seated?stand():sit();return;
+    }
+    if(seated&&(key==='v'||key===' '||key==='p'||/^[1-9]$/.test(key))){
+      e.stopImmediatePropagation();e.preventDefault();
+    }
+  },true);
+  panel.addEventListener('close',()=>{
     if(panel.open)return;
-    const d=Math.hypot(player.pos.x-station.seat.x,player.pos.z-station.seat.z);
-    if(!seated&&d<1.25){e.stopImmediatePropagation();e.preventDefault();sit();}
-  },true);
-  addEventListener('keydown',e=>{
-    if(e.key!=='Escape')return;
-    if(panel.open)return;                          // the panel closes first
-    if(seated){stand();}
+    if(seated){exit.hidden=!touchLike;if(touchLike)exit.focus({preventScroll:true});else focusScene();}
+    else if(station.fixtures.some(f=>f.page===panel.dataset.station))focusScene();
   });
+  for(const id of ['viewButton','flyButton','overview-button','enter-button','return-button','hotbar']) {
+    document.getElementById(id)?.addEventListener('click',e=>{if(seated){e.preventDefault();e.stopImmediatePropagation();}},true);
+  }
 
   // ---- page content: a simulated terminal, live render stats, a rack demo ----
-  const terminal={ready:false};
   function mountTerminal(body){
     const out=body.querySelector('[data-term-out]'),field=body.querySelector('[data-term-in]');
     if(!out||!field)return;
@@ -506,15 +601,14 @@ export function attachWorkstationControls(station,{stage,rig,player}) {
     const boot=()=>{
       out.textContent='';lines=0;
       print('NETRUNNER SHELL 0.9 — SIMULATION ONLY');
-      print('No command here touches this device or any network.');
+      print('Preset commands only. `github` opens the public profile in a new tab.');
       print('');
       print('Type `help` for the command list.','note');
       print('');
     };
     boot();
     field.value='';
-    field.addEventListener('keydown',ev=>{
-      if(ev.key!=='Enter')return;
+    body.querySelector('[data-term-form]').addEventListener('submit',ev=>{
       ev.preventDefault();
       const raw=field.value.trim();field.value='';
       if(!raw)return;
@@ -524,24 +618,24 @@ export function attachWorkstationControls(station,{stage,rig,player}) {
       else if(cmd==='about'){print('Aletheiar — personal site, built as a walkable voxel courtyard.');print('Front end: Three.js, native ES modules, no build step for the world.');}
       else if(cmd==='projects'){print('homecraft        three.js voxel hall and courtyard');print('research notes   long-form write-ups in docs/research');print('experiments      small shaders and geometry studies');}
       else if(cmd==='github'){print('opening https://github.com/Aletheiar in a new tab …','ok');window.open(station.href,'_blank','noopener');}
-      else if(cmd==='clear'){boot();}
+      else if(cmd==='clear'){out.textContent='';lines=0;}
       else print('unknown command: '+raw+' — try `help`','note');
       lines++;
       if(lines>60){boot();}
       field.scrollIntoView({block:'nearest'});
     });
-    setTimeout(()=>field.focus({preventScroll:true}),60);
-    terminal.ready=true;
+    field.focus({preventScroll:true});
   }
   const status={el:null,timer:0};
-  let sample=0;
   function mountStatus(body){
     status.el=body.querySelector('[data-status]');
     status.timer=0;
-    fillStatus(stage.renderer.info.render.calls,stage.renderer.info.render.triangles,0);
+    fillStatus();
   }
-  function fillStatus(calls,tris,ms){
+  function fillStatus(){
     const el=status.el;if(!el)return;
+    const measured=window.__home?.stats(),render=stage.renderer.info.render;
+    const calls=measured?.calls??render.calls,tris=measured?.triangles??render.triangles,ms=measured?.frameMs??0;
     const set=(key,value)=>{const node=el.querySelector(`[data-k="${key}"]`);if(node)node.textContent=value;};
     set('scene','玻璃金字塔 · 中央大厅');
     set('local',new Date().toLocaleTimeString('zh-CN',{hour12:false}));
@@ -549,59 +643,72 @@ export function attachWorkstationControls(station,{stage,rig,player}) {
     set('tris',tris.toLocaleString('en-US'));
     set('frame',ms>0?`${ms.toFixed(1)} ms`:'—');
     set('fps',ms>0?String(Math.round(1000/ms)):'—');
-    set('lights',String(stage.scene.children.filter(o=>o.isLight).length));
+    let lights=0;stage.scene.traverse(o=>{if(o.isLight)lights++;});set('lights',String(lights));
     set('pixel',`${stage.renderer.getPixelRatio().toFixed(2)}×`);
   }
+  let rackButton=null,rackLog=null,bootWasRunning=false;
   function mountRack(body){
     const button=body.querySelector('[data-rack-boot]'),log=body.querySelector('[data-rack-log]');
     if(!button||!log)return;
+    rackButton=button;rackLog=log;button.disabled=station.booting;
     button.addEventListener('click',()=>{
       if(station.booting)return;
-      station.boot();
-      const steps=['power: standby','rail A: 12 V nominal','module 1 … ok','module 2 … ok','module 3 … ok','cooling loop … nominal','decorative node online'];
-      log.textContent='';
-      steps.forEach((line,i)=>setTimeout(()=>{log.textContent+=(log.textContent?'\n':'')+line;log.scrollTop=log.scrollHeight;},i*160));
+      station.boot();button.disabled=true;bootWasRunning=true;
+      log.textContent='SIMULATION · starting decorative node…';
     });
   }
   // The panel is the project's own page dialog; fill only the pages this room owns.
+  let mountedNode=null;
   const observer=new MutationObserver(()=>{
-    if(!panel.open){status.el=null;return;}
+    if(!panel.open){status.el=null;rackButton=rackLog=mountedNode=null;return;}
     const body=panel.querySelector('.body');if(!body)return;
+    if(mountedNode===body.firstElementChild)return;
+    mountedNode=body.firstElementChild;status.el=null;rackButton=rackLog=null;
     // The shell's input is built when the card opens: a focusable field sitting
     // in the hidden page list would steal focus (and the browser's sticky user
     // activation) from the hall on load.
     const slot=body.querySelector('[data-nr-slot="terminal"]');
     if(slot&&!slot.firstChild){
-      slot.innerHTML='<pre class="nr-term-out" data-term-out></pre>'
-        +'<label class="nr-term-line"><span>&gt;</span><input data-term-in type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="模拟终端命令"></label>';
+      slot.innerHTML='<pre class="nr-term-out" data-term-out role="log" aria-live="polite"></pre>'
+        +'<form class="nr-term-line" data-term-form><span>&gt;</span><input data-term-in type="text" enterkeyhint="send" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="模拟终端命令"><button class="nr-button" type="submit">运行</button></form>';
     }
-    if(body.querySelector('[data-term-out]')&&!body.querySelector('[data-term-ready]')){
-      body.dataset.termReady='1';mountTerminal(body);
-    }
+    if(body.querySelector('[data-term-out]'))mountTerminal(body);
     if(body.querySelector('[data-status]'))mountStatus(body);
     if(body.querySelector('[data-rack-boot]'))mountRack(body);
   });
   observer.observe(panel,{attributes:true,attributeFilter:['open','data-station']});
 
-  const api = {update(dt){
+  let hoverClock=0;
+  const api = {tap,update(dt=0){
+    updatePrompt();
+    exit.hidden=!seated||modalOpen()||!touchLike;
+    if(feedbackTime>0){feedbackTime-=dt;if(feedbackTime<=0)feedback.hidden=true;}
+    if(bootWasRunning&&!station.booting){
+      bootWasRunning=false;
+      if(rackButton)rackButton.disabled=false;
+      if(rackLog)rackLog.textContent='SIMULATION · decorative node online\nNo network connection.';
+    }
     // Live render numbers only while the status page is on screen.
     if(status.el&&panel.open){
       status.timer+=dt;
-      sample = Math.min(dt, .5) * 1000;
       if(status.timer>.25){
-        const r=stage.renderer.info.render;
-        fillStatus(r.calls,r.triangles,sample);
+        fillStatus();
         status.timer=0;
       }
     }
-    if(px<0||rig.introActive||panel.open||!map.hidden){hide();return;}
+    hoverClock+=dt;if(hoverClock<.075)return;hoverClock=0;
+    if(px<0||rig.introActive||modalOpen()){hide();return;}
     const f=pick(px,py);
     if(!f){hide();return;}
     const label=f.id==='seat'?seatLabel():f.label+(f.id==='lights'?` · ${station.lightModes.find(m=>m.id===station.lightMode).name}`:'');
     tip.textContent=label;tip.hidden=false;ownsTip=true;canvas.style.cursor='pointer';
     tip.style.left=`${Math.min(innerWidth-tip.offsetWidth-8,Math.max(8,px-tip.offsetWidth/2))}px`;
     tip.style.top=`${Math.max(8,py-tip.offsetHeight-16)}px`;
-  },get seated(){return seated;},sit,stand};
+  },get seated(){return seated;},get state(){
+    if(panel.open&&['terminal','status'].includes(panel.dataset.station))return 'computer';
+    if(panel.open&&station.fixtures.some(f=>f.page===panel.dataset.station))return 'viewing';
+    return seated?'seated':'roaming';
+  },sit,stand};
   // The station object is what the scene stores, so this is where a check (or a
   // later feature) can read the seated state without another global.
   station.controls = api;

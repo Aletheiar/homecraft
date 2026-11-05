@@ -70,11 +70,11 @@ export function build({ grid, layer, scene, stage }) {
   return { ...hall, batches: { ...hall.batches, ...floor.batches, ...portals.batches, ...foyer.batches, ...gallery.batches, ...statues.batches, perimeter: B }, sites: [createBoundarySource(hall.obstacles)], named: { pyramid: pyramidState, foyer: foyer.state, gallery: gallery.state, portals: HUB_PORTALS, veils: portals.veils, statues: statues.metadata, exhibit: hall.exhibit, workstation: hall.workstation } };
 }
 
-export function setup({ player, rig, stage, world }) {
+export function setup({ player, rig, stage, world, nav }) {
   let introduced = false, lastMessage = '', lastSafeX = SPAWN.x, lastSafeZ = SPAWN.z;
   // Only the central instrument rotates; the plinth and hall remain fixed.
   const exhibit = world.exhibit;
-  const workstation = attachWorkstationControls(world.workstation, { stage, rig, player });
+  const workstation = attachWorkstationControls(world.workstation, { stage, rig, player, nav });
   const leave = gate => {
     saveHubReturn(player, rig, gate);
     history.replaceState({ ...history.state, hubReturnPending: true }, '', location.href);
@@ -139,6 +139,7 @@ export function setup({ player, rig, stage, world }) {
   // A page that was entered through a door opens out of the ripple.
   revealArrival();
   return {
+    tap: (x, y) => workstation.tap(x, y),
     // A restored viewpoint is the whole point of coming back: the island
     // opening shot would fly the camera away from the door the visitor left.
     skipIntro: !!restored,
@@ -148,7 +149,7 @@ export function setup({ player, rig, stage, world }) {
       else if (player.mode === 'ground') { lastSafeX = player.pos.x; lastSafeZ = player.pos.z; }
       portals.update(dt); foyer.update(dt);
       exhibit?.update(dt);
-      world.workstation.update(dt); workstation.update();
+      world.workstation.update(dt); workstation.update(dt);
       const message = pyramidState.error ? '模型读取失败，请刷新页面重试' : pyramidState.sceneryReady ? 'NewHeaven · 本地预览' : pyramidState.ready ? '正在载入外围景观…' : '正在载入金字塔…';
       if (message !== lastMessage) { status.textContent = message; lastMessage = message; }
       if (rig.introSkipped) introduced = true;

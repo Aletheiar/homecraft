@@ -1,6 +1,6 @@
 # Project status and next work
 
-Updated: 2026-11-04, Asia/Shanghai.
+Updated: 2026-11-05, Asia/Shanghai.
 
 This is a standalone local prototype based on the frozen Homecraft 0.1.1
 import. The current courtyard, portals, profile, friend directory and guestbook are
@@ -9,8 +9,9 @@ follow-up work; functional acceptance does not certify those areas.
 
 The 2026-11-04 hall integration includes the latest crouched Devil Room
 sculpture, three-door layout and entrance buffer, central armillary, and
-industrial GitHub workstation. Full local acceptance passes with 55 Node
-tests and all browser suites. See the
+industrial GitHub workstation. That integration passed 55 Node tests and its
+browser suites. The 2026-11-05 composition and interaction revision passes
+70 Node tests, all standalone browser checks and the static build. See the
 [integration record](research/2026-11-04-hall-release.md) for scope and
 validation. Earlier local-only publication notes describe their original
 implementation checkpoints.
@@ -43,6 +44,17 @@ implementation checkpoints.
   doors; walking through either face enters them. Reading cards remain
   clickable. The studio has no door in the hall; its card link still opens the
   studio room directly.
+- The latest workstation composition uses a 3.2 m central pyramid print, a
+  60-degree left equipment wing carrying the smaller V print, a recessed
+  backdrop and separately projecting rack/cabinet. All screen, seat, preview
+  and lighting interactions remain available, with single-tap activation and
+  restored camera/input state after exit. See the
+  [composition acceptance record](research/2026-11-05-netrunner-interaction-acceptance.md).
+  The subsequent placement revision turns the complete desk/backdrop/equipment
+  assembly 30 degrees towards the armillary, with shared transforms for targets,
+  collisions and chair positions. It passes 73 Node tests, workstation/portal
+  browser acceptance, the standard check and build. See
+  [diagonal placement](research/2026-11-05-netrunner-diagonal-placement.md).
 - The hall is laid out as a museum foyer: a compass-and-orbit floor emblem
   under the low plinth and armillary exhibit, an industrial three-screen
   netrunner room in the north-east corner (the main display opens the owner's
@@ -56,7 +68,8 @@ implementation checkpoints.
   render-telemetry panel, the rack's boot animation, both posters as full-size
   previews, the corner's three-mode light switch, and the chair. Sitting is a
   real viewpoint change — the visitor is pinned to the seat in first person
-  while the desk stays operable, and Escape stands them on the mat. Precise
+  while the desk stays operable; a chip beside the chair names the key, and only
+  F stands them back on the mat (Escape stays with the panels). Precise
   picking rejects rays occluded by either auxiliary display housing, and the
   terminal's input is built when its card opens so it never holds the browser's
   user activation on load. The other furniture, planters and shelves keep their

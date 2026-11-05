@@ -7,6 +7,28 @@ import { COURTYARD_TRACKS } from '../world/music-library.js';
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
 const fixture = readFileSync(new URL('./fixtures/audio-tone.mp3', import.meta.url));
 const chosen = Math.floor(.41 * COURTYARD_TRACKS.length);
+// Playwright evaluate/waitForFunction use Runtime.callFunctionOn with
+// userGesture:true. Poll through CDP without granting the very activation
+// whose absence this test needs to verify, including the first title read.
+async function unactivatedStartup(page) {
+  const client=await page.context().newCDPSession(page);
+  try {
+    const until=Date.now()+60000;
+    while(Date.now()<until){
+      const {result}=await client.send('Runtime.evaluate',{
+        expression:`(() => {
+          const audio=document.querySelector('#courtyard-audio');
+          if(!window.__home?.world.foyer||!audio||audio.readyState<2)return null;
+          return {title:document.querySelector('[data-music-title]').textContent,
+            paused:audio.paused,activated:navigator.userActivation.hasBeenActive};
+        })()`,returnByValue:true,userGesture:false,
+      });
+      if(result.value)return result.value;
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
+    throw new Error('The courtyard audio did not become ready without activation.');
+  } finally {await client.detach();}
+}
 for (const allowed of [true, false]) {
   const browser = await launchBrowser({ args: [`--autoplay-policy=${allowed ? 'no-user-gesture-required' : 'document-user-activation-required'}`] });
   try {
@@ -17,16 +39,17 @@ for (const allowed of [true, false]) {
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/assets/music/*.mp3', route => route.fulfill({ status: 200, contentType: 'audio/mpeg', body: fixture }));
     await page.goto(base);
-    await page.waitForFunction(() => window.__home?.world.foyer);
+    const initial=await unactivatedStartup(page);
     const current = () => page.locator('[data-music-title]').textContent();
-    assert.equal(await current(), COURTYARD_TRACKS[chosen].title, 'Arrival selects a random public track before opening the card');
+    assert.equal(initial.title, COURTYARD_TRACKS[chosen].title, 'Arrival selects a random public track before opening the card');
     const audio = page.locator('#courtyard-audio');
     if (allowed) {
       await page.waitForFunction(() => document.querySelector('#courtyard-audio').currentTime > .1);
     } else {
-      await page.waitForFunction(() => document.querySelector('#courtyard-audio').readyState >= 2);
-      assert.equal(await audio.evaluate(a => a.paused), true, 'Fresh browser blocks unrequested sound');
-      await page.keyboard.press('Shift');
+      assert.equal(initial.activated,false,'Waiting for media never grants user activation');
+      assert.equal(initial.paused, true, 'Fresh browser blocks unrequested sound');
+      // A modifier key alone does not grant Chromium user activation.
+      await page.keyboard.press('x');
       await page.waitForFunction(() => document.querySelector('#courtyard-audio').currentTime > .1);
       assert.equal(await current(), COURTYARD_TRACKS[chosen].title, 'Activation retains the chosen starting track');
     }
@@ -63,9 +86,9 @@ try {
   const page = await context.newPage();
   await page.route('**/assets/music/*.mp3', route => route.fulfill({ status: 200, contentType: 'audio/mpeg', body: fixture }));
   await page.goto(base);
-  await page.waitForFunction(() => document.querySelector('#courtyard-audio')?.readyState >= 2);
-  const chosenTitle = await page.locator('[data-music-title]').textContent();
-  assert.equal(await page.locator('#courtyard-audio').evaluate(a => a.paused), true);
+  const initial=await unactivatedStartup(page),chosenTitle=initial.title;
+  assert.equal(initial.activated,false,'Readiness polling leaves the mobile document unactivated');
+  assert.equal(initial.paused,true);
   const client = await context.newCDPSession(page);
   await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 160, y: 400 }] });
   await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 210, y: 440 }] });

@@ -62,14 +62,18 @@ The corner reuses the engine's own machinery instead of adding a second one:
   appended *inside* the panel.
 - The main screen keeps the GitHub entry: hovering shows `访问 GitHub ↗`, clicking
   opens `https://github.com/Aletheiar` in a new tab with `window.opener === null`.
-- Seat: click the chair (hint `坐下 · 操作工作台`) or press F within 1.25 m. The
-  visitor is pinned to the seat, the camera goes first-person facing the desk,
-  walking is zeroed for as long as they sit, and Escape stands them up on the mat
-  at (13.15, −10.58).
+- Seat: approaching the chair raises a HUD chip (`按 F 坐下` on a fine pointer,
+  `点击坐下` on a touch screen) that hides again out of range. Sitting is
+  available by F or by clicking the chair; the visitor is pinned to the seat, the
+  camera goes first-person facing the desk, and walking is zeroed for as long as
+  they sit. **F is the only way out** — it stands them on the mat at
+  (13.15, −10.58). Escape is left to the engine, so it closes a panel and never
+  breaks the seat. On a coarse pointer the chip hides while seated and a 44 px
+  `点击离开座位` button takes its place, because a phone has no F key.
 - While seated the side screens sit outside a 50° view, so the visitor turns
   their head with the mouse — the same look they use while walking.
 - Panels never stack: the engine's own `#panel` dialog owns the modal state, and
-  Escape closes the page before it stands the visitor up.
+  Escape closes the page; the seat prompt hides itself while a panel is open.
 
 ## Assets and UI
 

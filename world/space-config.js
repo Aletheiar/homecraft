@@ -15,10 +15,29 @@ export const HALL_CENTER = { x: 0, z: 0 };
 export const HALL_EMBLEM = { radius: 3.9 };
 // The two feature corners: the workbench in the north-east, the lounge in the
 // south-east. Furniture is placed around these anchors, not on top of them.
+const WORKBENCH = { deskX: 12.7, deskZ: -12.6, yaw: -Math.PI/6, chairZ: -11.5, shelfX: 15.95, shelfZ: -14.25 };
+// One rigid frame for the furniture, image planes, targets and player positions.
+export function workbenchPoint(dx,dz,anchor=HALL_SPOTS.workbench) {
+  const c=Math.cos(anchor.yaw||0),s=Math.sin(anchor.yaw||0);
+  return {x:anchor.deskX+dx*c+dz*s,z:anchor.deskZ-dx*s+dz*c};
+}
+const approach=workbenchPoint(0,2.4,WORKBENCH);
 export const HALL_SPOTS = {
-  workbench: { deskX: 13.3, deskZ: -12.6, chairZ: -11.5, shelfX: 14.95, shelfZ: -14.25, approach: [13.3, -10.2] },
+  workbench: { ...WORKBENCH, approach:[approach.x,approach.z] },
   lounge: { x: 13.9, z: 13.4 },
   exhibit: { x: HALL_CENTER.x, z: HALL_CENTER.z },
+};
+// Relative to the desk anchor. The backdrop, working layer and turned left
+// wing occupy different depths; only the centre rises near the sloped roof.
+export const WORKSTATION_LAYOUT = {
+  wall: { dx: -.4, dz: -1.38, width: 5.6, top: 4.12 },
+  wing: { dx: -2.7, dz: -.25, yaw: Math.PI / 3, width: 1.85 },
+  rack: { dx: -2.05, dz: .5 },
+  cabinet: { dx: 2.2, dz: .45 },
+  posters: {
+    main: { dx: -.1, dz: -1.288, y: 2.91, w: 3.2, yaw: 0 },
+    side: { y: 2.18, w: 1.15 },
+  },
 };
 // Museum exhibit dimensions are local to the upper stone platform. The hall
 // centre, all stations and the three portal definitions stay fixed. `spin`

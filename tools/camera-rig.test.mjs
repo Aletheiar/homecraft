@@ -33,6 +33,33 @@ test('dragging upward in third person can look above the horizon', () => {
   assert.ok(h.forward().y > .3, 'upward input must produce an upward view');
 });
 
+test('a seated eye transition is smooth and restores the exact exploration view', () => {
+  const h = fixture(); h.step();
+  const saved = h.rig.captureView();
+  const before = h.camera.position.clone();
+  h.rig.setFirstPerson(true, Math.PI, { eyeHeight: 1.28, transition: true });
+  assert.ok(h.camera.position.distanceTo(before) < 1e-9, 'setting the seat does not snap the eye');
+  h.step(1);
+  assert.ok(h.camera.position.distanceTo(before) < .1, 'the first frame eases out of the previous view');
+  h.step(60);
+  assert.ok(Math.abs(h.camera.position.y - 1.28) < 1e-6);
+  assert.ok(h.forward().z < -.9, 'the visitor faces the desk');
+  h.rig.restoreView(saved, { transition: true }); h.step();
+  assert.deepEqual(h.rig.captureView(), saved);
+  assert.ok(h.camera.position.distanceTo(before) < 1e-6);
+});
+
+test('first-person eye height and look direction survive a seat round trip', () => {
+  const h = fixture();
+  h.rig.setFirstPerson(true, .7); h.rig.orbit(40, -75); h.step();
+  const saved = h.rig.captureView(), direction = h.forward();
+  h.rig.setFirstPerson(true, Math.PI, { eyeHeight: 1.28, transition: true }); h.step();
+  h.rig.restoreView(saved, { transition: true }); h.step();
+  assert.equal(h.rig.firstPerson, true);
+  assert.ok(Math.abs(h.camera.position.y - 1.62) < 1e-6);
+  assert.ok(h.forward().distanceTo(direction) < 1e-6);
+});
+
 test('repeated extreme drags stay upright on both sides of the horizon', () => {
   const h = fixture();
   for (const dy of [-100000, 100000, -100000]) {

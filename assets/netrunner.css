@@ -95,3 +95,48 @@
   border: 1px solid rgba(216, 177, 60, .45);
   background: #05070a;
 }
+
+.nr-seat-exit, .nr-feedback {
+  position: fixed;
+  left: 50%;
+  bottom: max(11.5rem, calc(env(safe-area-inset-bottom) + 10.5rem));
+  transform: translateX(-50%);
+  z-index: 15;
+  padding: .7rem 1rem;
+  border: 1px solid #c4a541;
+  background: #101b23;
+  color: #f0cf68;
+  font: 500 .85rem/1.4 system-ui, sans-serif;
+  white-space: nowrap;
+}
+.nr-seat-exit { min-height: 44px; cursor: pointer; pointer-events: auto; }
+.nr-seat-exit:focus-visible { outline: 2px solid #7ff0dd; outline-offset: 3px; }
+.nr-feedback { bottom: max(15rem, calc(env(safe-area-inset-bottom) + 14rem)); pointer-events: none; }
+.nr-seat-exit[hidden], .nr-feedback[hidden], .nr-seat-prompt[hidden] { display: none; }
+/* Standing hint beside the chair. A fine pointer only reads it; a coarse one can
+   tap it, because a touch screen has no F key. */
+.nr-seat-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: max(11.5rem, calc(env(safe-area-inset-bottom) + 10.5rem));
+  transform: translateX(-50%);
+  z-index: 14;
+  padding: .55rem .9rem;
+  border: 1px solid rgba(196, 165, 65, .55);
+  border-radius: 2px;
+  background: rgba(9, 14, 18, .82);
+  color: #f0cf68;
+  font: 500 .82rem/1.4 system-ui, sans-serif;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.nr-seat-prompt.is-touch {
+  min-height: 44px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.nr-seat-prompt.is-touch:focus-visible { outline: 2px solid #7ff0dd; outline-offset: 3px; }
+body.seated #crosshair { pointer-events: none; }
+body.seated #viewButton, body.seated #flyButton { opacity: .4; }
+.nr-term-line .nr-button { min-height: 44px; }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
-import { HALL_SPOTS, HALL_EXHIBIT } from './space-config.js';
+import { HALL_SPOTS, HALL_EXHIBIT, workbenchPoint } from './space-config.js';
 import { createArmillary } from './armillary.js';
 import { buildWorkstation } from './workstation.js';
 
@@ -75,7 +75,8 @@ export function furnishHall(layer) {
   const { shelfX, shelfZ } = HALL_SPOTS.workbench;
   const workstation = buildWorkstation(HALL_SPOTS.workbench, { box, solid });
   planes.push(workstation.mesh); hotspots.push(workstation.hotspot);
-  bakes.push({ id: 'hall-workbench-lamp', position: [13.3, 1.1, -12.3], power: .8, radius: 2, direction: null });
+  const lamp=workbenchPoint(0,.3);
+  bakes.push({ id: 'hall-workbench-lamp', position: [lamp.x,1.1,lamp.z], power: .8, radius: 2, direction: null });
   // The workbench's own bookshelf, in the corner and turned to face the desk.
   B.at(shelfX, 0, shelfZ, -Math.PI / 2, () => {
     box(0, .04, 0, 1.2, 1.58, .34, SHELF);
@@ -83,8 +84,6 @@ export function furnishHall(layer) {
     box(0, 1.62, 0, 1.24, .05, .36, WOOD);
   });
   solid(shelfX, shelfZ, .42, 1.3);
-  // Move only this corner's planter behind the rack, clear of the displays.
-  planter(10.65, -14.15);
 
   // ---- south-east corner: the lounge ----
   benchAlongZ(14.45, 10.9, 2.4);
@@ -106,8 +105,6 @@ export function furnishHall(layer) {
     solid(14.9, z, .42, 1.3);
   }
   for (const z of [-2.9, 2.9]) planter(11, z);
-  // A last planter where the north wall turns, out of every lane.
-  planter(11.6, -15.3);
 
   return { batches: { hall: B }, planes, obstacles, hotspots, bakes, exhibit, workstation };
 }

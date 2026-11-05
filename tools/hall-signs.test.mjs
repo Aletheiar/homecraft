@@ -67,7 +67,7 @@ test('the workbench and the floor drawing are the only interior fixtures with a 
   assert.match(index, /data-link="https:\/\/github\.com\/Aletheiar"/);
 });
 
-test('the workstation has three textured screens but only the main screen is clickable', () => {
+test('the workstation has three textured screens and retains the inherited main-screen hotspot', () => {
   const station = hall.workstation;
   assert.ok(station, 'the old single monitor is replaced by a workstation');
   assert.equal(station.screens.length, 3);
@@ -76,18 +76,21 @@ test('the workstation has three textured screens but only the main screen is cli
   const target = hall.hotspots.find(h => h.id === 'workbench').box;
   assert.ok(target.containsPoint(main.position));
   for (const s of station.screens.filter(s => s.id !== 'main')) assert.equal(target.containsPoint(s.position), false);
-  assert.ok(target.max.z - target.min.z < .03, 'the target hugs the main display face');
+  const normal=new THREE.Vector3(Math.sin(main.yaw),0,Math.cos(main.yaw));
+  const miss=main.position.clone().addScaledVector(normal,.1);
+  assert.equal(station.hotspot.hitTest(new THREE.Ray(miss,normal)),false,'the thin oriented face rejects rays looking away from it');
   assert.ok(target.max.x - target.min.x <= main.width + .001);
   assert.ok(station.mesh.getObjectByName('workstation-status-leds'));
 });
 
 test('auxiliary housings occlude the main target from an oblique side view', () => {
   const target=hall.workstation.hotspot;
-  const origin=new THREE.Vector3(15.2,1.3,-12.73),aux=new THREE.Vector3(14.32,1.3,-12.84);
+  const p=hall.workstation.at(1.9,-.13),q=hall.workstation.at(1.02,-.24);
+  const origin=new THREE.Vector3(p.x,1.3,p.z),aux=new THREE.Vector3(q.x,1.3,q.z);
   const ray=new THREE.Ray(origin,aux.clone().sub(origin).normalize());
   assert.ok(ray.intersectBox(target.box,new THREE.Vector3()), 'the former box-only hit leaked through');
   assert.equal(target.hitTest?.(ray) ?? true,false,'the auxiliary housing must reject the main-screen hit');
-  const front=new THREE.Vector3(13.3,1.32,-10.5);
+  const f=hall.workstation.at(0,2.1),front=new THREE.Vector3(f.x,1.32,f.z);
   assert.equal(target.hitTest(new THREE.Ray(front,hall.workstation.screens[0].position.clone().sub(front).normalize())),true);
 });
 
@@ -346,6 +349,16 @@ test('every door and both corners are reachable from the west entrance', () => {
   for (const [x, z] of [[13.3, -10.2], [12.2, 9.6], [12.6, 13.2], [-13, 0], [-11, -6.4], [-11, 6.4], [9.4, 0]]) {
     assert.ok(navs.canStand(x, z), `blocked at ${x},${z}`);
   }
+});
+
+test('the diagonal workstation leaves the library approach and a safe chair exit connected', () => {
+  const n=nav(),w=hall.workstation,library=STATIONS.find(s=>s.id==='writing');
+  const stand=n.nearestStand(w.stand.x,w.stand.z);
+  assert.ok(stand&&n.canStand(stand.x,stand.z));
+  assert.ok(Math.hypot(stand.x-w.stand.x,stand.z-w.stand.z)<.5,'standing stays beside the rotated chair');
+  assert.ok(n.findPath(stand,{x:library.at[0],z:library.at[1]}),'the chair exit connects to the library approach');
+  assert.ok(n.findPath({x:0,z:-3},{x:w.approach[0],z:w.approach[1]}),'the workspace remains reachable from the central hall');
+  for(let z=-9;z<=0;z+=.5)assert.ok(n.canStand(8.8,z),`the library approach lane stays clear at 8.8,${z}`);
 });
 
 test('the bench and shelf groups stay out of the walking lanes', () => {
