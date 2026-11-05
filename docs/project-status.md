@@ -45,15 +45,24 @@ implementation checkpoints.
   studio room directly.
 - The hall is laid out as a museum foyer: a compass-and-orbit floor emblem
   under the low plinth and armillary exhibit, an industrial three-screen
-  workstation in the north-east corner (the main display opens the owner's
+  netrunner room in the north-east corner (the main display opens the owner's
   GitHub profile through the existing external-link path) and a two-bench
-  lounge in the south-east corner. The workstation adds a ventilated PC,
-  short server rack, keyboard, headphones and dark seat within its original
-  corner; its terminal and hardware panels are explicitly decorative simulations.
-  Precise picking rejects rays occluded by either auxiliary display housing.
-  The other furniture, planters and shelves keep their walnut/travertine
-  vocabulary and the walking lanes stay clear. See the scoped
-  [workstation record](research/2026-11-04-netrunner-workstation.md).
+  lounge in the south-east corner. The revision expands that corner into a
+  finished room: a layered steel back wall with vents, hazard rails and a
+  clamped cable run, a 3.5 m desk with drawers and frame, a second server
+  cabinet beside the rebuilt rack, a 4.34 m marked rubber mat, and the two
+  official Cyberpunk 2077 posters on real frames. Seven fixtures answer to the
+  engine's own hotspots: the GitHub display, a simulated terminal, a live
+  render-telemetry panel, the rack's boot animation, both posters as full-size
+  previews, the corner's three-mode light switch, and the chair. Sitting is a
+  real viewpoint change — the visitor is pinned to the seat in first person
+  while the desk stays operable, and Escape stands them on the mat. Precise
+  picking rejects rays occluded by either auxiliary display housing, and the
+  terminal's input is built when its card opens so it never holds the browser's
+  user activation on load. The other furniture, planters and shelves keep their
+  walnut/travertine vocabulary and the walking lanes stay clear. See the scoped
+  [workspace record](research/2026-11-05-netrunner-workspace.md) and the earlier
+  [desk record](research/2026-11-04-netrunner-workstation.md).
   The exhibit plinth is real floor
   height (`layout.js` `floorAt`), not a collider: both low stone tiers can be
   crossed without an invisible full-height obstacle. The enlarged armillary

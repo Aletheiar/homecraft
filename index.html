@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="engine/style.css">
 <link rel="stylesheet" href="assets/pyramid.css">
 <link rel="stylesheet" href="assets/music.css">
+<link rel="stylesheet" href="assets/netrunner.css">
 <script src="world/boot.js"></script>
 </head>
 <body>
@@ -58,6 +59,11 @@
 <p class="preview-note">目录中的站点为体验用示例，不代表真实好友。</p>
 </article>
 <article class="page" data-station="workbench" data-icon="link" data-link="https://github.com/Aletheiar"><h2>访问 GitHub ↗</h2><p class="card-kicker">WORKBENCH / GITHUB</p><p>工作站主屏幕通向我的 GitHub 主页。</p><p><a class="space-link" href="https://github.com/Aletheiar" target="_blank" rel="noopener">在浏览器中打开 →</a></p></article>
+<article class="page" data-station="terminal" data-icon="writing"><h2>终端 · 本地模拟</h2><p class="card-kicker">NETRUNNER / SIMULATED SHELL</p><p>一台纯本地模拟终端：只显示这台模拟器里的预设内容，不执行系统命令，也不访问网络。</p><div class="nr-term" data-nr-slot="terminal"></div><p class="preview-note">可用命令：help · about · projects · github · clear</p></article>
+<article class="page" data-station="status" data-icon="works"><h2>系统状态</h2><p class="card-kicker">LIVE RENDER TELEMETRY</p><p>下面这些数字由页面渲染器实时提供，用来观察这个场景的负载。</p><div class="nr-grid" data-status><div><span>当前场景</span><b data-k="scene">—</b></div><div><span>本地时间</span><b data-k="local">—</b></div><div><span>Draw Calls</span><b data-k="calls">—</b></div><div><span>三角形</span><b data-k="tris">—</b></div><div><span>帧时间</span><b data-k="frame">—</b></div><div><span>帧率</span><b data-k="fps">—</b></div><div><span>场景灯光</span><b data-k="lights">—</b></div><div><span>像素比</span><b data-k="pixel">—</b></div></div><p class="preview-note">面板打开期间每 0.25 秒刷新一次，关闭后停止采样。</p></article>
+<article class="page" data-station="rack" data-icon="works"><h2>服务器机柜</h2><p class="card-kicker">DECORATIVE RACK / NO NETWORK</p><p>工作台旁的装饰机柜：没有网络连接，也不会扫描或访问任何设备。</p><div class="nr-rack"><button type="button" class="nr-button" data-rack-boot>模拟启动</button><pre class="nr-term-out" data-rack-log>power: standby</pre></div><p class="preview-note">按下按钮只让机柜指示灯闪一下，持续约 2.4 秒。</p></article>
+<article class="page" data-station="poster-pyramid" data-icon="works"><h2>海报 · 玻璃金字塔</h2><p class="card-kicker">CYBERPUNK 2077 / ULTIMATE EDITION</p><img class="nr-poster" src="assets/posters/cyberpunk-pyramid.webp" loading="lazy" decoding="async" alt="夜色中发光的玻璃金字塔，Cyberpunk 2077 官方海报"><p class="preview-note">图片来源：Cyberpunk 2077 Ultimate Edition 官方宣传图，版权归 CD PROJEKT RED 所有，仅作装饰展示。</p></article>
+<article class="page" data-station="poster-v" data-icon="works"><h2>海报 · V</h2><p class="card-kicker">CYBERPUNK 2077 / KEY ART</p><img class="nr-poster" src="assets/posters/cyberpunk-v.webp" loading="lazy" decoding="async" alt="黄色背景上回头的 V，Cyberpunk 2077 官方主视觉"><p class="preview-note">图片来源：Cyberpunk 2077 官方主视觉，版权归 CD PROJEKT RED 所有，仅作装饰展示。</p></article>
 <article class="page" data-station="back" data-icon="map"><h2>返回中央大厅</h2><p>沿着绿色传送门回到玻璃金字塔，回到你离开的那扇门前。</p><p><a class="space-link" href="/?space=hub&amp;return=1">返回大厅 →</a></p></article>
 <article class="page" data-station="plaza" data-icon="map"><h2>庭院音乐台</h2><p>庭院唱片随时播放；也可以选本机音频，让音乐陪你在庭院里散步。本机文件不会离开这台设备。</p><p class="preview-note">支持 MP3、WAV、FLAC 等格式，也可一次导入整个音乐文件夹。</p></article>
 <article class="page" data-station="observatory" data-icon="map" data-embed="guestbook/"><h2>庭院留言亭</h2><p>路过这里，留下一张明信片吧。使用 GitHub 登录后留言，也可以看看其他来访者留下的话。</p><p><a class="space-link" href="guestbook/">打开庭院留言簿 →</a></p></article>
