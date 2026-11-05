@@ -1,105 +1,89 @@
-# Armillary comet trails
+# Armillary travelling light
 
-Two short arcs of light ride the driven brass bands of the central armillary.
-They were added after the motion and glow passes, and they change nothing about
-the instrument's form, bearings, base or the rest of the hall.
+Two lights run along the driven brass bands of the central armillary: a pale
+cyan one on the outer meridian and a warmer, slower one on the middle band. They
+change nothing about the instrument's form, bearings, base or the rest of the
+hall.
 
-## What the arcs are
+## Why the first two attempts were wrong
 
-Each arc is one ribbon of geometry, baked once at build time and parented to the
-band that drives it:
+The first version baked a fixed comet arc into the band: a ribbon of geometry
+faded from bright head to transparent tail, parented to the turning group. It
+looked static because it *was* static — the only motion it had was the band's own
+rotation, so the arc travelled around the instrument at exactly the speed of the
+metal it was welded to. A viewer reads that as "a lit patch of brass", not as
+light moving along a track.
 
-| Arc | Parent group | Rim radius | Angular span | Colour |
+A second version turned the ribbon into a tube so it kept its width when the ring
+plane went edge-on (a flat ribbon collapses to a hairline there: the measured
+screen box fell from 314 x 94 px to 382 x 26 px). That fixed the shape and still
+did nothing about the motion.
+
+Both shared the same defect: the *pattern* was geometry, so its shape, its
+brightness and its position were welded to the band.
+
+## What it is now
+
+Each light is one full-circumference tube drawn with a small shader. The
+fragment shader knows its own angle around the ring from the torus UV, and the
+head angle arrives as a uniform, so the lit stretch is recomputed every frame
+while the geometry never changes.
+
+```
+theta = vUv.x * TAU                       // angle around the band
+back  = mod(uHead - theta + TAU, TAU)     // how far behind the head, seam-safe
+fade  = pow(clamp(1 - back / uSpan), uPower)
+head  = smoothstep(uSpan * .22, 0, back)  // a short hotter tip
+alpha = fade * (.42 + .58 * head) * edge * uGain
+```
+
+`mod()` closes the 0/360 seam, so there is no jump when the head laps the ring.
+`uPower` above 1 thins the tail out rather than fading it linearly, and the head
+mixes 45% toward white while the tail keeps the band's colour, so the head reads
+as brighter rather than merely bigger.
+
+| Light | Parent group | Lap time | Lit stretch | Colour | Tube |
+| --- | --- | --- | --- | --- | --- |
+| `armillary-trail-outer` | `armillary-spin-outer` | 4 s | 55° | pale cyan `0x9ff0e4` | 26 mm |
+| `armillary-trail-middle` | `armillary-gimbal` | 7 s | 44° | warm gold `0xffd08a` | 19 mm |
+
+The two clocks are independent by construction: `spin` turns the brass, and each
+light reads `elapsed / trails.<band>.period`. Holding the mechanical turn still
+leaves the light lapping the band — measured 1.5708 rad advance against a rotation
+that never moved — which is the test that distinguishes a travelling light from a
+lit decoration.
+
+The geometry is a `TorusGeometry(rim + 28 mm, 26 mm, 5, 128)` per light, so the
+light always sits on the track and can never drift off it: the lit part simply
+sweeps around the rim it belongs to. Nothing is rebuilt per frame; `update()`
+writes exactly two floats.
+
+## Occlusion and blending
+
+Additive, `depthWrite: false`, `depthTest: true`, `forceSinglePass: true`,
+`renderOrder: 2`. Depth testing means the far half of the tube hides behind the
+brass, which is what makes the light read as sitting *on* the ring rather than
+floating in front of it. Writing no depth keeps it from punching holes in the
+crystal or the brass.
+
+## Cost
+
+Measured with `tools/.check/lightperf.mjs` at 1440 x 950, 90 timed renders per
+state, same camera and the same pixels:
+
+| State | Draw calls | Triangles | Mean frame | P95 |
 | --- | --- | --- | --- | --- |
-| `armillary-trail-outer` | `armillary-spin-outer` | 1.232 m band, 20 s period | 64° | pale cyan `0x9ff0e4` |
-| `armillary-trail-middle` | `armillary-gimbal` | 1.134 m band, 40 s period | 44° | warm gold `0xffd08a` |
+| Lights on | 47 | 667,386 | 8.76 ms | 12.10 ms |
+| Lights off | 45 | 664,826 | 9.31 ms | 11.90 ms |
+| Lights on again | 47 | 667,386 | 10.36 ms | 13.70 ms |
 
-Because a trail is a child of the axle group that already turns, the arc travels
-with its band without a single line of animation code. There is no second
-axis, no shader uniform, no per-frame matrix work — the group rotation that was
-already there carries it.
-
-The fixed inner band and the mounting get no trail at all, so nothing glows
-where nothing moves.
-
-## Shape
-
-A flat ribbon was tried first and looked almost invisible. Projecting the arc on
-screen at the usual viewing angle explains why: the ring tumbles, so its plane
-turns edge-on to the viewer for most of the cycle, and a ribbon has no thickness
-in that direction. Measured bounding boxes for the outer arc were 314 x 94 px at
-one phase and 382 x 22 px at another — the arc collapses into a hairline exactly
-when you would be looking at it.
-
-`trail()` therefore builds a **tapered tube** along the arc instead:
-
-- the centreline sits at `radius + band/2 + gap` with `gap = .042 m`, so the arc
-  rides clear of the metal instead of reading as a specular streak on it;
-- each cross-section is a closed 7-gon, so the arc keeps its apparent width from
-  every angle, including when the band is edge-on;
-- two concentric shells make the falloff: a bright core at `width * .55` and a
-  faint halo at `width * 1.55` with 30% alpha, which is what turns an additive
-  tube into light rather than a plastic rod;
-- the section tapers from full width at the head to 40% at the tail, and the
-  vertex colour attribute is `Float32` with **item size 4**: RGB carries the tint
-  scaled by that arc's strength, alpha carries `u^2`, so the head is bright and
-  the tail fades to nothing and the arc reads as a direction of travel;
-- 30 segments x 7 sides x 2 shells = **840 triangles per arc**, two arcs, two
-  draw calls.
-
-The material is shared between both arcs: `MeshBasicMaterial` with
-`vertexColors`, `transparent`, `AdditiveBlending`, `depthWrite: false`,
-`toneMapped: false`, `side: DoubleSide` and `forceSinglePass: true`. Additive
-blending is what makes it light rather than paint; `depthWrite: false` means it
-can never occlude the crystal or leave a stencil behind; depth *testing* stays
-on, so a band passing in front still hides the arc behind it — which is what
-keeps the trail attached to the metal rather than floating through it.
-`forceSinglePass` exists because three otherwise draws a two-sided transparent
-material twice, once per face; the tube is additive, so one pass is both correct
-and half the cost.
-
-`renderOrder = 2` puts the arcs after the crystal and the other transparents, so
-the glow always lands on top of what it passes in front of.
-
-## Why the period is 20 s, not 45 s
-
-The request described the outer ring as a 45-second loop. The instrument's
-config is `spin: { outer: 20, middle: 40, inner: 60, core: 10 }` — the 20/40/60
-second set chosen for the earlier motion pass. The trail is driven by whatever
-`spin.outer` holds, so it currently completes a lap every 20 seconds. Changing
-`spin.outer` in `world/space-config.js` retimes the band and its trail together;
-the mismatch is recorded here rather than silently edited.
-
-## Cost, measured
-
-`tools/.check/trail.mjs` renders the same camera, resolution (1440×950),
-animation pose and scene with the arcs visible and hidden, and reads the live
-render loop both ways:
-
-| | Trails on | Trails off |
-| --- | --- | --- |
-| FPS (rAF mean, 180 frames) | 60.0 | 60.0 |
-| Mean frame time | 16.66 ms | 16.67 ms |
-| P95 frame time | 17.4 ms | 17.6 ms |
-| Draw calls per frame | 88 | 84 |
-| Triangles per frame | 1,329,476 | 1,326,116 |
-
-The instrument's scene is rendered twice per frame (the entrance portals mirror
-the hall), so two extra draw calls per pass read as four per frame; the
-armillary itself gains **2 draw calls and 1,680 triangles**. The frame-time
-difference is inside the noise floor: at 60 fps both states are vsync-bound.
-
-The arcs are not just technically present. Differencing two screenshots of the
-identical frozen pose shows **26,000-28,000 pixels (about 2%) changing by more
-than 8 levels**, i.e. a clearly visible effect at normal viewing
-distance, and still only a small share of the frame.
+Two draw calls and 2,560 triangles. The frame-time difference is inside the
+run-to-run spread (the third run, identical to the first, was 1.6 ms slower than
+the second), so there is no measurable regression at this resolution.
 
 ## Validation
 
-- `node --test tools/*.test.mjs` — 15 hall tests (one new: the arcs ride their
-  own band, share one material, span the configured degrees, sit outside the rim,
-  fade head to tail, and are never rebuilt while the rings turn).
-- `node tools/check-armillary.mjs` — asserts both arcs exist, hang off the right
-  groups, are 240 triangles, additive without depth writes, sit just outside the
-  rim in their band's plane, and swing with the band when its axle is turned.
-- `npm run check:site`, `npm run check:all`, `npm run build` — unchanged.
+`node --test tools/*.test.mjs` covers the shader material, the full-lap torus, the
+child relationship, the two independent clocks and the frozen-ring case.
+`node tools/check-armillary.mjs` re-checks the same facts in the browser, samples
+16 half-second steps for seam jumps, and confirms the light outruns its band.

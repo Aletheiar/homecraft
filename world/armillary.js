@@ -210,69 +210,78 @@ export function createArmillary({ center, radii, tube, band, core, spin, trails 
   gimbal.add(innerSpin); outer.add(gimbal); group.add(outer);
 
   // ---- light trails -------------------------------------------------------
-  // One short comet arc per driven band, in that band's own plane and just
-  // outside its machined rim. Each arc is a tapered tube with a baked
-  // vertex-alpha gradient, so it rides the band's motion with no per-frame
-  // geometry, material or uniform writes, and costs one additive draw call
-  // apiece. A tube rather than a ribbon is deliberate: a flat ribbon vanishes
-  // when its plane turns edge-on to the viewer, which is most of the cycle for
-  // a ring that tumbles, while a tube keeps its width from every angle.
-  // Additive but depth-tested: the metal still occludes it, and it writes no
+  // A light that *travels* along the band rather than a lit arc welded to it.
+  // Each trail is one full-circumference tube drawn with a small shader: the
+  // fragment knows its own angle around the ring (from the torus UV) and the
+  // head angle arrives as a uniform, so the lit stretch sweeps on its own clock
+  // while the brass turns on its own. Nothing is rebuilt per frame (one float
+  // write per trail), the 0/360 seam is closed by `mod`, and the tail is a real
+  // gradient rather than a baked one, so the old brightness always fades as the
+  // head moves on.
+  // Additive but depth-tested: the metal occludes the far side, and it writes no
   // depth, so it neither hides the crystal nor leaves a stencil behind.
-  const trailMaterial = new THREE.MeshBasicMaterial({
-    vertexColors: true, transparent: true, depthWrite: false, toneMapped: false,
-    blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-    // A two-sided transparent material otherwise draws back faces then front
-    // faces; the tube is additive, so one pass is both correct and half the cost.
-    forceSinglePass: true,
+  const trailVertex = [
+    'varying vec2 vUv;',
+    'void main() {',
+    '  vUv = uv;',
+    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+    '}',
+  ].join('\n');
+  const trailFragment = [
+    'uniform float uHead;',
+    'uniform float uSpan;',
+    'uniform float uPower;',
+    'uniform float uGain;',
+    'uniform vec3 uColor;',
+    'varying vec2 vUv;',
+    'const float TAU = 6.28318530718;',
+    'void main() {',
+    '  float theta = vUv.x * TAU;',
+    // how far behind the head this fragment sits, wrapped into [0, 2pi)
+    '  float back = mod(uHead - theta + TAU, TAU);',
+    '  float along = clamp(1.0 - back / uSpan, 0.0, 1.0);',
+    '  float fade = pow(along, uPower);',
+    // a short, hotter tip at the head; the white mix keeps it cyan-white
+    '  float head = smoothstep(uSpan * 0.22, 0.0, back);',
+    '  float edge = pow(sin(vUv.y * 3.14159265), 0.45);',
+    '  float a = fade * (0.42 + 0.58 * head) * edge * uGain;',
+    '  vec3 tint = mix(uColor, vec3(1.0), 0.45 * head);',
+    '  gl_FragColor = vec4(tint, clamp(a, 0.0, 1.0));',
+    '}',
+  ].join('\n');
+  // One shared shader program, one material per trail (each needs its own head).
+  const trailUniforms = (color, span, gain) => ({
+    uHead: { value: 0 },
+    uSpan: { value: span * Math.PI / 180 },
+    uPower: { value: 1.6 },
+    uGain: { value: gain },
+    uColor: { value: new THREE.Color(color) },
   });
-  function trail(radius, matrix, width, arc, color, strength) {
-    const segs = 30, sides = 7, from = Math.PI * .34, span = arc * Math.PI / 180;
-    const gap = .042, centreline = radius + band / 2 + gap;
-    const shade = new THREE.Color(color), position = [], tint = [], index = [];
-    // A bright core inside a wider, fainter halo: two steps of falloff are what
-    // make an additive tube read as light instead of as a plastic rod.
-    const shells = [[.55, 1], [1.55, .3]];
-    for (const [factor, alpha] of shells) {
-      const base = position.length / 3;
-      for (let i = 0; i <= segs; i++) {
-        const u = i / segs, a = from + span * u, fade = Math.pow(u, 2);
-        // Thick head, thin tail, so the arc carries a direction of travel.
-        const rad = width * factor * (.4 + .6 * u);
-        const ca = Math.cos(a), sa = Math.sin(a);
-        for (let s = 0; s < sides; s++) {
-          const t = s / sides * Math.PI * 2, ct = Math.cos(t), st = Math.sin(t);
-          position.push(centreline * ca + rad * ct * ca, centreline * sa + rad * ct * sa, rad * st);
-          tint.push(shade.r * strength, shade.g * strength, shade.b * strength, fade * alpha);
-        }
-      }
-      for (let i = 0; i < segs; i++) for (let s = 0; s < sides; s++) {
-        const a0 = base + i * sides + s, b0 = base + i * sides + (s + 1) % sides;
-        index.push(a0, a0 + sides, b0, b0, a0 + sides, b0 + sides);
-      }
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(tint, 4));
-    geometry.setIndex(index);
+  function lightTrack(radius, matrix, look) {
+    const centreline = radius + band / 2 + .028;
+    const geometry = new THREE.TorusGeometry(centreline, look.radius, 5, 128);
     geometry.applyMatrix4(matrix);
     geometry.computeBoundingSphere();
-    const mesh = new THREE.Mesh(geometry, trailMaterial);
+    const uniforms = trailUniforms(look.color, look.arc, look.gain);
+    const mesh = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
+      uniforms, vertexShader: trailVertex, fragmentShader: trailFragment,
+      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide, toneMapped: false,
+      // A two-sided additive surface otherwise draws both faces; one pass is
+      // both correct and half the cost.
+      forceSinglePass: true,
+    }));
     mesh.castShadow = false; mesh.receiveShadow = false;
-    // Draw after the crystal and the other transparents so the glow lands on top
-    // of whatever it passes in front of, while depth testing still hides it
-    // behind the metal.
+    // After the crystal and the other transparents, so the glow lands on top of
+    // whatever it crosses, while depth testing still hides it behind the metal.
     mesh.renderOrder = 2;
-    // Geometry facts the checks assert against, so they never have to walk the
-    // vertex buffer by hand.
-    mesh.userData = { arc, centreline, width, segs, sides, shells: shells.length, triangles: geometry.index.count / 3 };
+    mesh.userData = { centreline, period: look.period, arc: look.arc,
+      triangles: geometry.index.count / 3, uniforms };
     return mesh;
   }
-  const outerTrail = trail(radii[0], transform(0, 0, 0, 0, Math.PI / 2, 0),
-    trails.outer.width, trails.outer.arc, trails.outer.color, 1.1);
+  const outerTrail = lightTrack(radii[0], transform(0, 0, 0, 0, Math.PI / 2, 0), trails.outer);
   outerTrail.name = 'armillary-trail-outer'; outer.add(outerTrail);
-  const middleTrail = trail(radii[1], new THREE.Matrix4(),
-    trails.middle.width, trails.middle.arc, trails.middle.color, .7);
+  const middleTrail = lightTrack(radii[1], new THREE.Matrix4(), trails.middle);
   middleTrail.name = 'armillary-trail-middle'; gimbal.add(middleTrail);
 
   // ---- crystal -----------------------------------------------------------
@@ -339,5 +348,9 @@ export function createArmillary({ center, radii, tube, band, core, spin, trails 
     gimbal.rotation.y = (elapsed * tau / spin.middle) % tau;
     innerSpin.rotation.x = (elapsed * tau / spin.inner) % tau;
     crystal.rotation.y = (elapsed * tau / spin.core) % tau;
+    // The light keeps its own clock, so it streams along the band even when the
+    // mechanical turn is stopped, and much faster than the brass moves.
+    outerTrail.material.uniforms.uHead.value = (elapsed * tau / trails.outer.period) % tau;
+    middleTrail.material.uniforms.uHead.value = (elapsed * tau / trails.middle.period) % tau;
   } };
 }

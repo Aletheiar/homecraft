@@ -15,7 +15,15 @@ const context = () => ({
   closePath() {}, stroke() {}, fill() {}, scale() {}, save() {}, restore() {}, translate() {},
   createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }),
 });
-globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: context }) };
+globalThis.document = {
+  createElement: () => ({ width: 0, height: 0, getContext: context }),
+  // The workstation's posters go through `TextureLoader`, which builds an <img>
+  // through `createElementNS`; nothing is ever decoded in a node test.
+  createElementNS: () => ({
+    style: {}, src: '', width: 1, height: 1,
+    addEventListener() {}, removeEventListener() {}, setAttribute() {},
+  }),
+};
 const { furnishHall } = await import('../world/furnish.js');
 const { buildHallFloor } = await import('../world/hall-floor.js');
 const { STATIONS, floorAt, HALL_EXHIBIT_TOP } = await import('../world/layout.js');
@@ -169,63 +177,102 @@ test('each band turns on its own axle, at its own period, and nothing else moves
   assert.ok(half.every((d, i) => Math.abs(d - want[i]) < 1e-9), 'the motion steps by time, not by frames');
 });
 
-test('each driven band carries one short comet arc, never a glowing hoop', () => {
+test('a light runs along each driven band, faster than the band can turn', () => {
   const instrument = hall.exhibit.mesh;
   const spec = HALL_EXHIBIT.armillary.trails;
+  const spin = HALL_EXHIBIT.armillary.spin;
+  const tau = Math.PI * 2;
   const outer = instrument.getObjectByName('armillary-trail-outer');
   const middle = instrument.getObjectByName('armillary-trail-middle');
-  assert.ok(outer?.isMesh && middle?.isMesh, 'both driven bands carry a trail');
-  // The arcs hang off the turning groups, so they ride the real motion without a
-  // single per-frame write; the fixed band and the mounting stay dark.
+  assert.ok(outer?.isMesh && middle?.isMesh, 'both driven bands carry a light');
+  // The light hangs off the turning group so it inherits the mechanical pose, but
+  // its own phase is a uniform: it streams along the band on a separate clock.
   assert.equal(outer.parent, instrument.getObjectByName('armillary-spin-outer'));
   assert.equal(middle.parent, instrument.getObjectByName('armillary-gimbal'));
   assert.equal(instrument.getObjectByName('armillary-spin-inner').children.some(o => /trail/.test(o.name ?? '')), false);
-  assert.equal(outer.material, middle.material, 'one shared additive material covers both arcs');
-  const material = outer.material;
-  assert.equal(material.blending, THREE.AdditiveBlending, 'light adds to what is behind it');
-  assert.equal(material.transparent, true);
-  assert.equal(material.depthWrite, false, 'the glow leaves no depth of its own');
-  assert.equal(material.toneMapped, false);
-  assert.equal(material.side, THREE.DoubleSide, 'the tube keeps its width from either side');
-  assert.equal(material.forceSinglePass, true, 'one draw per arc, not a back-face plus front-face pass');
-  assert.equal(outer.castShadow, false); assert.equal(middle.castShadow, false);
-  for (const [mesh, wanted] of [[outer, spec.outer], [middle, spec.middle]]) {
+  for (const [mesh, key, parentPeriod] of [[outer, 'outer', spin.outer], [middle, 'middle', spin.middle]]) {
+    const wanted = spec[key];
+    const material = mesh.material;
+    assert.equal(material.isShaderMaterial, true, 'the fade is computed in the fragment, not baked into vertices');
+    assert.equal(material.transparent, true);
+    assert.equal(material.blending, THREE.AdditiveBlending, 'light adds to what is behind it');
+    assert.equal(material.depthWrite, false, 'the glow leaves no depth of its own');
+    assert.equal(material.depthTest, true, 'the metal still occludes the far side');
+    assert.equal(material.side, THREE.DoubleSide);
+    assert.equal(material.toneMapped, false);
+    assert.equal(material.forceSinglePass, true, 'one draw per band, not a back-face plus front-face pass');
+    assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, false);
+    assert.equal(mesh.renderOrder, 2, 'the glow lands after the crystal and the other transparents');
+    // The fade must stay a function of the angular distance behind the head, and
+    // the 0/360 seam has to be closed, or the tail would snap once per lap.
+    const fragment = material.fragmentShader;
+    assert.ok(/mod\(\s*uHead\s*-\s*theta/.test(fragment), 'the tail measures its angle behind the head');
+    assert.ok(/pow\(\s*along/.test(fragment), 'the tail fades with distance from the head');
+    assert.ok(/smoothstep\(\s*uSpan/.test(fragment), 'the head is a short hot tip, not the whole arc');
+    const u = material.uniforms;
+    assert.deepEqual(Object.keys(u).sort(), ['uColor', 'uGain', 'uHead', 'uPower', 'uSpan']);
+    assert.ok(Math.abs(u.uSpan.value - wanted.arc * Math.PI / 180) < 1e-9, 'the lit stretch matches its configured degrees');
+    assert.ok(u.uPower.value > 1, 'the tail thins out rather than fading linearly');
+    assert.ok(u.uGain.value > 0 && u.uGain.value < 3);
+    // One full-circumference torus, so the light laps the ring instead of
+    // jumping back to the start when it reaches the end of an arc.
     const geometry = mesh.geometry;
-    const { arc, centreline, segs, sides, shells, triangles } = mesh.userData;
-    const colour = geometry.getAttribute('color');
-    assert.equal(colour.itemSize, 4, 'the fade lives in the vertex alpha channel');
-    assert.equal(arc, wanted.arc, 'the arc reports the span it was baked with');
-    assert.equal(segs, 30); assert.equal(sides, 7); assert.equal(shells, 2);
-    assert.equal(triangles, 840, 'a two-shell tube, not a second ring');
+    const { centreline, triangles, period } = mesh.userData;
+    assert.equal(period, wanted.period, 'the light reports its own lap time');
+    assert.equal(geometry.getAttribute('position').count, (128 + 1) * (5 + 1));
     assert.equal(geometry.index.count / 3, triangles);
-    // A tube, not a flat ribbon: every cross-section is a closed ring, so the arc
-    // still has thickness when its plane turns edge-on to the viewer.
-    assert.equal(geometry.getAttribute('position').count, shells * (segs + 1) * sides);
-    const alphaAt = i => geometry.getAttribute('color').getW(i * sides);
-    assert.ok(alphaAt(segs) > 8 * alphaAt(0), 'the head is far brighter than the tail, so the arc has a direction');
-    // The centreline spans the configured degrees and rides outside the rim.
-    const centreOf = i => {
-      const p = geometry.getAttribute('position'), v = new THREE.Vector3();
-      for (let s = 0; s < sides; s++) v.add(new THREE.Vector3().fromBufferAttribute(p, i * sides + s));
-      return v.divideScalar(sides);
-    };
-    const head = centreOf(0), tail = centreOf(segs);
-    assert.ok(Math.abs(head.length() - centreline) < 1e-6, 'the tube is centred on its reported radius');
-    const span = 2 * Math.asin(head.distanceTo(tail) / (2 * centreline)) * 180 / Math.PI;
-    assert.ok(Math.abs(span - wanted.arc) < 1, `arc spans ${span.toFixed(1)} degrees, wanted ${wanted.arc}`);
-    const rim = HALL_EXHIBIT.armillary.radii[[outer, middle].indexOf(mesh)];
-    assert.ok(centreline > rim + HALL_EXHIBIT.armillary.band / 2, 'the arc rides clear of the rim');
+    assert.equal(triangles, 128 * 5 * 2, 'one torus, not a second ring of brass');
+    assert.ok(Math.abs(mesh.userData.centreline - (HALL_EXHIBIT.armillary.radii[key === 'outer' ? 0 : 1] + HALL_EXHIBIT.armillary.band / 2 + .028)) < 1e-9);
+    geometry.computeBoundingBox();
+    const size = new THREE.Vector3();
+    geometry.boundingBox.getSize(size);
+    // The torus spans the whole circumference, so its widest box axis is the
+    // ring diameter plus the tube (the band matrix only turns which axis that
+    // is): proof it is a full lap and not a 45 degree stub.
+    const widest = Math.max(size.x, size.y, size.z), thinnest = Math.min(size.x, size.y, size.z);
+    assert.ok(Math.abs(widest - 2 * (centreline + wanted.radius)) < .02, 'the tube goes all the way round');
+    assert.ok(Math.abs(thinnest - 2 * wanted.radius) < .01, 'and stays a thin tube, not a glowing disc');
+    // The light laps the band faster than the band itself turns.
+    assert.ok(period < parentPeriod, `a ${period}s lap outruns the ${parentPeriod}s mechanical turn`);
+    const rim = HALL_EXHIBIT.armillary.radii[key === 'outer' ? 0 : 1];
+    assert.ok(centreline > rim + HALL_EXHIBIT.armillary.band / 2, 'the light rides outside the machined rim');
     assert.ok(centreline < rim + .2, 'but stays close enough to read as part of the instrument');
-    // Pale cyan outside, warm gold inside, and never a saturated neon.
-    const r = geometry.getAttribute('color').getX(segs * sides), g = geometry.getAttribute('color').getY(segs * sides), b = geometry.getAttribute('color').getZ(segs * sides);
-    if (mesh === outer) assert.ok(g >= r && b >= r, 'the outer arc is pale cyan');
-    else assert.ok(r > g && g > b, 'the middle arc is warm gold');
-    assert.ok(Math.max(r, g, b) < 2, 'the arc stays under a bloom threshold; there is no bloom to feed anyway');
+    const c = u.uColor.value;
+    if (key === 'outer') assert.ok(c.g >= c.r && c.b >= c.r, 'the outer light is pale cyan');
+    else assert.ok(c.r > c.g && c.g > c.b, 'the middle light is warm gold');
   }
-  // Nothing may be rebuilt while the rings turn: the animation moves groups only.
+  assert.notEqual(outer.material, middle.material, 'each band needs its own phase');
+  assert.equal(outer.material.vertexShader, middle.material.vertexShader);
+  assert.equal(outer.material.fragmentShader, middle.material.fragmentShader, 'one shared program for both lights');
+  // Time, not frames: half the time, half the travel, on both clocks.
+  const headOf = m => m.material.uniforms.uHead.value;
+  const ringOf = n => instrument.getObjectByName(n).rotation;
+  const pose = () => [headOf(outer), headOf(middle), ringOf('armillary-spin-outer').z, ringOf('armillary-gimbal').y];
+  const once = pose();
+  hall.exhibit.update(1);
+  const half = pose();
+  hall.exhibit.update(1);
+  const full = pose();
+  const step = (a, b) => ((b - a) % tau + tau) % tau;
+  assert.ok(Math.abs(step(once[0], half[0]) - tau / spec.outer.period) < 1e-9, 'the outer light moves one lap-second at a time');
+  assert.ok(Math.abs(step(once[1], half[1]) - tau / spec.middle.period) < 1e-9);
+  assert.ok(Math.abs(step(once[2], half[2]) - tau / spin.outer) < 1e-9, 'the brass keeps its own slower rate');
+  assert.ok(Math.abs(step(half[0], full[0]) - tau / spec.outer.period) < 1e-9);
+  // The acceptance criterion: stop the mechanical turn and the light keeps going.
+  const keepZ = ringOf('armillary-spin-outer').z;
+  const keepY = ringOf('armillary-gimbal').y;
+  const before = headOf(outer);
+  for (let i = 0; i < 6; i++) {
+    hall.exhibit.update(1 / 6);
+    ringOf('armillary-spin-outer').z = keepZ;
+    ringOf('armillary-gimbal').y = keepY;
+  }
+  assert.equal(ringOf('armillary-spin-outer').z, keepZ, 'the ring is held still');
+  assert.ok(Math.abs(step(before, headOf(outer)) - tau / spec.outer.period) < 1e-9, 'and the light still laps the band');
+  // Nothing may be rebuilt while it runs.
   const baked = [outer.geometry, middle.geometry, outer.material, middle.material];
   for (let i = 0; i < 12; i++) hall.exhibit.update(1.7);
-  assert.deepEqual([outer.geometry, middle.geometry, outer.material, middle.material], baked, 'the arcs are baked once');
+  assert.deepEqual([outer.geometry, middle.geometry, outer.material, middle.material], baked, 'the light is built once');
 });
 
 test('the crystal glows from inside without ever being a lamp', () => {

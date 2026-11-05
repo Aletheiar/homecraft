@@ -24,9 +24,12 @@ implementation checkpoints.
   its inner kernel, the plinth corners hold dim amber panes, and the floor
   emblem gains one additive catch-light. The crystal glow is a constant: a
   breathing version measured only a 2.3% swing in screen luminance, so it was
-  removed rather than tuned. Each driven band also carries one baked comet arc
-  (pale cyan outside, warm gold inside) that rides the band's own axle, adds a
-  single draw call apiece and writes nothing per frame. It is committed locally
+  removed rather than tuned. Each driven band also carries one travelling light
+  (pale cyan on the outer band, warmer and slower on the middle) that laps the
+  band on its own clock — 4 s against the band's 20 s turn — as a shader fade over
+  a full-lap tube, so the head really runs along the rim instead of a lit patch
+  riding the brass. It costs one draw call per band, writes two floats per frame
+  and never rebuilds geometry. It is committed locally
   but not uploaded. See the
   [implementation and checks](research/2026-11-04-armillary-plan-a.md), the
   [precision pass](research/2026-11-04-armillary-precision.md), the

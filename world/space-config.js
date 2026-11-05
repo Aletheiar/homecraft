@@ -34,12 +34,13 @@ export const HALL_EXHIBIT = {
   armillary: {
     center: 1.60, radii: [1.232, 1.134, 1.036], tube: .027, band: .078, core: .3375,
     spin: { outer: 20, middle: 40, inner: 60, core: 10 },
-    // Comet arcs riding the two driven bands: `arc` in degrees, `width` in
-    // metres beyond the rim. They are geometry with baked vertex alpha, so these
-    // four numbers are the whole tuning surface.
+    // Light that travels along the two driven bands. `period` is the time for
+    // the light to lap the ring and is independent of `spin`, so the glow keeps
+    // streaming past the metal even if the mechanical turn is paused. `arc` is
+    // the lit stretch in degrees behind the head, `gain` its intensity.
     trails: {
-      outer: { arc: 64, width: .034, color: 0x9ff0e4 },
-      middle: { arc: 44, width: .026, color: 0xffd08a },
+      outer: { period: 4, arc: 55, color: 0x9ff0e4, gain: 1.35, radius: .026 },
+      middle: { period: 7, arc: 44, color: 0xffd08a, gain: .9, radius: .019 },
     },
   },
 };

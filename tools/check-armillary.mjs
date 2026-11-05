@@ -85,29 +85,47 @@ try {
           span:Math.max(box.max.x-box.min.x,box.max.z-box.min.z),
           nested:gimbal.parent===outer&&innerSpin.parent===gimbal});
       }
-      // The trails are baked tubes hanging off the turning groups: they must
-      // move with their band, stay outside the rim and cost nothing per frame.
+      // The light is a shader torus hanging off its turning group: it must ride
+      // the real pose, keep its own phase uniform, and outrun the brass.
       const trailOf=n=>h.stage.scene.getObjectByName(n);
       const outerTrail=trailOf('armillary-trail-outer'),middleTrail=trailOf('armillary-trail-middle');
-      const trailState=n=>{const m=trailOf(n),g=m?.geometry,p=m?.parent;
-        if(!m||!g||!p)return null;
-        // Every cross-section centre must sit on the reported radius, which is
-        // what keeps the arc on its band instead of drifting in space.
-        const pos=g.getAttribute('position'),{centreline,sides,segs,shells}=m.userData;
-        let onArc=true;
-        for(let i=0;i<=segs;i++){const v=new THREE.Vector3();
-          for(let s=0;s<sides;s++)v.add(new THREE.Vector3().fromBufferAttribute(pos,i*sides+s));
-          if(Math.abs(v.length()/sides-centreline)>1e-5){onArc=false;break}}
-        return {parent:p.name,radius:+centreline.toFixed(4),tris:g.index.count/3,
-          additive:m.material.blending===THREE.AdditiveBlending,depthWrite:m.material.depthWrite,
-          tube:sides>=5&&shells>=2&&g.getAttribute('position').count===shells*(segs+1)*sides,onArc};};
-      const trails={outer:trailState('armillary-trail-outer'),middle:trailState('armillary-trail-middle')};
-      // Riding the band means a point on the arc swings with the band's axle, so
-      // turning the band must carry the same arc vertex around with it.
-      const arcPoint=new THREE.Vector3().fromBufferAttribute(outerTrail.geometry.getAttribute('position'),2);
-      const arcAt=angle=>{outer.rotation.z=angle;h.stage.scene.updateMatrixWorld(true);
-        return arcPoint.clone().applyMatrix4(outerTrail.matrixWorld);};
-      const trailMoved=arcAt(.9).distanceTo(arcAt(1.4))>.5;
+      const trailState=(n,key,spinPeriod)=>{
+        const m=trailOf(n),g=m?.geometry,p=m?.parent,u=m?.material?.uniforms;
+        if(!m||!g||!p||!u)return null;
+        const box=new THREE.Box3().setFromBufferAttribute(g.getAttribute('position'));
+        const size2=box.getSize(new THREE.Vector3());
+        return {parent:p.name,period:m.userData.period,head:u.uHead.value,span:u.uSpan.value,
+          shader:m.material.isShaderMaterial===true,additive:m.material.blending===THREE.AdditiveBlending,
+          depthWrite:m.material.depthWrite,depthTest:m.material.depthTest,
+          singlePass:m.material.forceSinglePass===true,renderOrder:m.renderOrder,
+          radius:+m.userData.centreline.toFixed(4),tris:g.index.count/3,
+          widest:+Math.max(size2.x,size2.y,size2.z).toFixed(4),outruns:m.userData.period<spinPeriod};};
+      const trailSpec=h.worldExhibitTrails||null;
+      const trails={outer:trailState('armillary-trail-outer','outer',20),middle:trailState('armillary-trail-middle','middle',40)};
+      // Acceptance (1): freeze the mechanical turn and the light must keep going.
+      const spinOf=n=>h.stage.scene.getObjectByName(n).rotation;
+      const ringZ=spinOf('armillary-spin-outer').z;
+      const headBefore=outerTrail.material.uniforms.uHead.value;
+      for(let i=0;i<6;i++){h.world.exhibit.update(1/6);spinOf('armillary-spin-outer').z=ringZ;}
+      const frozenStep=((outerTrail.material.uniforms.uHead.value-headBefore)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+      const frozenRingHeld=spinOf('armillary-spin-outer').z===ringZ;
+      // Acceptance (2): with the turn running, both advance, and the light is
+      // faster. Sampled over a whole lap so a seam would show up as a jump.
+      const lapSteps=[];
+      const head0=outerTrail.material.uniforms.uHead.value, ring0=spinOf('armillary-spin-outer').z;
+      for(let i=0;i<16;i++){
+        h.world.exhibit.update(.5);
+        lapSteps.push({head:outerTrail.material.uniforms.uHead.value,ring:spinOf('armillary-spin-outer').z});
+      }
+      const wrap=a=>((a%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
+      let seamOk=true;
+      for(let i=1;i<lapSteps.length;i++){
+        const d=wrap(lapSteps[i].head-lapSteps[i-1].head);
+        if(Math.abs(d-Math.PI*2/4*.5)>1e-6)seamOk=false;
+      }
+      const flow={frozenRingHeld,frozenStep,lap:lapSteps.length,seamOk,
+        headAdvanced:wrap(lapSteps[lapSteps.length-1].head-head0)>0,
+        ringAdvanced:wrap(lapSteps[lapSteps.length-1].ring-ring0)>0,spec:trailSpec};
       // The crystal glow is emissive only and holds steady; count what glows and
       // confirm nothing animates the two intensities.
       const shell=core.material,kernelMaterial=core.getObjectByName('armillary-core-inner').material;
@@ -123,7 +141,7 @@ try {
       const crossing={x:h.player.pos.x,y:h.player.y,peak};
       let oldCones=0,lights=0;group.traverse(o=>{if(o.geometry?.type==='ConeGeometry')oldCones++;if(o.isLight)lights++});
       let triangles=0;group.traverse(o=>{if(o.isMesh)triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;});
-      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,glow,trails,trailMoved,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
+      return {installed:true,position:group.position.toArray(),plinthTop:HALL_EXHIBIT_TOP,core:core.getWorldPosition(new THREE.Vector3()).toArray(),size:size.toArray(),bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},rotation,expectedHalf,cycle,period,config:{radii:HALL_EXHIBIT.armillary.radii,band:HALL_EXHIBIT.armillary.band},ringCount:support.userData.ringCount,glow,trails,flow,triangles,conflicts,clear,routes,signBlocked,crossing,oldCones,lights,portals:h.world.portals.map(g=>[g.id,g.x,g.z]),stats:h.stats()};
     });
     report.push({viewport,state,errors});
     assert.ok(state.installed, 'The new instrument state is exported to the real update loop');
@@ -142,19 +160,30 @@ try {
     assert.ok(state.glow.kernelKernel, 'The inner layer is the brighter one');
     assert.ok(state.glow.shine && state.glow.shineAdditive, 'The floor emblem keeps its lit metal wire');
     assert.ok(state.glow.shineOpacity > 0 && state.glow.shineOpacity <= .25, 'The floor catch-light stays a whisper');
-    // Two comet arcs, one per driven band, each hanging off that band's axle.
+    // One travelling light per driven band: a full-lap shader tube that adds
+    // light, keeps its own phase, and outruns the brass it rides on.
     for (const [key, parent] of [['outer', 'armillary-spin-outer'], ['middle', 'armillary-gimbal']]) {
       const t = state.trails[key];
-      assert.ok(t, `The ${key} band has lost its trail`);
-      assert.equal(t.parent, parent, `The ${key} trail no longer rides its own band`);
-      assert.equal(t.tris, 840, 'A trail is one short tube, not a second ring');
-      assert.ok(t.tube, 'The trail is a closed tube, so it keeps its width when the band turns edge-on');
-      assert.ok(t.additive && t.depthWrite === false, 'The trail adds light and writes no depth');
+      assert.ok(t, `The ${key} band has lost its light`);
+      assert.equal(t.parent, parent, `The ${key} light no longer rides its own band`);
+      assert.ok(t.shader, 'The fade is computed per fragment, so the tail tracks the head');
+      assert.ok(t.additive && t.depthWrite === false && t.depthTest === true, 'The light adds without writing depth but still hides behind the metal');
+      assert.ok(t.singlePass, 'One draw per light');
+      assert.equal(t.renderOrder, 2);
+      assert.equal(t.tris, 128 * 5 * 2);
+      const diag = 2 * (t.radius + .026);
+      assert.ok(Math.abs(t.widest - diag) < .06, 'The tube runs the whole circumference, so it can lap the band');
       const rim = state.config.radii[key === 'outer' ? 0 : 1] + state.config.band / 2;
-      assert.ok(t.radius > rim && t.radius < rim + .2, 'The trail rides just outside the machined rim');
-      assert.ok(t.onArc, 'The trail stays on its arc instead of drifting off the band');
+      assert.ok(t.radius > rim && t.radius < rim + .2, 'The light rides just outside the machined rim');
+      assert.ok(t.outruns, `The ${key} light laps faster than its ${key === 'outer' ? 20 : 40} s turn`);
+      assert.ok(t.span > 0.5 && t.span < 1.4, 'The lit stretch is a short arc, well under half the ring, not a glowing hoop');
     }
-    assert.ok(state.trailMoved, 'The trails follow the band they are mounted on');
+    // Acceptance (1)-(4): the light moves while the ring is held, both advance
+    // when it runs, and one full lap has no seam jump.
+    assert.ok(state.flow.frozenRingHeld, 'The ring can be held still');
+    assert.ok(Math.abs(state.flow.frozenStep - Math.PI / 2) < 1e-6, 'The light keeps lapping the band while the ring is stopped');
+    assert.ok(state.flow.headAdvanced && state.flow.ringAdvanced, 'Light and brass both advance once the turn resumes');
+    assert.ok(state.flow.seamOk, 'The light wraps the 0/360 seam without a jump or a flicker');
     assert.ok(state.rotation.every((r,i)=>Math.abs(r-state.expectedHalf[i])<1e-9),'Every band turns on its own axle at its own period');
     assert.ok(state.cycle.every(s=>s.still&&s.nested&&s.coreClear&&s.supportClear&&s.delta.every((d,k)=>Math.abs(d-s.expected[k])<1e-9)),'The support stays fixed, the axles stay nested and the 120 s cycle clears the crystal and the sight line');
     // A tumbling hoop of this size crosses the high sight line to the reading
