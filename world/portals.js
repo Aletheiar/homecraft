@@ -45,7 +45,7 @@ export function buildPortals(layer, definitions) {
       ctx.fillRect(0, 0, w * .13, h); ctx.fillRect(w * .87, 0, w * .13, h);
     });
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    const veil = new THREE.Mesh(new THREE.PlaneGeometry(2.34, 3.34), new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: .72, side: THREE.DoubleSide, depthWrite: false }));
+    const veil = new THREE.Mesh(new THREE.PlaneGeometry(2.34, 3.34), new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: .72, side: THREE.DoubleSide, forceSinglePass: true, depthWrite: false }));
     veil.position.set(x, 1.8, z); veil.rotation.y = yaw; veil.name = `portal-${gate.id}`; planes.push(veil); veils.push(veil);
     const signMap = canvasTexture(768, 192, (ctx, w, h) => {
       ctx.fillStyle = '#f4f0e5'; ctx.fillRect(0, 0, w, h);

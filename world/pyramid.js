@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 import { removeHorseGeometry } from './devil-statue.js';
+import { partitionScenery } from './scenery.js';
 
 export const pyramidState = { ready: false, sceneryReady: false, error: null, triangles: 0, sceneryTriangles: 0, shell: null, shellTop: null };
 
@@ -224,6 +225,7 @@ export function loadPyramid(scene, renderer) {
           mesh.material = new THREE.MeshBasicMaterial({ color: source.color, vertexColors: true, side: THREE.DoubleSide });
           source.dispose();
         });
+        partitionScenery(background.scene);
         scene.add(background.scene);
         pyramidState.sceneryReady = true;
       }).catch(error => { pyramidState.error = `Scenery: ${error.message}`; console.error('Scenery load failed:', error); });

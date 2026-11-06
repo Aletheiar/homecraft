@@ -1,18 +1,15 @@
-import * as THREE from 'three';
 import { BoxBatch } from '@engine/world/blocks.js';
 import { HALL_SPOTS, HALL_EXHIBIT, workbenchPoint } from './space-config.js';
 import { createArmillary } from './armillary.js';
 import { buildWorkstation } from './workstation.js';
 
 // The hall interior: one centre display under the glass, a private workbench
-// in the north-east corner, a lounge in the south-east corner, and the few
+// in the north-east corner, an Ori exhibit in the south-east, and the few
 // planters and shelves that frame the three doors. Everything is built from the
 // shared box vocabulary (walnut, travertine, plaster, terracotta, linen) so the
 // furniture reads as furniture in a Minecraft hall, not as a render.
 const WOOD = { tex: 'walnut' };
-const PALE = { tex: 'plaster' };
 const STONE = { tex: 'travertine' };
-const LINEN = { tex: 'linen' };
 const LEAF = { tex: 'leaves' };
 const POT = { tex: 'terracotta' };
 const SHELF = { tex: 'bookshelf', top: 'walnut' };
@@ -30,19 +27,6 @@ export function furnishHall(layer) {
     box(x, .02, z, .64, .52, .64, POT);
     box(x, .54, z, .94, .78, .94, LEAF);
     solid(x, z, .94, .94);
-  }
-  // A bench facing north (back on its south side) or west (back on its east side).
-  function benchAlongX(x, z, length) {
-    box(x, .36, z, length, .09, .5, LINEN);
-    for (const dx of [-1, 1]) for (const dz of [-.17, .17]) box(x + dx * (length / 2 - .1), 0, z + dz, .07, .36, .07, WOOD);
-    box(x, .45, z + .235, length, .44, .07, WOOD);
-    solid(x, z + .01, length, .62);
-  }
-  function benchAlongZ(x, z, length) {
-    box(x, .36, z, .5, .09, length, LINEN);
-    for (const dx of [-.17, .17]) for (const dz of [-1, 1]) box(x + dx, 0, z + dz * (length / 2 - .1), .07, .36, .07, WOOD);
-    box(x + .235, .45, z, .07, .44, length, WOOD);
-    solid(x + .01, z, .62, length);
   }
 
   // ---- the centre: plinth and armillary, aligned with the floor
@@ -84,15 +68,6 @@ export function furnishHall(layer) {
     box(0, 1.62, 0, 1.24, .05, .36, WOOD);
   });
   solid(shelfX, shelfZ, .42, 1.3);
-
-  // ---- south-east corner: the lounge ----
-  benchAlongZ(14.45, 10.9, 2.4);
-  benchAlongX(12.6, 14.4, 2.4);
-  // A low side table in the corner between the two benches.
-  box(13.75, .38, 13.25, .7, .05, .7, { tex: 'paint', tint: 0xd8d2c2 });
-  for (const dx of [-.29, .29]) for (const dz of [-.29, .29]) box(13.75 + dx, 0, 13.25 + dz, .05, .38, .05, WOOD);
-  solid(13.75, 13.25, .74, .74);
-  planter(15.3, 13.4);
 
   // ---- the reading room door: two shelves and two planters, leaving the
   // doorway and the walking lane between them completely open ----

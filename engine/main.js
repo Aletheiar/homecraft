@@ -97,6 +97,7 @@ function plain(error = null) {
   }
   for (const el of document.querySelectorAll('#pages [data-icon]')) el.style.setProperty('--icon', `url(${icon(el.dataset.icon).url})`);
   createMailboxForm().mount($('#pages'));
+  document.dispatchEvent(new CustomEvent('homecraft:plain', { detail: { error: error?.message || null } }));
 }
 
 $('#retry3D')?.addEventListener('click', () => {
@@ -305,18 +306,23 @@ async function boot() {
   const popOut = document.createElement('a');
   popOut.className = 'pop-out'; popOut.target = '_blank'; popOut.rel = 'noopener'; popOut.textContent = '↗'; popOut.hidden = true;
   panel.querySelector('header .close').before(popOut);
-  let openStation = null;
-  function openPage(id) {
+  let openStation = null, pageInPlace = false;
+  function openPage(id, inPlace = false) {
     if (id === 'portal') { openPortal(); return; }
     if (!publicStations.some(s => s.id === id)) return;
     const page = pageEl(id);
     if (!page) return;
+    extras.dismiss?.();
     worldList?.destroy();
     // A page that is only a link (data-link) opens in a new tab.
     if (page.dataset.link) { const url = pageURL(page.dataset.link); if (url) window.open(url.href, '_blank', 'noopener'); return; }
     togglePhone(false);
     openStation = id;
+    pageInPlace = inPlace;
     panel.dataset.station = id;
+    // A page may hand its body to world code instead of rendering static markup:
+    // <article data-render="name"> calls extras.pages.name(body, page).
+    panel.dataset.render = page.dataset.render || '';
     $('#panelTitle').textContent = page.querySelector('h2').textContent;
     panel.querySelector('header .icon').style.backgroundImage = `url(${icon(publicStations.find(s => s.id === id).icon || id).url})`;
     const body = panel.querySelector('.body');
@@ -331,7 +337,11 @@ async function boot() {
       mountEmbed(body, embed, page.querySelector('h2').textContent);
     } else {
       body.className = 'body page';
-      body.innerHTML = page.innerHTML;
+      const render = page.dataset.render && extras.pages?.[page.dataset.render];
+      if (render) {
+        body.replaceChildren();
+        render(body, page);
+      } else body.innerHTML = page.innerHTML;
     }
     for (const li of body.querySelectorAll('[data-icon]')) li.style.setProperty('--icon', `url(${icon(li.dataset.icon).url})`);
     workbench.mount(body);
@@ -351,7 +361,7 @@ async function boot() {
   function openPortal() {
     if (config.portalMenu === false || isTravelling() || portal?.busy) return;
     togglePhone(false); toggleWeatherMenu(false); minimap.toggleBig(false); rig.skipIntro();
-    openStation = 'portal'; panel.dataset.station = 'portal'; panel.dataset.kind = '';
+    openStation = 'portal'; panel.dataset.station = 'portal'; panel.dataset.kind = ''; panel.dataset.render = '';
     $('#panelTitle').textContent = t('传送门', 'Portal');
     panel.querySelector('header .icon').style.backgroundImage = `url(${icon('portal').url})`;
     popOut.hidden = true;
@@ -370,7 +380,7 @@ async function boot() {
   // a card down. Both ends of the press must miss the cards and controls,
   // so a drag that wanders off a card does not count and text on a card
   // stays selectable.
-  const keepsOpen = target => target.closest('.work-deck > li, .about, .world-directory, [data-panel-content], button, a, form');
+  const keepsOpen = target => target.closest('.body, .work-deck > li, .about, .world-directory, [data-panel-content], button, a, form');
   let pressedOutside = false;
   panel.addEventListener('pointerdown', e => { pressedOutside = !keepsOpen(e.target); });
   panel.addEventListener('click', e => { if (pressedOutside && !keepsOpen(e.target)) closePage(); });
@@ -380,7 +390,9 @@ async function boot() {
     const link = e.target.closest('[data-open]');
     if (!link) return;
     e.preventDefault();
-    if (link.dataset.open === 'phone') togglePhone(true); else openPage(link.dataset.open);
+    if (link.dataset.open === 'phone') togglePhone(true);
+    else if (config.dockMode === 'content') navigateContent(link.dataset.open);
+    else openPage(link.dataset.open);
   });
   panel.addEventListener('close', () => {
     if (panel.open) return;
@@ -388,7 +400,7 @@ async function boot() {
     mailboxForm.unmount();
     placePortalControls($('#hud'));
     panel.querySelector('.body iframe')?.remove();
-    openStation = null; markSlot(null);
+    openStation = null; pageInPlace = false; markSlot(null);
     document.body.classList.remove('reading');
   });
 
@@ -470,6 +482,30 @@ async function boot() {
     marker.show(player.pos.x, player.floorY, player.pos.z, 0xf2ead7);
     tooltip.hidden = true;
   }
+
+  // Content navigation does not move the visitor or require crossing a door.
+  // Worlds can save a return checkpoint before a same-tab route is followed.
+  function navigateContent(id) {
+    const route = pageEl(id)?.dataset.route;
+    const url = route && pageURL(route);
+    rig.skipIntro();
+    if (!url) { openPage(id, true); return; }
+    extras.dismiss?.();
+    player.cancel(); input.clear();
+    document.dispatchEvent(new CustomEvent('homecraft:navigate', { detail: { id, href: url.href } }));
+    location.assign(url.href);
+  }
+
+  // Ordinary in-card links and the text-mode link retain native link behavior,
+  // while giving the current world the same return checkpoint as Dock routes.
+  document.addEventListener('click', event => {
+    if (config.dockMode !== 'content' || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest('a[href]');
+    if (!link || link.hasAttribute('download') || link.target && link.target !== '_self') return;
+    const url = pageURL(link.href);
+    if (!url || url.origin !== location.origin || url.pathname === location.pathname && url.search === location.search) return;
+    document.dispatchEvent(new CustomEvent('homecraft:navigate', { detail: { href: url.href } }));
+  });
 
   // ---------- Picking ----------
   const ray = new THREE.Raycaster();
@@ -678,7 +714,13 @@ async function boot() {
       continue;
     }
     const s = publicStations.find(s => s.id === id);
-    if (s) dockButton(() => nameOf(s), s.icon || s.id, () => go(s.id)).dataset.station = s.id;
+    if (s) {
+      const label = () => {
+        const page = pageEl(s.id);
+        return page?.dataset.navLabel ? t(page.dataset.navLabel, page.dataset.enNavLabel || s.en || nameOf(s)) : nameOf(s);
+      };
+      dockButton(label, s.icon || s.id, () => config.dockMode === 'content' ? navigateContent(s.id) : go(s.id)).dataset.station = s.id;
+    }
   }
   function togglePhone(on = !phone.up) {
     if (on === phone.up) return;
@@ -702,15 +744,15 @@ async function boot() {
     syncFlyButton(); applyWeather();
     phone.setAccounts(accounts());
     if (openStation === 'portal') openPortal();
-    else if (openStation === 'works') openPage('works');
+    else if (openStation === 'works') openPage('works', pageInPlace);
     else if (openStation) $('#panelTitle').textContent = document.querySelector(`#pages .page[data-station="${openStation}"] h2`).textContent;
   });
 
   // ---------- Input ----------
   const input = createInput(stage.renderer.domElement, {
-    blocked: () => minimap.isBigOpen() || panel.open || weatherMenuOpen() || isTravelling() || !!portal?.busy,
-    shortcutsBlocked: () => minimap.isBigOpen() || weatherMenuOpen() || isTravelling() || !!portal?.busy,
-    escape: () => { if (weatherMenuOpen()) toggleWeatherMenu(false, true); else if (minimap.isBigOpen()) minimap.toggleBig(false); else if (panel.open) closePage(); else if (phone.up) { if (!phone.back()) togglePhone(false); } },
+    blocked: () => minimap.isBigOpen() || panel.open || weatherMenuOpen() || extras.blocksInput?.() || isTravelling() || !!portal?.busy,
+    shortcutsBlocked: () => minimap.isBigOpen() || weatherMenuOpen() || extras.blocksInput?.() || isTravelling() || !!portal?.busy,
+    escape: () => { if (weatherMenuOpen()) toggleWeatherMenu(false, true); else if (minimap.isBigOpen()) minimap.toggleBig(false); else if (extras.dismiss?.()) return; else if (panel.open) closePage(); else if (phone.up) { if (!phone.back()) togglePhone(false); } },
     interact: () => {
       if (config.keyboardInteraction === false) return;
       const s = nearestTarget();
@@ -826,6 +868,7 @@ async function boot() {
   const debugEl = new URLSearchParams(location.search).has('debug') ? document.body.appendChild(Object.assign(document.createElement('pre'), { id: 'debugStats' })) : null;
   let debugClock = 0;
   const weatherFocus = new THREE.Vector3();
+  const weatherFrameState = {};
   const governor = { t: 0, frames: 0, sum: 0, sq: 0, level: 0 };
   let mapClock = 0, promptClock = 0;
   let hudShown = false;
@@ -841,7 +884,7 @@ async function boot() {
     requestAnimationFrame(loop);
     if (document.hidden) { last = now; return; }
     const elapsed = (now - last) / 1000;
-    const paused = minimap.isBigOpen() || panel.open || weatherMenuOpen() || isTravelling();
+    const paused = minimap.isBigOpen() || panel.open || weatherMenuOpen() || extras.blocksInput?.() || isTravelling();
     if (paused && !wasPaused) { player.cancel(); input.clear(); }
     wasPaused = paused;
     // Panels pause movement, but the visible world keeps rendering every frame.
@@ -861,7 +904,7 @@ async function boot() {
     extras.update?.(dt, elapsed, now);
     atmosphere.update(elapsed, now);
     weatherFx.update(elapsed, stage.camera, weatherFocus.set(player.pos.x, player.y + 1, player.pos.z));
-    const weatherNow = weatherFx.state, cam = stage.camera.position;
+    const weatherNow = weatherFx.readState(weatherFrameState), cam = stage.camera.position;
     pool.update(elapsed, stage.camera, player, weatherNow);
     // Under water the view softens; behind its blurred edges is water, not sky.
     if (pool.submerged !== underwater) {
@@ -881,7 +924,7 @@ async function boot() {
     flightPad?.show(player.flying && !player.piloting && !paused && !rig.introActive && !phone.up);
 
     // A page closes itself once the player walks away from where it belongs.
-    if (openStation && openStation !== 'portal') {
+    if (openStation && openStation !== 'portal' && !pageInPlace) {
       const st = STATIONS.find(st => st.id === openStation);
       if (st && targetDistance(st) > 3.5) closePage();
     }

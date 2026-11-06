@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdirSync,writeFileSync } from 'node:fs';
-import { launchBrowser,finishOpening } from './browser.mjs';
+import { launchBrowser,finishOpening, activateSceneControl } from './browser.mjs';
 const base=process.argv[2]||'http://127.0.0.1:8765/',out='tools/.check/decor';mkdirSync(out,{recursive:true});
 const browser=await launchBrowser(),report=[];
 try {
@@ -8,7 +8,7 @@ try {
   const context=await browser.newContext({viewport}),page=await context.newPage(),errors=[],removedArtRequests=[];
   page.on('pageerror',e=>errors.push(e.message));
   page.on('request',request=>{if(/assets\/gallery\/(defect|watcher)-glass\.webp/.test(request.url()))removedArtRequests.push(request.url());});
-  await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await page.locator('#return-button').click();
+  await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await activateSceneControl(page, '#return-button');
   await page.waitForFunction(()=>__home.world.gallery.ready||__home.world.gallery.error);
   const details=await page.evaluate(()=>{
    const h=__home,arts=['defect','miku','watcher'].map(id=>{const m=h.stage.scene.getObjectByName(`suspended-${id}`);return m?{id,width:m.material.map.image?.width,z:m.position.z,area:m.geometry.parameters.width*m.geometry.parameters.height}:null;});

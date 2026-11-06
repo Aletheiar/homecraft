@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { musicTime, describeTrack, isAudioFile } from '../world/music.js';
+import { musicTime, describeTrack, isAudioFile, clampPercent, readVolumePrefs, VOLUME_KEY, MUTED_KEY, DEFAULT_VOLUME } from '../world/music.js';
 import { COURTYARD_TRACKS } from '../world/music-library.js';
 
 test('formats track times without drifting past a minute', () => {
@@ -40,4 +40,27 @@ test('the public manifest has stable, unique numbered tracks', () => {
     total += track.duration;
   }
   assert.ok(total > 60, 'the collection lasts more than a minute');
+});
+
+test('volume percentages stay inside the element range', () => {
+  assert.equal(clampPercent(65), 65);
+  assert.equal(clampPercent('65'), 65);
+  assert.equal(clampPercent(65.4), 65);
+  assert.equal(clampPercent(-4), 0);
+  assert.equal(clampPercent(140), 100);
+  assert.equal(clampPercent('loud'), 0);
+  assert.equal(clampPercent(undefined), 0);
+});
+
+test('saved volume and mute survive a reload and damaged data is repaired', () => {
+  const read = values => key => (key in values ? values[key] : null);
+  assert.deepEqual(readVolumePrefs(read({})), { volume: 25, muted: false });
+  assert.deepEqual(readVolumePrefs(read({ [VOLUME_KEY]: '0.6' })), { volume: 60, muted: false });
+  assert.deepEqual(readVolumePrefs(read({ [VOLUME_KEY]: '0', [MUTED_KEY]: '1' })), { volume: 0, muted: true });
+  assert.deepEqual(readVolumePrefs(read({ [VOLUME_KEY]: '2.5' })), { volume: 100, muted: false });
+  assert.deepEqual(readVolumePrefs(read({ [VOLUME_KEY]: '-1' })), { volume: 0, muted: false });
+  assert.deepEqual(readVolumePrefs(read({ [VOLUME_KEY]: 'loud' })), { volume: DEFAULT_VOLUME, muted: false });
+  assert.deepEqual(readVolumePrefs(read({ [VOLUME_KEY]: '', [MUTED_KEY]: 'maybe' })), { volume: DEFAULT_VOLUME, muted: false });
+  assert.deepEqual(readVolumePrefs(() => { throw new Error('storage blocked'); }), { volume: DEFAULT_VOLUME, muted: false });
+  assert.deepEqual(readVolumePrefs(undefined), { volume: DEFAULT_VOLUME, muted: false });
 });

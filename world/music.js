@@ -2,6 +2,36 @@ import { COURTYARD_TRACKS } from './music-library.js';
 
 const AUDIO_FILE = /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|webm)$/i;
 const REPEAT_MODES = ['off', 'all', 'one'];
+// The volume preference keeps the keys earlier versions wrote, so a visitor's
+// saved level survives this player replacing the old stop pill.
+export const VOLUME_KEY = 'homecraft-music-volume';
+export const MUTED_KEY = 'homecraft-music-muted';
+// Percent for first visits or unreadable preferences. Saved levels take priority.
+export const DEFAULT_VOLUME = 25;
+
+export function clampPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.min(100, Math.max(0, Math.round(number)));
+}
+
+// Read back the saved level defensively: private-mode storage throws, and a
+// damaged or out-of-range value is repaired instead of trusted.
+export function readVolumePrefs(read) {
+  let volume = DEFAULT_VOLUME;
+  let muted = false;
+  try {
+    const stored = read?.(VOLUME_KEY);
+    const number = stored === null || stored === undefined || String(stored).trim() === ''
+      ? NaN : Number(stored);
+    if (Number.isFinite(number)) volume = clampPercent(number * 100);
+  } catch {}
+  try { muted = read?.(MUTED_KEY) === '1'; } catch {}
+  return { volume, muted };
+}
+
+const VOLUME_ICONS = '<svg class="music-mini-vol music-mini-vol-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.4h3.6L12.8 5v14l-5.2-4.4H4zM15.9 8.5a5.2 5.2 0 0 1 0 7l1.4 1.4a7.1 7.1 0 0 0 0-9.8z"/></svg>'
+  + '<svg class="music-mini-vol music-mini-vol-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.4h3.6L12.8 5v14l-5.2-4.4H4zM15.4 9.2l-1.4 1.4 1.6 1.6-1.6 1.6 1.4 1.4 1.6-1.6 1.6 1.6 1.4-1.4-1.6-1.6 1.6-1.6-1.4-1.4-1.6 1.6z"/></svg>';
 
 // Keep the formatting and filename rules pure so they can be tested outside a browser.
 export function musicTime(seconds) {
@@ -76,7 +106,7 @@ export function createMusicStation(panel) {
             <svg class="music-vol-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16 8.3a5 5 0 0 1 0 7.4l-1.2-1.3a3.2 3.2 0 0 0 0-4.8zM18.4 5.6a8.5 8.5 0 0 1 0 12.8l-1.2-1.3a6.7 6.7 0 0 0 0-10.2z"/></svg>
             <svg class="music-vol-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM15.7 9.2l1.3-1.3 2 2 2-2 1.3 1.3-2 2 2 2-1.3 1.3-2-2-2 2-1.3-1.3 2-2z"/></svg>
           </button>
-          <input data-music-volume type="range" min="0" max="100" value="80" step="1" aria-label="音量">
+          <input data-music-volume type="range" min="0" max="100" value="${DEFAULT_VOLUME}" step="1" aria-label="音量">
         </div>
       </div>
     </div>
@@ -153,13 +183,40 @@ export function createMusicStation(panel) {
   const clearButton = $('[data-music-clear]');
   const tabButtons = [...host.querySelectorAll('[data-music-tab]')];
 
-  const floater = document.createElement('button');
-  floater.className = 'music-stop-float';
-  floater.dataset.musicStopFloat = '';
-  floater.type = 'button';
-  floater.textContent = '♫ 停止音乐';
-  floater.hidden = true;
-  document.body.append(floater);
+  // One floating mini player, created with the station rather than rebuilt on
+  // every card open, so the audio element is never duplicated.
+  const mini = document.createElement('div');
+  mini.className = 'music-mini';
+  mini.dataset.musicMini = '';
+  mini.hidden = true;
+  mini.setAttribute('role', 'group');
+  mini.setAttribute('aria-label', '迷你音乐播放器');
+  mini.innerHTML = `
+    <span class="music-mini-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 3.8v11.6a3.4 3.4 0 1 1-2-3.1V7.9l-8 1.6v7.9a3.4 3.4 0 1 1-2-3.1V5.6z"/></svg></span>
+    <p class="music-mini-title" data-music-mini-title>庭院唱片</p>
+    <span class="music-mini-status" data-music-mini-status role="status" aria-live="polite"></span>
+    <span class="music-mini-transport">
+      <button class="music-mini-skip" data-music-mini-prev type="button" aria-label="上一首" title="上一首"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 5h2.3v14H7.2zM20 5.5v13L10.3 12z"/></svg></button>
+      <button class="music-mini-play" data-music-mini-toggle type="button" aria-label="播放" aria-pressed="false" title="播放"><svg class="music-mini-icon music-mini-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.4 5.1v13.8L19 12z"/></svg><svg class="music-mini-icon music-mini-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.9v14H7zM13.1 5H17v14h-3.9z"/></svg></button>
+      <button class="music-mini-skip" data-music-mini-next type="button" aria-label="下一首" title="下一首"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.8 5h-2.3v14h2.3zM4 5.5v13L13.7 12z"/></svg></button>
+    </span>
+    <button class="music-mini-volume" data-music-mini-volume type="button" aria-label="音量" aria-expanded="false" aria-controls="music-mini-volume-panel" title="音量">${VOLUME_ICONS}</button>
+    <div class="music-mini-volume-panel" id="music-mini-volume-panel" data-music-mini-volume-panel role="group" aria-label="音量控制">
+      <button class="music-mini-mute" data-music-mini-mute type="button" aria-label="静音" aria-pressed="false" title="静音">${VOLUME_ICONS}</button>
+      <input class="music-mini-slider" data-music-mini-slider type="range" min="0" max="100" step="1" value="${DEFAULT_VOLUME}" aria-label="音量">
+      <span class="music-mini-percent" data-music-mini-percent>${DEFAULT_VOLUME}%</span>
+    </div>`;
+  document.body.append(mini);
+
+  const miniTitle = mini.querySelector('[data-music-mini-title]');
+  const miniStatus = mini.querySelector('[data-music-mini-status]');
+  const miniPrev = mini.querySelector('[data-music-mini-prev]');
+  const miniPlay = mini.querySelector('[data-music-mini-toggle]');
+  const miniNext = mini.querySelector('[data-music-mini-next]');
+  const miniVolume = mini.querySelector('[data-music-mini-volume]');
+  const miniMute = mini.querySelector('[data-music-mini-mute]');
+  const miniSlider = mini.querySelector('[data-music-mini-slider]');
+  const miniPercent = mini.querySelector('[data-music-mini-percent]');
 
   let files = [...PUBLIC_TRACKS];
   let index = files.length ? Math.floor(Math.random() * files.length) : -1;
@@ -173,21 +230,88 @@ export function createMusicStation(panel) {
   let pendingSeek = null;
   let dragDepth = 0;
   let autoplayPending = false;
+  let loading = false;
+  let volumeOpen = false;
+  let lastAudible = DEFAULT_VOLUME / 100;
 
-  try {
-    const saved = localStorage.getItem('homecraft-music-volume');
-    const stored = saved === null ? NaN : Number(saved);
-    audio.volume = Number.isFinite(stored) && stored >= 0 && stored <= 1 ? stored : .8;
-    audio.muted = localStorage.getItem('homecraft-music-muted') === '1';
-  } catch { audio.volume = .8; }
+  const prefs = readVolumePrefs(key => localStorage.getItem(key));
+  audio.volume = prefs.volume / 100;
+  audio.muted = prefs.muted;
+  if (audio.volume > 0) lastAudible = audio.volume;
 
   const playing = () => index >= 0 && !audio.paused && !audio.ended;
   const localFiles = () => files.filter(file => file.kind === 'local');
 
+  function persistVolume() {
+    try {
+      localStorage.setItem(VOLUME_KEY, String(audio.volume));
+      localStorage.setItem(MUTED_KEY, audio.muted ? '1' : '');
+    } catch {}
+  }
+
+  // Volume, silence and playback are three separate states: a silent range
+  // leaves the track playing, and muting never touches currentTime.
+  function applyVolume(percent, { unmute = true } = {}) {
+    const value = clampPercent(percent);
+    audio.volume = value / 100;
+    if (value > 0) {
+      lastAudible = audio.volume;
+      if (unmute) audio.muted = false;
+    }
+    persistVolume();
+    syncVolume();
+  }
+
+  function toggleMute() {
+    const silent = audio.muted || audio.volume === 0;
+    if (silent) {
+      audio.muted = false;
+      if (audio.volume === 0) audio.volume = lastAudible > 0 ? lastAudible : DEFAULT_VOLUME / 100;
+    } else {
+      lastAudible = audio.volume;
+      audio.muted = true;
+    }
+    persistVolume();
+    syncVolume();
+  }
+
+  function setLoading(value) {
+    loading = Boolean(value);
+    mini.classList.toggle('is-loading', loading);
+    miniPlay.setAttribute('aria-busy', String(loading));
+  }
+
+  function setVolumeOpen(open) {
+    volumeOpen = Boolean(open) && !mini.hidden;
+    mini.classList.toggle('is-volume-open', volumeOpen);
+    miniVolume.setAttribute('aria-expanded', String(volumeOpen));
+    if (volumeOpen) {
+      document.addEventListener('pointerdown', closeVolumeOutside, true);
+      document.addEventListener('keydown', closeVolumeKeys, true);
+    } else {
+      document.removeEventListener('pointerdown', closeVolumeOutside, true);
+      document.removeEventListener('keydown', closeVolumeKeys, true);
+    }
+  }
+
+  function closeVolumeOutside(event) {
+    if (!mini.contains(event.target)) setVolumeOpen(false);
+  }
+
+  function closeVolumeKeys(event) {
+    if (!volumeOpen || event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    setVolumeOpen(false);
+    miniVolume.focus();
+  }
+
   function syncVisibility() {
     const open = panel.open && panel.dataset.station === 'plaza';
     host.hidden = !open;
-    floater.hidden = open || !playing();
+    const hide = open || index < 0 || !files.length;
+    if (hide && volumeOpen) setVolumeOpen(false);
+    mini.hidden = hide;
   }
 
   function syncTabs() {
@@ -220,12 +344,22 @@ export function createMusicStation(panel) {
   }
 
   function syncVolume() {
-    const percent = `${Math.round(audio.volume * 100)}%`;
-    volume.value = String(Math.round(audio.volume * 100));
-    volume.style.setProperty('--value', percent);
-    host.classList.toggle('is-muted', audio.muted || audio.volume === 0);
-    muteButton.setAttribute('aria-pressed', String(audio.muted || audio.volume === 0));
-    muteButton.setAttribute('aria-label', audio.muted || audio.volume === 0 ? '取消静音' : '静音');
+    const percent = clampPercent(audio.volume * 100);
+    const silent = audio.muted || audio.volume === 0;
+    const fill = `${percent}%`;
+    volume.value = String(percent);
+    volume.style.setProperty('--value', fill);
+    miniSlider.value = String(percent);
+    miniSlider.style.setProperty('--value', fill);
+    miniSlider.setAttribute('aria-valuetext', silent ? `已静音，${percent}%` : fill);
+    miniPercent.textContent = fill;
+    host.classList.toggle('is-muted', silent);
+    mini.classList.toggle('is-muted', silent);
+    for (const button of [muteButton, miniMute]) {
+      button.setAttribute('aria-pressed', String(silent));
+      button.setAttribute('aria-label', silent ? '取消静音' : '静音');
+    }
+    miniVolume.setAttribute('aria-label', silent ? `音量，已静音，${percent}%` : `音量 ${percent}%`);
   }
 
   function markQueue() {
@@ -261,17 +395,36 @@ export function createMusicStation(panel) {
     repeatButton.title = repeat === 'off' ? '顺序播放' : repeat === 'all' ? '列表循环' : '单曲循环';
     repeatButton.setAttribute('aria-label', repeatButton.title);
     repeatButton.querySelector('.music-tool-label').textContent = repeat === 'off' ? '顺序' : repeat === 'all' ? '循环' : '单曲';
-    floater.textContent = isPlaying && file
-      ? `♫ ${file.artist ? `${file.artist} · ` : ''}${file.title} · 停止`
-      : '♫ 停止音乐';
+    const trackName = file ? `${file.title}${file.artist ? ` · ${file.artist}` : ''}` : '没有可播放的曲目';
+    miniTitle.textContent = trackName;
+    miniTitle.title = trackName;
+    mini.classList.toggle('is-playing', isPlaying);
+    mini.classList.toggle('is-loading', loading);
+    miniPlay.setAttribute('aria-label', isPlaying ? '暂停' : '播放');
+    miniPlay.title = isPlaying ? '暂停' : '播放';
+    miniPlay.setAttribute('aria-pressed', String(isPlaying));
+    miniPlay.setAttribute('aria-busy', String(loading));
+    miniPrev.disabled = miniNext.disabled = files.length < 2;
     syncProgress();
     syncVolume();
     markQueue();
     syncVisibility();
   }
 
+  function announce(message) {
+    miniStatus.textContent = message;
+  }
+
   function showProblem(message) {
     error.textContent = message;
+    mini.classList.add('is-error');
+    announce(message);
+  }
+
+  function clearProblem() {
+    error.textContent = '';
+    mini.classList.remove('is-error');
+    announce('');
   }
 
   function makeRow(file, position, displayIndex) {
@@ -350,7 +503,7 @@ export function createMusicStation(panel) {
       added++;
     }
     if (!added) { showProblem('这些音乐已经在本机试听里了。'); return; }
-    error.textContent = '';
+    clearProblem();
     renderLocalQueue();
     selectTab('local');
     if (index < 0) index = PUBLIC_TRACKS.length;
@@ -378,16 +531,17 @@ export function createMusicStation(panel) {
     // Music controls perform their own action; a global retry must not also
     // turn a visitor's pause into play or replace their selected track.
     if (!autoplayPending || !event.isTrusted || event.defaultPrevented
-      || event.target.closest?.('.music-station, [data-music-stop-float]')) return;
+      || event.target.closest?.('.music-station, .music-mini')) return;
     cancelAutoplay();
     void startPlayback();
   }
 
   async function startPlayback(request = ++revision, automatic = false) {
     ensureSource(files[index]);
+    if (request === revision) setLoading(true);
     try {
       await audio.play();
-      if (request === revision) cancelAutoplay();
+      if (request === revision) { cancelAutoplay(); clearProblem(); }
     }
     catch (reason) {
       if (request !== revision || reason?.name === 'AbortError') return;
@@ -398,9 +552,13 @@ export function createMusicStation(panel) {
         document.addEventListener('pointerup', resumeAutoplay);
         document.addEventListener('touchend', resumeAutoplay);
       } else showProblem('浏览器没有开始播放。请再点一次播放，或换一首曲目。');
-    } finally { if (request === revision) sync(); }
+    } finally {
+      if (request === revision) { setLoading(false); sync(); }
+    }
   }
 
+  // The target track is always loaded, so a paused player shows the new title
+  // and still pauses; `shouldPlay` is the only thing that may resume audio.
   async function selectTrack(position, shouldPlay = true) {
     if (!files.length) return;
     cancelAutoplay();
@@ -408,8 +566,10 @@ export function createMusicStation(panel) {
     const request = ++revision;
     audio.pause();
     index = target;
-    error.textContent = '';
-    if (shouldPlay) ensureSource(files[index]);
+    clearProblem();
+    ensureSource(files[index]);
+    setLoading(false);
+    announce(`当前曲目：${files[index].title}`);
     sync();
     if (shouldPlay) await startPlayback(request);
   }
@@ -423,7 +583,20 @@ export function createMusicStation(panel) {
 
   function step(delta) {
     if (!files.length) return;
-    void selectTrack(shuffle ? randomIndex() : index + delta, true);
+    // A paused player stays paused across a manual track change.
+    void selectTrack(shuffle ? randomIndex() : index + delta, playing());
+  }
+
+  function nextTrack() {
+    step(1);
+  }
+
+  // The usual music-player rule: restart after three seconds, otherwise back.
+  function previousTrack() {
+    if (!files.length) return;
+    cancelAutoplay();
+    if (audio.currentTime > 3) { audio.currentTime = 0; syncProgress(); return; }
+    step(-1);
   }
 
   async function togglePlayback() {
@@ -431,9 +604,9 @@ export function createMusicStation(panel) {
     if (!files.length) { selectTab('local'); filePicker.click(); return; }
     if (index < 0) index = 0;
     ensureSource(files[index]);
+    if (!audio.paused) { audio.pause(); return; }
     if (audio.ended) audio.currentTime = 0;
-    if (audio.paused) await startPlayback();
-    else audio.pause();
+    await startPlayback();
   }
 
   function clearLocal() {
@@ -458,7 +631,7 @@ export function createMusicStation(panel) {
       probe = null;
     }
     renderLocalQueue();
-    error.textContent = '';
+    clearProblem();
     sync();
   }
 
@@ -487,14 +660,15 @@ export function createMusicStation(panel) {
   folderPicker.addEventListener('change', event => { addFiles(event.target.files); event.target.value = ''; });
   for (const button of tabButtons) button.addEventListener('click', () => selectTab(button.dataset.musicTab));
   playButton.addEventListener('click', () => { void togglePlayback(); });
-  prevButton.addEventListener('click', () => {
-    if (!files.length) return;
-    if (audio.currentTime > 3) { audio.currentTime = 0; syncProgress(); return; }
-    step(-1);
-  });
-  nextButton.addEventListener('click', () => step(1));
+  prevButton.addEventListener('click', previousTrack);
+  nextButton.addEventListener('click', nextTrack);
   clearButton.addEventListener('click', clearLocal);
-  floater.addEventListener('click', () => { cancelAutoplay(); revision++; audio.pause(); audio.currentTime = 0; sync(); });
+  miniPlay.addEventListener('click', () => { void togglePlayback(); });
+  miniPrev.addEventListener('click', previousTrack);
+  miniNext.addEventListener('click', nextTrack);
+  miniVolume.addEventListener('click', () => setVolumeOpen(!volumeOpen));
+  miniMute.addEventListener('click', toggleMute);
+  miniSlider.addEventListener('input', () => applyVolume(miniSlider.value));
   shuffleButton.addEventListener('click', () => { shuffle = !shuffle; sync(); });
   repeatButton.addEventListener('click', () => { repeat = REPEAT_MODES[(REPEAT_MODES.indexOf(repeat) + 1) % REPEAT_MODES.length]; sync(); });
 
@@ -511,20 +685,8 @@ export function createMusicStation(panel) {
     audio.currentTime = (Number(seek.value) / 1000) * total;
     syncProgress();
   });
-  volume.addEventListener('input', () => {
-    audio.volume = Number(volume.value) / 100;
-    if (audio.volume > 0) audio.muted = false;
-    try {
-      localStorage.setItem('homecraft-music-volume', String(audio.volume));
-      if (!audio.muted) localStorage.setItem('homecraft-music-muted', '');
-    } catch {}
-    syncVolume();
-  });
-  muteButton.addEventListener('click', () => {
-    audio.muted = !audio.muted;
-    try { localStorage.setItem('homecraft-music-muted', audio.muted ? '1' : ''); } catch {}
-    syncVolume();
-  });
+  volume.addEventListener('input', () => applyVolume(volume.value));
+  muteButton.addEventListener('click', toggleMute);
 
   host.addEventListener('dragenter', event => {
     if (!event.dataTransfer?.types?.includes('Files')) return;
@@ -551,6 +713,9 @@ export function createMusicStation(panel) {
   audio.addEventListener('play', sync);
   audio.addEventListener('pause', sync);
   audio.addEventListener('timeupdate', syncProgress);
+  audio.addEventListener('playing', () => { setLoading(false); sync(); });
+  audio.addEventListener('waiting', () => setLoading(true));
+  audio.addEventListener('canplay', () => setLoading(false));
   audio.addEventListener('loadedmetadata', () => {
     if (pendingSeek != null && Number.isFinite(audio.duration) && audio.duration > 0) {
       audio.currentTime = pendingSeek * audio.duration;
@@ -562,6 +727,7 @@ export function createMusicStation(panel) {
   audio.addEventListener('volumechange', syncVolume);
   audio.addEventListener('ended', handleEnded);
   audio.addEventListener('error', () => {
+    setLoading(false);
     if (audio.getAttribute('src')) showProblem('浏览器无法读取这首音乐，请尝试 MP3、WAV 或 FLAC 文件。');
     sync();
   });
@@ -574,6 +740,16 @@ export function createMusicStation(panel) {
   return {
     get playing() { return playing(); },
     sync,
-    dispose() { cancelAutoplay(); revision++; audio.pause(); audio.removeAttribute('src'); audio.load(); observer.disconnect(); floater.remove(); host.remove(); }
+    dispose() {
+      cancelAutoplay();
+      revision++;
+      setVolumeOpen(false);
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      observer.disconnect();
+      mini.remove();
+      host.remove();
+    }
   };
 }

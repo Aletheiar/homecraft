@@ -2,7 +2,7 @@
 // integration contract, visible error handling and ordinary station picking.
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { launchBrowser, finishOpening } from './browser.mjs';
+import { launchBrowser, finishOpening, activateSceneControl } from './browser.mjs';
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
 const out = 'tools/.check/guestbook'; mkdirSync(out, { recursive: true });
 const browser = await launchBrowser(), report = [];
@@ -17,7 +17,7 @@ try {
     });
     await page.goto(base);
     await page.waitForFunction(() => window.__home?.world.pyramid?.sceneryReady, null, { timeout: 60000 });
-    await finishOpening(page); await page.locator('#return-button').click();
+    await finishOpening(page); await activateSceneControl(page, '#return-button');
     assert.equal(scripts.length, 0, 'The guestbook service is lazy-loaded');
     await page.evaluate(async () => {
       const { STATIONS } = await import('/world/layout.js');

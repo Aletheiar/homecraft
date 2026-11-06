@@ -334,7 +334,7 @@ export function buildWorkstation(anchor, { box, solid: addSolid }) {
   const lights = new THREE.Mesh(lightGeometry, lightMaterial);
   lights.name = 'workstation-light-strips'; mesh.add(lights);
 
-  // Rack indicators: their own tiny emissive mesh so a simulated boot can blink.
+  // Decorative rack indicators share the room's ambient light setting.
   const lampGeometries = [];
   for(let i=0;i<4;i++) {
     const g=new THREE.BoxGeometry(.035,.028,.012);g.translate(x-1.91,.23+i*.255,z+.356+rz);lampGeometries.push(g);
@@ -390,23 +390,20 @@ export function buildWorkstation(anchor, { box, solid: addSolid }) {
   };
   const fixtures = [
     { id: 'main', page: 'workbench', label: '访问 GitHub ↗', box: hotspot.box, precise: true },
-    { id: 'terminal', page: 'terminal', label: '终端 · 模拟', box:faceBounds(screens[1]) },
     { id: 'status', page: 'status', label: '系统状态', box:faceBounds(screens[2]) },
-    { id: 'rack', page: 'rack', label: '服务器机柜', box:box3(x+rack.dx,.6,z+rack.dz,.86,1.32,.95).applyMatrix4(turn) },
     ...posterFaces.map(p=>({id:p.id,page:p.id,label:p.id==='poster-v'?'海报 · V':'海报 · 玻璃金字塔',box:faceBounds(p)})),
     { id: 'lights', label: '灯光模式', box:box3(x+switchPos.dx,switchPos.y+.13,z+front,.34,.42,.14).applyMatrix4(turn) },
     { id: 'seat', label: '坐下', box:box3(x-.15,.55,chairZ,.9,1.1,.95).applyMatrix4(turn) },
   ];
   // Intersect display faces in local space. Broad AABBs alone overlap from
   // oblique angles and can select a screen that the cursor never touches.
-  for(const f of [...screens,...posterFaces]) {
+  for(const f of [main,screens[2],...posterFaces]) {
     fixtures.find(item=>item.id===f.id).intersect=intersectFace(f);
   }
   const seat=at(-.15,chairZ-z-.04),stand=at(-.15,chairZ-z+.92);
   const faceDesk = Math.atan2(x - seat.x, z - seat.z);
-  let elapsed = 0, mode = 0, boot = 0;
-  // One place owns the corner's decorative light level, so the switch, the boot
-  // flash and the frame update can never disagree.
+  let elapsed = 0, mode = 0;
+  // The switch and frame update share the corner's decorative light level.
   const applyLights = () => {
     const g = LIGHT_MODES[mode].gain;
     lightMaterial.color.setScalar(g);
@@ -418,16 +415,9 @@ export function buildWorkstation(anchor, { box, solid: addSolid }) {
     get lightMode() { return LIGHT_MODES[mode].id; },
     cycleLights() { mode = (mode + 1) % LIGHT_MODES.length; applyLights(); return LIGHT_MODES[mode]; },
     applyLights,
-    boot() { boot = 2.4; },
-    get booting() { return boot > 0; },
     update(dt){
       if(!mesh.visible||dt<=0)return;
       elapsed=(elapsed+dt)%20;
-      if (boot > 0) {
-        boot = Math.max(0, boot - dt);
-        ledMaterial.color.setHex(boot % .32 > .16 ? 0x9ef2e0 : 0x2a6b62);
-        if (boot === 0) ledMaterial.color.setHex(0xd4a45d);
-      }
       applyLights();
     }};
 }
@@ -439,8 +429,8 @@ export function buildWorkstation(anchor, { box, solid: addSolid }) {
 export function attachWorkstationControls(station,{stage,rig,player,nav}) {
   const canvas=stage.renderer.domElement,tip=document.querySelector('#tooltip');
   const panel=document.querySelector('#panel'),map=document.querySelector('#bigmap');
-  const weatherMenu=document.querySelector('#weatherMenu');
-  const modalOpen=()=>panel.open||!map.hidden||!weatherMenu.hidden;
+  const weatherMenu=document.querySelector('#weatherMenu'),sceneTools=document.querySelector('#scene-tools');
+  const modalOpen=()=>panel.open||!map.hidden||!weatherMenu.hidden||!!sceneTools?.open;
   const page=document.querySelector('[data-station="workbench"]');
   page.dataset.link=station.href;
   page.querySelector('a').href=station.href;
@@ -449,7 +439,7 @@ export function attachWorkstationControls(station,{stage,rig,player,nav}) {
   // in-page link would, with no duplicated page logic here.
   const proxyHost=document.createElement('div');proxyHost.hidden=true;panel.appendChild(proxyHost);
   const proxies=new Map();
-  for(const id of ['workbench','terminal','status','rack','poster-pyramid','poster-v']){
+  for(const id of ['workbench','status','poster-pyramid','poster-v']){
     const a=document.createElement('a');a.dataset.open=id;a.href='#';proxyHost.appendChild(a);proxies.set(id,a);
     // The panel's existing handler owns activation. Cancel the anchor's
     // default fragment navigation so opening an auxiliary card keeps the URL.
@@ -592,40 +582,7 @@ export function attachWorkstationControls(station,{stage,rig,player,nav}) {
     document.getElementById(id)?.addEventListener('click',e=>{if(seated){e.preventDefault();e.stopImmediatePropagation();}},true);
   }
 
-  // ---- page content: a simulated terminal, live render stats, a rack demo ----
-  function mountTerminal(body){
-    const out=body.querySelector('[data-term-out]'),field=body.querySelector('[data-term-in]');
-    if(!out||!field)return;
-    const print=(text,cls)=>{const line=document.createElement('div');if(cls)line.className=cls;line.textContent=text;out.appendChild(line);out.scrollTop=out.scrollHeight;};
-    let lines=0;
-    const boot=()=>{
-      out.textContent='';lines=0;
-      print('NETRUNNER SHELL 0.9 — SIMULATION ONLY');
-      print('Preset commands only. `github` opens the public profile in a new tab.');
-      print('');
-      print('Type `help` for the command list.','note');
-      print('');
-    };
-    boot();
-    field.value='';
-    body.querySelector('[data-term-form]').addEventListener('submit',ev=>{
-      ev.preventDefault();
-      const raw=field.value.trim();field.value='';
-      if(!raw)return;
-      print('> '+raw,'cmd');
-      const cmd=raw.toLowerCase();
-      if(cmd==='help'){print('help      this list');print('about     who runs this space');print('projects  what is built here');print('github    open the profile in a new tab');print('clear     clear the screen');}
-      else if(cmd==='about'){print('Aletheiar — personal site, built as a walkable voxel courtyard.');print('Front end: Three.js, native ES modules, no build step for the world.');}
-      else if(cmd==='projects'){print('homecraft        three.js voxel hall and courtyard');print('research notes   long-form write-ups in docs/research');print('experiments      small shaders and geometry studies');}
-      else if(cmd==='github'){print('opening https://github.com/Aletheiar in a new tab …','ok');window.open(station.href,'_blank','noopener');}
-      else if(cmd==='clear'){out.textContent='';lines=0;}
-      else print('unknown command: '+raw+' — try `help`','note');
-      lines++;
-      if(lines>60){boot();}
-      field.scrollIntoView({block:'nearest'});
-    });
-    field.focus({preventScroll:true});
-  }
+  // ---- page content: live render stats ----
   const status={el:null,timer:0};
   function mountStatus(body){
     status.el=body.querySelector('[data-status]');
@@ -646,35 +603,14 @@ export function attachWorkstationControls(station,{stage,rig,player,nav}) {
     let lights=0;stage.scene.traverse(o=>{if(o.isLight)lights++;});set('lights',String(lights));
     set('pixel',`${stage.renderer.getPixelRatio().toFixed(2)}×`);
   }
-  let rackButton=null,rackLog=null,bootWasRunning=false;
-  function mountRack(body){
-    const button=body.querySelector('[data-rack-boot]'),log=body.querySelector('[data-rack-log]');
-    if(!button||!log)return;
-    rackButton=button;rackLog=log;button.disabled=station.booting;
-    button.addEventListener('click',()=>{
-      if(station.booting)return;
-      station.boot();button.disabled=true;bootWasRunning=true;
-      log.textContent='SIMULATION · starting decorative node…';
-    });
-  }
   // The panel is the project's own page dialog; fill only the pages this room owns.
   let mountedNode=null;
   const observer=new MutationObserver(()=>{
-    if(!panel.open){status.el=null;rackButton=rackLog=mountedNode=null;return;}
+    if(!panel.open){status.el=mountedNode=null;return;}
     const body=panel.querySelector('.body');if(!body)return;
     if(mountedNode===body.firstElementChild)return;
-    mountedNode=body.firstElementChild;status.el=null;rackButton=rackLog=null;
-    // The shell's input is built when the card opens: a focusable field sitting
-    // in the hidden page list would steal focus (and the browser's sticky user
-    // activation) from the hall on load.
-    const slot=body.querySelector('[data-nr-slot="terminal"]');
-    if(slot&&!slot.firstChild){
-      slot.innerHTML='<pre class="nr-term-out" data-term-out role="log" aria-live="polite"></pre>'
-        +'<form class="nr-term-line" data-term-form><span>&gt;</span><input data-term-in type="text" enterkeyhint="send" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="模拟终端命令"><button class="nr-button" type="submit">运行</button></form>';
-    }
-    if(body.querySelector('[data-term-out]'))mountTerminal(body);
+    mountedNode=body.firstElementChild;status.el=null;
     if(body.querySelector('[data-status]'))mountStatus(body);
-    if(body.querySelector('[data-rack-boot]'))mountRack(body);
   });
   observer.observe(panel,{attributes:true,attributeFilter:['open','data-station']});
 
@@ -683,11 +619,6 @@ export function attachWorkstationControls(station,{stage,rig,player,nav}) {
     updatePrompt();
     exit.hidden=!seated||modalOpen()||!touchLike;
     if(feedbackTime>0){feedbackTime-=dt;if(feedbackTime<=0)feedback.hidden=true;}
-    if(bootWasRunning&&!station.booting){
-      bootWasRunning=false;
-      if(rackButton)rackButton.disabled=false;
-      if(rackLog)rackLog.textContent='SIMULATION · decorative node online\nNo network connection.';
-    }
     // Live render numbers only while the status page is on screen.
     if(status.el&&panel.open){
       status.timer+=dt;
@@ -705,7 +636,7 @@ export function attachWorkstationControls(station,{stage,rig,player,nav}) {
     tip.style.left=`${Math.min(innerWidth-tip.offsetWidth-8,Math.max(8,px-tip.offsetWidth/2))}px`;
     tip.style.top=`${Math.max(8,py-tip.offsetHeight-16)}px`;
   },get seated(){return seated;},get state(){
-    if(panel.open&&['terminal','status'].includes(panel.dataset.station))return 'computer';
+    if(panel.open&&panel.dataset.station==='status')return 'computer';
     if(panel.open&&station.fixtures.some(f=>f.page===panel.dataset.station))return 'viewing';
     return seated?'seated':'roaming';
   },sit,stand};

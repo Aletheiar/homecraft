@@ -1,4 +1,4 @@
-import { launchBrowser } from './browser.mjs';
+import { launchBrowser, activateSceneControl } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const base = process.argv[2] || readFileSync(new URL('./.serve-url', import.meta.url), 'utf8').trim();
@@ -11,7 +11,7 @@ for (const cached of [false, true]) {
     await page.addInitScript(() => { window.__historyToken = Math.random(); addEventListener('pageshow', e => { window.__historyPersisted = e.persisted; }); });
     await page.goto(base);
     await page.waitForFunction(() => window.__home?.world.pyramid?.sceneryReady);
-    await page.locator('#enter-button').click();
+    await activateSceneControl(page, '#enter-button');
     await page.evaluate(async () => {
       const { HUB_PORTALS } = await import('/world/space-config.js'), gate = HUB_PORTALS.find(g => g.id === 'about');
       const h = __home; h.player.teleport(gate.x + Math.sin(gate.yaw) * 2, gate.z + Math.cos(gate.yaw) * 2); h.rig.recenter(h.player);

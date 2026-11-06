@@ -75,9 +75,8 @@ try {
     assert.equal(await popup.evaluate(()=>window.opener),null);await popup.close();
     const after=await page.evaluate(()=>({p:[__home.player.pos.x,__home.player.pos.z],url:location.href}));assert.deepEqual(after,before);
     let unwanted=0;page.on('popup',()=>unwanted++);
-    // The two side screens are interactive in their own right: each shows its
-    // own hint, opens its own panel, never a popup, never a walk, never a stack.
-    const sides=[['terminal','终端'],['status','系统状态']];
+    // The status screen keeps its own hint and panel without opening a popup.
+    const sides=[['status','系统状态']];
     for(const [i,[id,hint]] of sides.entries()) {
       await page.evaluate(()=>__home.player.cancel());
       // Opening and closing a page releases the locked showcase camera, so
@@ -106,7 +105,7 @@ try {
       await page.keyboard.press('Escape');
       await page.waitForFunction(()=>!document.querySelector("#panel")?.open,null,{timeout:3000});
       assert.equal(await page.evaluate(()=>location.href.endsWith('#')),false,'aux panels leave the URL alone');
-      if(i===0) await page.screenshot({path:`${out}/${viewport.width}-terminal.png`});
+      if(i===0) await page.screenshot({path:`${out}/${viewport.width}-status-closed.png`});
     }
     await page.waitForTimeout(200);assert.equal(unwanted,0,'side screens never open a popup');
     // Sit down, work while seated, then stand back up on safe ground.
@@ -143,9 +142,9 @@ try {
     // The seated eye sits at the chair, looking over the desk at the screens.
     assert.ok(Math.abs(seatedState.eye[0]-seatedState.seat[0])<.5&&Math.abs(seatedState.eye[2]-seatedState.seat[1])<.6,`the camera moved to the seat (eye ${seatedState.eye.map(n=>n.toFixed(2)).join(', ')})`);
     assert.ok(seatedState.eye[1]>1.2&&seatedState.eye[1]<2.2,'the seated eye is at desk height');
-    // Screens stay operable while seated: open the terminal, close it with Escape.
+    // The status screen stays operable while seated and closes with Escape.
     const seatedPoint=await page.evaluate(()=>{
-      const h=__home,s=h.world.workstation.screens.find(s=>s.id==='terminal');
+      const h=__home,s=h.world.workstation.screens.find(s=>s.id==='status');
       // Seated at the desk the side screens sit outside a 50° view, so the
       // visitor turns their head — the same mouse look they use while walking.
       h.rig.setFirstPerson(true,Math.atan2(s.position.x-h.player.pos.x,s.position.z-h.player.pos.z));

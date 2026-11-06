@@ -1,0 +1,41 @@
+{
+  "id": "ori-spirit-sculpture",
+  "checked": "2026-11-06",
+  "file": "ori-vincentskc.glb",
+  "sha256": "5a0f66514c8e6ea609751a0ac3f7ba9d477abfd6eeb5ebfecf408f9668f0964b",
+  "bytes": 243748,
+  "title": "Ori from the game \"Ori and the Blind Forest\"",
+  "author": "vincentskc",
+  "author_url": "https://sketchfab.com/vincentskc",
+  "source": "https://sketchfab.com/3d-models/ori-from-the-game-ori-and-the-blind-forest-9154a505ba8143cba354d04ac9f7ac29",
+  "metadata_api": "https://api.sketchfab.com/v3/models/9154a505ba8143cba354d04ac9f7ac29",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved_from": "https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-155/9154a505ba8143cba354d04ac9f7ac29.glb",
+  "archive_license_note": "Objaverse distributes individual objects under their respective Creative Commons licenses. The original GLB author/license/source metadata and the current Sketchfab API both identify this object as CC BY 4.0.",
+  "file_changes": "None. Runtime changes: uniform scale to 1.68 metres, translation to the branch, orientation towards the hall centre, adjusted body/nose materials, reduced eye emission, front-face rendering. The support, stone base, arc and 12 motes are authored separately for this project.",
+  "rendered_model_triangles": 9496,
+  "rendered_exhibit_triangles": 11816,
+  "draw_calls": 7,
+  "realtime_lights_added": 0,
+  "theme": "Ori and the Will of the Wisps fan-art exhibit using an Ori character mesh originally titled after Ori and the Blind Forest; not an official Ori2 model.",
+  "attribution_location": "Ori information card in index.html and docs/research/2026-11-06-ori-sculpture.md",
+  "other_resources_checked": [
+    {
+      "source": "https://sketchfab.com/3d-models/ori-and-the-will-of-the-wisps-ori-18018f11229e422b8d18714d4c52c110",
+      "author": "rogeriofsalves1",
+      "license": "CC-BY-4.0",
+      "result": "The metadata API reports downloadable=true, with OBJ source and converted glTF/GLB archives. The official download endpoint returns HTTP 401 without authentication. Not imported; no viewer extraction used. This UID was absent from the inspected Objaverse index."
+    },
+    {
+      "source": "https://cults3d.com/en/3d-model/art/ori-and-the-will-of-the-wisps",
+      "result": "The page returned an HTTP 403 verification challenge. Download availability and asset-specific license could not be verified. Not purchased, downloaded or imported."
+    },
+    {
+      "source": "https://sketchfab.com/3d-models/ori-be03540404ec4e69b8a2d969865a4c48",
+      "author": "Kristian LaGrange",
+      "license": "CC-BY-4.0",
+      "result": "Current API metadata and archived GLB license were inspected. Its static T pose and 57,560 converted triangles were less suitable than the chosen crouching model. Previewed locally, not bundled."
+    }
+  ]
+}

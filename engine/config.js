@@ -18,6 +18,8 @@ const DEFAULTS = {
   start: { weather: 'clear', time: 'day' },
   // The Dock, in order: ids of the pages in index.html (data-station), and 'phone'.
   dock: ['blog', 'about', 'mailbox', 'phone'],
+  // 'content' opens pages in place; data-route pages navigate in the same tab.
+  dockMode: 'spatial',
   // Notes from the mailbox: `endpoint` is a deployed mailbox Worker;
   // without one the note opens the visitor's mail app addressed to `email`.
   mailbox: { endpoint: '', email: '', turnstileSitekey: '' },

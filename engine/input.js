@@ -26,6 +26,8 @@ export function createInput(canvas, handlers) {
     // Ctrl is the descend key; with it held, only movement keys pass through.
     if (id === 'ControlLeft' || id === 'ControlRight' || id === 'control') { if (!typing(e) && !blocked()) keys.add(id); return; }
     if (typing(e) || e.metaKey || e.altKey || (e.ctrlKey && !movement)) return;
+    // Keep native focus navigation and activation for the website controls.
+    if ((k === 'enter' || id === 'Space' || id === ' ') && e.target.closest?.('button, a[href], summary, [role="button"]')) return;
     if (k === 'escape') { handlers.escape?.(); return; }
     if (!movement && /^[1-9]$/.test(k) && !handlers.shortcutsBlocked?.()) {
       if (!e.repeat) handlers.slot?.(Number(k));
@@ -50,7 +52,7 @@ export function createInput(canvas, handlers) {
     if (!e.repeat) {
       if (!movement) {
         if (k === 'f' || k === 'e' || k === 'enter') handlers.interact?.();
-        else if (k === 'm' || k === 'tab') { e.preventDefault(); handlers.map?.(); }
+        else if (k === 'm') { e.preventDefault(); handlers.map?.(); }
         else if (k === 'v') handlers.view?.();
         else if (k === 'p') handlers.phone?.();
       }

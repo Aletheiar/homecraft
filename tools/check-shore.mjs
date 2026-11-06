@@ -2,7 +2,7 @@
 // between an outside ground source and the polygon pool's shore.
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { launchBrowser } from './browser.mjs';
+import { launchBrowser, activateSceneControl } from './browser.mjs';
 
 const base = process.argv[2] || readFileSync(new URL('./.serve-url', import.meta.url), 'utf8').trim();
 const out = 'tools/.check/shore';
@@ -20,7 +20,7 @@ try {
     await page.goto(base);
     await page.waitForFunction(() => window.__homeStartupError || window.__home?.world.pyramid?.sceneryReady, null, { timeout: 60000 });
     assert.equal(await page.evaluate(() => window.__homeStartupError || null), null);
-    await page.locator('#return-button').click();
+    await activateSceneControl(page, '#return-button');
     const checks = await page.evaluate(() => {
       const h = __home, result = [];
       const tick = (input, frames) => {

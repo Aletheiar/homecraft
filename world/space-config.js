@@ -13,8 +13,7 @@ export const ENTRANCE_YAW = -Math.PI / 2;
 // one edit.
 export const HALL_CENTER = { x: 0, z: 0 };
 export const HALL_EMBLEM = { radius: 3.9 };
-// The two feature corners: the workbench in the north-east, the lounge in the
-// south-east. Furniture is placed around these anchors, not on top of them.
+// The workbench and Ori occupy opposite eastern corners and face the centre.
 const WORKBENCH = { deskX: 12.7, deskZ: -12.6, yaw: -Math.PI/6, chairZ: -11.5, shelfX: 15.95, shelfZ: -14.25 };
 // One rigid frame for the furniture, image planes, targets and player positions.
 export function workbenchPoint(dx,dz,anchor=HALL_SPOTS.workbench) {
@@ -24,8 +23,12 @@ export function workbenchPoint(dx,dz,anchor=HALL_SPOTS.workbench) {
 const approach=workbenchPoint(0,2.4,WORKBENCH);
 export const HALL_SPOTS = {
   workbench: { ...WORKBENCH, approach:[approach.x,approach.z] },
-  lounge: { x: 13.9, z: 13.4 },
   exhibit: { x: HALL_CENTER.x, z: HALL_CENTER.z },
+};
+export const ORI_EXHIBIT = {
+  x: 13, z: 12.5, yaw: -Math.PI * .75,
+  modelHeight: 1.68, perchY: 1.18,
+  approach: [10.95, 10.45],
 };
 // Relative to the desk anchor. The backdrop, working layer and turned left
 // wing occupy different depths; only the centre rises near the sloped roof.

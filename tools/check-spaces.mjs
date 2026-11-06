@@ -1,4 +1,4 @@
-import { finishOpening, launchBrowser } from './browser.mjs';
+import { finishOpening, launchBrowser, activateSceneControl } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
@@ -19,7 +19,7 @@ async function check(name, fn) {
   catch (e) { results.push({ name, passed: false, error: e.message }); console.log(`FAIL: ${name}: ${e.message}`); }
 }
 try {
-  await page.goto(base); await ready(true); await page.locator('#return-button').click();
+  await page.goto(base); await ready(true); await activateSceneControl(page, '#return-button');
   await check('a continuous dry perimeter road is walkable around all four corners', async () => {
     // The pool coping stands at |x|,|z| ≈ 38.16 and the fence blocks from 38.92,
     // so the dry road's standable centre line runs at 38.3–38.7. Walk its middle.
@@ -91,15 +91,15 @@ try {
     assert.ok(Math.abs(motion.after - motion.before) > .01, JSON.stringify(motion));
     return motion;
   });
-  await page.locator('#enter-button').click();
+  await activateSceneControl(page, '#enter-button');
   await page.evaluate(() => { __home.rig.setFirstPerson(false); __home.rig.showcase([-12, 4.8, 9], [2, 5, -2]); for (let i = 0; i < 90; i++) __home.rig.update(1 / 60, __home.player); });
   await page.screenshot({ path: `${out}/portal-hall.png` });
-  await page.locator('#return-button').click();
+  await activateSceneControl(page, '#return-button');
   await page.evaluate(() => { __home.rig.showcase([-42, 12, 22], [-24, 1, 0]); for (let i = 0; i < 90; i++) __home.rig.update(1 / 60, __home.player); });
   await page.screenshot({ path: `${out}/interactive-foyer.png` });
   for (const [id, space] of [['writing', 'library']]) {
     await check(`${id} portal enters ${space} by crossing, and the enclosed room works`, async () => {
-      await page.locator('#enter-button').click();
+      await activateSceneControl(page, '#enter-button');
       await page.evaluate(async id => {
         const { HUB_PORTALS } = await import('/world/space-config.js'); const g = HUB_PORTALS.find(g => g.id === id);
         __home.player.teleport(g.x + Math.sin(g.yaw) * 2, g.z + Math.cos(g.yaw) * 2); __home.rig.recenter(__home.player);
@@ -129,17 +129,27 @@ try {
       if (space === 'library') {
         await page.evaluate(async () => {
           const { STATIONS } = await import('/world/rooms/layout.js');
-          __home.player.teleport(...STATIONS.find(s => s.id === 'blog').at); __home.rig.recenter(__home.player);
+          __home.player.teleport(...STATIONS.find(s => s.id === 'collected').at); __home.rig.recenter(__home.player);
         });
-        await page.locator('#hotbar [data-station="blog"]').click(); await page.waitForTimeout(250);
-        assert.equal(await page.locator('#panel').getAttribute('data-station'), 'blog');
+        await page.locator('#hotbar [data-station="collected"]').click(); await page.waitForTimeout(250);
+        assert.equal(await page.locator('#panel').getAttribute('data-station'), 'collected');
         assert.equal(await page.locator('#panel').evaluate(e => e.open), true);
+        // The catalog body comes from world/library, not from static markup.
+        assert.equal(await page.locator('#panel .lib').count(), 1);
+        assert.equal(await page.locator('#panel .lib [role="tab"]').count(), 2);
+        assert.ok(await page.locator('#panel .lib .lib-card').count() >= 1);
+        await page.locator('#panel .lib [role="tab"][data-view="written"]').click();
+        await page.waitForSelector('#panel .lib [data-post="reading-room"]');
+        await page.locator('#panel .lib [data-post="reading-room"] .lib-read').click();
+        assert.equal(await page.locator('#panel .lib-prose h2').count() >= 1, true);
+        await page.locator('#panel .lib .lib-back').click();
+        assert.equal(await page.locator('#panel .lib-list').isVisible(), true);
         await page.locator('#panel .close').click();
       }
-      await page.locator('#overview-button').click(); await page.waitForTimeout(500);
+      await activateSceneControl(page, '#overview-button'); await page.waitForTimeout(500);
       await page.screenshot({ path: `${out}/${space}.png` });
       // The room's return door carries the checkpoint flag, so match loosely.
-      await Promise.all([page.waitForURL('**?space=hub**'), page.locator('#return-button').click()]); await ready(true);
+      await Promise.all([page.waitForURL('**?space=hub**'), activateSceneControl(page, '#return-button')]); await ready(true);
       const arrival = await page.evaluate(() => ({ x: __home.player.pos.x, z: __home.player.pos.z, yaw: __home.rig.yaw, firstPerson: __home.rig.firstPerson }));
       const gate = await page.evaluate(id => __home.world.portals.find(g => g.id === id), id);
       const dx = arrival.x - gate.x, dz = arrival.z - gate.z;
@@ -160,10 +170,10 @@ try {
       return { space: h.world.space, start: h.nav.canStand(h.player.pos.x, h.player.pos.z), sealed: !h.world.roomContains(12, 0, 0) };
     });
     assert.deepEqual(checks, { space: 'studio', start: true, sealed: true });
-    await Promise.all([page.waitForURL('**?space=hub**'), page.locator('#return-button').click()]); await ready(true);
+    await Promise.all([page.waitForURL('**?space=hub**'), activateSceneControl(page, '#return-button')]); await ready(true);
   });
   await check('walking through the portal opening routes into the library', async () => {
-    await page.locator('#enter-button').click();
+    await activateSceneControl(page, '#enter-button');
     await page.evaluate(async () => {
       const { HUB_PORTALS } = await import('/world/space-config.js');
       const gate = HUB_PORTALS.find(g => g.id === 'writing');
@@ -180,7 +190,7 @@ try {
   });
   await check('walking through the back of a portal opening also routes into the library', async () => {
     await page.goto(`${base}?space=hub`); await ready(true);
-    await page.locator('#enter-button').click();
+    await activateSceneControl(page, '#enter-button');
     await page.evaluate(async () => {
       const { HUB_PORTALS } = await import('/world/space-config.js');
       const gate = HUB_PORTALS.find(g => g.id === 'writing');
@@ -198,7 +208,7 @@ try {
   });
   await check('the friends door opens the static link directory', async () => {
     await page.goto(`${base}?space=hub`); await ready(true);
-    await page.locator('#enter-button').click();
+    await activateSceneControl(page, '#enter-button');
     await page.evaluate(async () => {
       const { HUB_PORTALS } = await import('/world/space-config.js');
       const gate = HUB_PORTALS.find(g => g.id === 'friends');

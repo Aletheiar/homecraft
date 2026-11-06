@@ -12,10 +12,16 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 out="$root/dist"
 rm -rf "$out" && mkdir -p "$out"
-for item in index.html _headers home.config.js homecraft.json world assets engine vendor about friends articles guestbook; do
+for item in index.html _headers home.config.js homecraft.json LICENSE world assets engine vendor about friends articles guestbook; do
   [ -e "$root/$item" ] && cp -R "$root/$item" "$out/"
 done
 find "$out" -name .DS_Store -delete
+
+# Retired panels, an editable PNG source and a template fixture have no runtime
+# references. Keep their source/history, but omit them from the distribution.
+rm -f "$out/assets/gallery/miku-glass.png" \
+  "$out/assets/gallery/defect-glass.webp" "$out/assets/gallery/watcher-glass.webp" \
+  "$out/assets/demo-site.html"
 
 # Minify every module that isn't minified already (three.js ships .min.js). The
 # target is the oldest browsers the import map already needs, so minifying
@@ -31,7 +37,9 @@ fi
 
 # Same input, same output: gzip -n leaves out the name and time, and each copy
 # takes its source's mtime, so unchanged files upload as unchanged.
-find "$out" -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.json' -o -name '*.svg' \) -size +255c |
+# GLB compression reduces negotiated transfer size, not decoded triangles.
+# Serve siblings with Content-Encoding and Vary; never change the loader URL.
+find "$out" -type f \( -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.json' -o -name '*.svg' -o -name '*.glb' -o -name '*.md' \) -size +255c |
 while read -r f; do
   gzip -9 -n -c "$f" > "$f.gz"; touch -r "$f" "$f.gz"
   if command -v brotli >/dev/null; then brotli -q 11 -c "$f" > "$f.br"; touch -r "$f" "$f.br"; fi

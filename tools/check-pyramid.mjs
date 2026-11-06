@@ -1,4 +1,4 @@
-import { finishOpening, launchBrowser } from './browser.mjs';
+import { finishOpening, launchBrowser, activateSceneControl } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -47,7 +47,7 @@ for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } },
     assert.equal(traversal.mode, 'ground');
     return traversal;
   });
-  await page.locator('#enter-button').click();
+  await activateSceneControl(page, '#enter-button');
   await page.waitForFunction(() => {
     const h = __home, c = h.stage.camera.position;
     return h.rig.firstPerson && Math.hypot(c.x - h.player.pos.x, c.z - h.player.pos.z) < .1 && c.y < h.player.y + 2;
@@ -81,8 +81,8 @@ for (const view of [{ name: 'desktop', viewport: { width: 1440, height: 950 } },
     });
   }
   for (const id of ['writing', 'friends', 'about']) {
-    await check(`Dock ${id} guides to its portal without opening or navigating`, async () => {
-      await page.locator(`#hotbar [data-station="${id}"]`).click();
+    await check(`spatial approach ${id} remains available independently of content navigation`, async () => {
+      await page.evaluate(id => __home.go(id), id);
       assert.equal(await page.locator('#panel').evaluate(el => el.open), false);
       assert.equal(new URL(page.url()).pathname, '/');
       assert.ok(await page.evaluate(async id => {

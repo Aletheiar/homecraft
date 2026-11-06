@@ -10,6 +10,10 @@ python3 tools/serve.py
 
 会挑一个空闲端口、在浏览器里打开，并打印地址。改动保存后直接刷新即可，缓存是关掉的。
 
+Text-version access, reading behavior and content maintenance are documented in the [Text Blog Guide](docs/text-blog.md).
+
+Phones open the text blog by default, with searchable original/collected catalogs and full-page article reading. Desktop keeps the 3D default. Use `?plain=1` or `?view=3d` to choose a view explicitly; the choice is remembered for the current tab/session.
+
 ## 目录
 
 ```
@@ -19,6 +23,7 @@ home.config.js    设置：名字、皮肤、语言、天气城市、Dock、留�
 world/            这个世界本身
   layout.js       数据：庭院边界、出生点、各站点与展牌位置
   build.js        建造：build(ctx) 搭方块与家具，setup(app) 定义动态行为
+  library/       图书室两区的数据与阅读层：collected.js 收藏、written.js 原创索引
   portals.js      四座门的位置与朝向
   pyramid.js      金字塔本体与内部中厅
   boundaries.js   墙体、玻璃斜面扫掠碰撞与西侧开口
@@ -30,10 +35,20 @@ about/ articles/ friends/  关于页、文章页与友链目录页（独立入�
 
 站点自身的内容放在 `world/`、`index.html`、`home.config.js`、`homecraft.json`、`assets/`；`engine/` 是与站点无关的共享引擎。
 
+## 随笔图书室
+
+从大厅的「随笔图书室」传送门（`/?space=library`）进入。房间左右分两区，走近即可点击打开目录，长文在二维层里读：
+
+- **我的收藏**（左）：`world/library/collected.js` 里一条对象就是一张卡片——标题、作者、类型、标签、简介、原始链接，以及可选的个人评论与封面。评论留空时界面显示「还没写」，不会代写。
+- **我的原创**（右）：把 Markdown 放进 `articles/`，在 `world/library/written.js` 加一行 `{ id, file }`。标题、日期、分类、标签、摘要写在文件开头的 front matter 里。已有的独立 HTML 文章用 `{ id, page }` 登记，会在覆盖层里用 iframe 打开。
+
+新增内容只改这两个数据文件，不需要动 `world/rooms/build.js` 里的三维代码。
+
 ## 自检
 
 ```bash
 npm run check        # check:site + 无头浏览器启动检查，截图落在 tools/.check/
+node tools/check-library.mjs http://127.0.0.1:3506/   # 图书室两区与阅读层，桌面 + 手机
 ```
 
 `?debug` 加在网址后面会显示 draw call、三角面数与帧时间。

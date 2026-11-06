@@ -1,4 +1,4 @@
-import { finishOpening, launchBrowser } from './browser.mjs';
+import { finishOpening, launchBrowser, activateSceneControl } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 const base = process.argv[2] || readFileSync(new URL('./.serve-url', import.meta.url), 'utf8').trim();
@@ -15,7 +15,7 @@ async function ready(page) {
   await finishOpening(page);
 }
 async function stand(page, id = 'about', fp = true) {
-  await page.locator('#enter-button').click();
+  await activateSceneControl(page, '#enter-button');
   await page.evaluate(async ({ id, fp }) => {
     const { STATIONS } = await import('/world/layout.js'), s = STATIONS.find(s => s.id === id), h = __home;
     h.player.teleport(...s.at, s); h.rig.recenter(h.player); h.rig.setFirstPerson(fp, Math.PI / 2);
@@ -88,13 +88,12 @@ try {
     assert.equal(arrival.fp, departure.fp); assert.ok(Math.abs(Math.atan2(Math.sin(arrival.yaw - departure.yaw), Math.cos(arrival.yaw - departure.yaw))) < .02);
     await page.reload(); await ready(page); assert.deepEqual(await page.evaluate(() => [__home.player.pos.x, __home.player.pos.z]), [-29, 0]); return arrival;
   });
-  await check('the About Dock button only approaches its door, then walking enters', async () => {
+  await check('the About Dock button opens the profile directly and preserves the return position', async () => {
+    const previous = await page.evaluate(() => __home.player.pos.toArray());
     await page.locator('#hotbar [data-station="about"]').click();
-    assert.equal(await page.locator('#panel').evaluate(e => e.open), false);
-    assert.equal(new URL(page.url()).pathname, '/');
-    await view(page, [-9.7, 2.3, -6.4], [-5.5, 2.2, -6.4], 'about-portal-near');
-    await cross(page); await profile(page); await back(page);
-    assert.ok(await page.evaluate(() => __home.player.pos.x <= -5.9 && Math.abs(__home.player.pos.z + 6.4) < .15));
+    await profile(page); await back(page);
+    const returned = await page.evaluate(() => __home.player.pos.toArray());
+    assert.ok(Math.hypot(returned[0] - previous[0], returned[2] - previous[2]) < .15);
   });
   await check('walking into About restores a safe point in front of that door', async () => {
     await stand(page);
@@ -127,12 +126,10 @@ try {
   mobile.on('pageerror', e => report.errors.push(e.message));
   await check('mobile About entry, accounts and reduced-motion return work by touch', async () => {
     await mobile.goto(base); await ready(mobile); await mobile.locator('#hotbar [data-station="about"]').tap();
-    assert.equal(await mobile.locator('#panel').evaluate(e => e.open), false);
-    await mobile.evaluate(() => { for (let i = 0; i < 100; i++) { __home.rig.update(1 / 60, __home.player); __home.extras.update(1 / 60); } });
-    await cross(mobile); await profile(mobile);
+    await profile(mobile);
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.equal(await mobile.locator('#portal-ripple').count(), 0); await mobile.screenshot({ path: `${out}/about-mobile.png` });
-    await back(mobile); assert.ok(await mobile.evaluate(() => __home.player.pos.x <= -5.9 && Math.abs(__home.player.pos.z + 6.4) < .15));
+    await back(mobile); assert.ok(await mobile.evaluate(() => Math.hypot(__home.player.pos.x + 29, __home.player.pos.z) < .15));
   });
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2)); await browser.close();

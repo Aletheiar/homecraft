@@ -1,0 +1,142 @@
+import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { launchBrowser } from './browser.mjs';
+
+const base = process.argv[2] || 'http://127.0.0.1:2823/';
+const out = 'tools/.check/text-blog';
+mkdirSync(out, { recursive: true });
+const browser = await launchBrowser({ viewMode: null }), report = [];
+try {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }, { width: 568, height: 320 }]) {
+    const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true });
+    const page = await context.newPage(), requests = [], errors = [];
+    page.on('request', request => requests.push(request.url()));
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(base);
+    await page.locator('#text-blog').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#text-blog').isVisible(), true, 'a fresh phone opens the reading site');
+    assert.equal(await page.locator('#world canvas, audio').count(), 0, 'reading does not start graphics or background music');
+    assert.equal(requests.some(url => /\.glb|vendor\/three|engine\/main\.js/.test(url)), false, 'phone reading avoids the 3D module graph and models');
+    await page.screenshot({ path: `${out}/${viewport.width}x${viewport.height}-home.png`, fullPage: true });
+
+    await page.locator('[data-text-nav="written"]').click();
+    await page.waitForSelector('[data-read-post="reading-room"]');
+    assert.equal(await page.locator('[data-read-post]').count(), 4);
+    assert.equal(await page.locator('[data-post-sample]').count(), 4, 'unpublished demo content stays explicitly labelled');
+    await page.locator('[data-read-post="reading-room"]').click();
+    await page.waitForSelector('.text-prose pre code');
+    assert.match(await page.locator('.text-prose').innerText(), /左边：我读到了什么/);
+    await page.reload();
+    await page.waitForSelector('.text-prose pre code');
+    assert.match(await page.locator('#text-content h1').innerText(), /图书室的两种读法/);
+    await page.screenshot({ path: `${out}/${viewport.width}x${viewport.height}-reader.png`, fullPage: true });
+    await page.locator('[data-return-catalog]').click();
+    await page.locator('[data-read-post="first-visit"]').click();
+    await page.waitForSelector('.text-prose h2');
+    assert.match(await page.locator('.text-prose').innerText(), /从一个入口开始/);
+    assert.doesNotMatch(await page.locator('.text-prose').innerText(), /Error code: 404/);
+
+    await page.locator('[data-text-nav="collected"]').click();
+    await page.locator('[data-text-search]').fill('homecraft');
+    assert.equal(await page.locator('.text-collection-card').count(), 1);
+    await page.locator('[data-text-search]').fill('no-matching-item');
+    assert.equal(await page.locator('[data-empty-results]').isVisible(), true);
+    await page.locator('[data-clear-search]').first().click();
+    await page.locator('[data-filter="book"]').click();
+    assert.equal(await page.locator('.text-collection-card').count(), 1);
+    await page.screenshot({ path: `${out}/${viewport.width}x${viewport.height}-collection.png`, fullPage: true });
+    await page.locator('[data-text-nav="about"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-text-nav="about"]').hasAttribute('aria-current'));
+    assert.match(await page.locator('#text-content').innerText(), /Aletheia/);
+    await page.locator('[data-text-nav="friends"]').click();
+    await page.waitForSelector('.text-friend-card');
+    assert.equal(await page.locator('.text-friend-card').count(), 3);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+
+    await page.goto(`${base}?plain=1#/written/missing-post`);
+    await page.waitForSelector('[data-post-unavailable]');
+    assert.equal(await page.locator('[data-return-catalog]').isVisible(), true, 'missing content has a readable return path');
+    assert.deepEqual(errors, []);
+    report.push({ viewport, requests, errors });
+    await context.close();
+    console.log(`${viewport.width}x${viewport.height}: text default, lightweight startup, catalogs, search, article reading and deep links passed.`);
+  }
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await phone.goto(base); await phone.locator('[data-enter-3d]').click();
+  await phone.waitForFunction(() => window.__home?.world.pyramid?.sceneryReady, null, { timeout: 60000 });
+  assert.equal(new URL(phone.url()).searchParams.get('view'), '3d');
+  await phone.goto(base);
+  await phone.waitForFunction(() => window.__home?.player, null, { timeout: 60000 });
+  await phone.locator('.reading-link').click();
+  await phone.waitForSelector('#text-blog');
+  await phone.goto(base);
+  await phone.waitForSelector('#text-blog');
+  assert.equal(await phone.locator('#world canvas').count(), 0, 'the explicit text choice also survives navigation');
+  await phone.close();
+
+  const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await desktop.goto(base);
+  await desktop.waitForFunction(() => window.__home?.player, null, { timeout: 60000 });
+  await desktop.goto(`${base}?plain=1#/written`);
+  await desktop.waitForSelector('[data-read-post="reading-room"]');
+  await desktop.screenshot({ path: `${out}/desktop-written.png`, fullPage: true });
+  await desktop.close();
+  const fallback = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await fallback.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+      return /webgl/i.test(type) ? null : original.call(this, type, ...args);
+    };
+  });
+  await fallback.goto(base);
+  await fallback.waitForSelector('.text-fallback-note');
+  await fallback.locator('[data-text-nav="written"]').click();
+  await fallback.waitForSelector('[data-read-post="reading-room"]');
+  await fallback.close();
+
+  const missing = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await missing.route('**/articles/reading-room.md', route => route.fulfill({ status: 404, body: '' }));
+  await missing.goto(`${base}?plain=1#/written/reading-room`);
+  await missing.waitForSelector('[data-post-unavailable]');
+  await missing.unroute('**/articles/reading-room.md');
+  let retryRelease;
+  const retryPending = new Promise(resolve => { retryRelease = resolve; });
+  await missing.route('**/articles/reading-room.md', async route => { await retryPending; await route.continue(); });
+  await missing.locator('[data-retry-post]').click();
+  await missing.locator('[data-text-nav="collected"]').click();
+  await missing.locator('[data-text-search]').fill('home');
+  const retried = missing.waitForResponse(response => response.url().endsWith('/articles/reading-room.md'));
+  retryRelease(); await retried;
+  await missing.waitForTimeout(100);
+  assert.equal(await missing.locator('[data-text-search]').evaluate(input => input === document.activeElement), true, 'retry completion does not interrupt another catalog');
+  await missing.locator('[data-text-nav="written"]').click();
+  await missing.locator('[data-read-post="reading-room"]').click();
+  await missing.waitForSelector('.text-prose pre code');
+  await missing.close();
+  const slow = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  let release;
+  const delayed = new Promise(resolve => { release = resolve; });
+  await slow.route('**/articles/reading-room.md', async route => { await delayed; await route.continue(); });
+  await slow.goto(base);
+  await slow.locator('[data-text-nav="collected"]').click();
+  await slow.locator('[data-text-search]').fill('home');
+  const loaded = slow.waitForResponse(response => response.url().endsWith('/articles/reading-room.md'));
+  release(); await loaded;
+  await slow.waitForTimeout(100);
+  assert.equal(await slow.locator('[data-text-search]').inputValue(), 'home');
+  assert.equal(await slow.locator('[data-text-search]').evaluate(input => input === document.activeElement), true, 'background article loading does not interrupt collection search');
+  await slow.close();
+  const empty = await browser.newPage({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });
+  await empty.route('**/world/library/written.js', route => route.fulfill({ contentType: 'application/javascript', body: 'export const WRITTEN=[]; export async function loadWritten(){ return []; }' }));
+  await empty.goto(base);
+  await empty.waitForSelector('[data-empty-articles]');
+  assert.equal(await empty.locator('.text-loading').count(), 0, 'an empty publication list does not leave a loading placeholder');
+  await empty.locator('[data-text-nav="written"]').click();
+  await empty.waitForSelector('[data-empty-results]');
+  assert.match(await empty.locator('[data-empty-results]').innerText(), /准备中/);
+  await empty.close();
+  console.log('Explicit 3D/text choices persist for the session; desktop keeps its default 3D entry.');
+  console.log('WebGL failure keeps catalogs available; missing Markdown can be retried successfully.');
+} finally {
+  await browser.close(); writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
+}

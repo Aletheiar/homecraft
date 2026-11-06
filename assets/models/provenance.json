@@ -4,11 +4,11 @@
   "source_sha256": "912dfd8e14407586787b47855671e62a407a6a2e007d2c74db5ca5b666db9bdc",
   "source_bytes": 39037312,
   "source_triangles": 814226,
-  "output_bytes": 1986816,
+  "output_bytes": 1737044,
   "output_triangles": 41609,
-  "scenery_bytes": 12761876,
-  "scenery_triangles": 579388,
-  "output_sha256": "80b16bb6fa0dc847a8ded88f1ac1ee7df7db8a075410d492ae656b3214c8cc80",
+  "scenery_bytes": 12012168,
+  "scenery_triangles": 578666,
+  "output_sha256": "bceb24b2c7a0f4e1a9816675a3a1202df9987021f6584497610bae6c35e87d22",
   "bounds": [
     [
       -39.800000000000004,
@@ -58,5 +58,31 @@
       "original_base_nearest": 41.4
     }
   ],
-  "publication_status": "Local preview only; third-party redistribution permissions remain unestablished."
+  "publication_status": "Local preview only; third-party redistribution permissions remain unestablished.",
+  "scenery_sha256": "d159b687ad10850c36b024aced5d88e84d9ae094fa88c5d27dead62ae3c85df5",
+  "engineering_optimization": {
+    "date": "2026-11-06",
+    "tool": "tools/optimize-newheaven.mjs",
+    "method": "Exact zero-area triangle removal and lossless index packing; position/UV/image/material/node data preserved.",
+    "courtyard": {
+      "bytesBefore": 1986816,
+      "bytesAfter": 1737044,
+      "trianglesBefore": 41609,
+      "trianglesAfter": 41609,
+      "removedTriangles": 0,
+      "packedAccessors": 6,
+      "sourceSha256": "80b16bb6fa0dc847a8ded88f1ac1ee7df7db8a075410d492ae656b3214c8cc80",
+      "outputSha256": "bceb24b2c7a0f4e1a9816675a3a1202df9987021f6584497610bae6c35e87d22"
+    },
+    "scenery": {
+      "bytesBefore": 12761876,
+      "bytesAfter": 12012168,
+      "trianglesBefore": 579388,
+      "trianglesAfter": 578666,
+      "removedTriangles": 722,
+      "packedAccessors": 4,
+      "sourceSha256": "5e08a7c5eb2409298176d52cc0602a14ee05f5ac083d63a17c073ded0070cd64",
+      "outputSha256": "d159b687ad10850c36b024aced5d88e84d9ae094fa88c5d27dead62ae3c85df5"
+    }
+  }
 }

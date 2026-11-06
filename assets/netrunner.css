@@ -3,52 +3,6 @@
    engine's shared stylesheet. The engine copies each card's inner HTML into the
    dialog body, so these rules must not depend on a .page ancestor. */
 
-.nr-term,
-.nr-rack {
-  margin: .9rem 0 .6rem;
-  padding: .7rem .8rem;
-  background: #070b0d;
-  border: 1px solid rgba(95, 227, 214, .28);
-  box-shadow: inset 0 0 0 1px rgba(95, 227, 214, .06);
-}
-
-.nr-term-out {
-  margin: 0;
-  min-height: 7.5rem;
-  max-height: 15rem;
-  overflow: auto;
-  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
-  font-size: .82rem;
-  line-height: 1.55;
-  color: #7ff0dd;
-  white-space: pre-wrap;
-  word-break: break-word;
-  text-shadow: 0 0 6px rgba(95, 227, 214, .28);
-}
-
-.nr-term-line {
-  display: flex;
-  align-items: center;
-  gap: .45rem;
-  margin-top: .5rem;
-  padding-top: .5rem;
-  border-top: 1px solid rgba(95, 227, 214, .16);
-  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
-  color: #f0c650;
-}
-
-.nr-term-line input {
-  flex: 1;
-  min-width: 0;
-  padding: .25rem .1rem;
-  background: transparent;
-  border: 0;
-  outline: none;
-  color: #7ff0dd;
-  font: inherit;
-  caret-color: #f0c650;
-}
-
 .nr-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
@@ -68,23 +22,6 @@
 
 .nr-grid span { color: rgba(226, 232, 228, .62); }
 .nr-grid b { color: #8ff2e0; font-weight: 600; font-variant-numeric: tabular-nums; }
-
-.nr-rack { display: flex; flex-direction: column; gap: .6rem; }
-.nr-rack .nr-term-out { min-height: 0; max-height: 8rem; }
-
-.nr-button {
-  align-self: flex-start;
-  padding: .4rem .9rem;
-  background: #f0c650;
-  border: 0;
-  color: #14100a;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.nr-button:hover { background: #ffdc74; }
-.nr-button[disabled] { background: #6b5c31; color: rgba(20, 16, 10, .7); cursor: default; }
 
 .nr-poster {
   display: block;
@@ -139,4 +76,3 @@
 .nr-seat-prompt.is-touch:focus-visible { outline: 2px solid #7ff0dd; outline-offset: 3px; }
 body.seated #crosshair { pointer-events: none; }
 body.seated #viewButton, body.seated #flyButton { opacity: .4; }
-.nr-term-line .nr-button { min-height: 44px; }

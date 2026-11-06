@@ -2,7 +2,7 @@
 
 Homecraft is a static site. Run `bash tools/build.sh`, then deploy the files in `dist/` to a static hosting service or your own server.
 
-The build script minifies JavaScript modules when `npx` is available locally, and generates gzip copies for text files larger than 255 bytes. If `brotli` is installed, Brotli copies are also generated.
+The build script minifies JavaScript modules when `npx` is available locally, and generates gzip copies for text files and GLBs larger than 255 bytes. If `brotli` is installed, Brotli copies are also generated. It includes the site license and model attribution, and excludes four retired/source-only gallery/template assets while retaining their originals in the repository.
 
 ## GitHub Pages
 
@@ -36,6 +36,14 @@ Server configuration:
 
 1. **Send `Cache-Control: no-cache`.** After an update, mixing old and new JavaScript modules can cause the 3D scene to fail to start.
 2. **Enable pre-compressed file serving.** Prefer sending existing Brotli or gzip copies to reduce transfer size.
+
+GLB loader URLs still end in `.glb`. A compressed sibling must be negotiated
+with `Content-Encoding: gzip` (or `br`), the original model content type, and
+`Vary: Accept-Encoding`. Merely uploading `.glb.gz` does not establish a loading
+improvement; verify actual response headers and browser encoded transfer bytes
+on the chosen host. Compression does not reduce decoded triangles or FPS cost.
+Unversioned assets must revalidate; reserve long-lived `immutable` caching for
+future content-hashed URLs. The local preview intentionally disables freshness.
 
 Caddy:
 

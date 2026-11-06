@@ -278,7 +278,7 @@ export function createWeatherFx({ stage, world, quality, sound }) {
   // A return stroke flickers: a flash, a dip, a second flash, then a fade.
   const flicker = t => (t < 0.05 ? 1 : t < 0.09 ? 0.25 : t < 0.16 ? 0.85 : Math.max(0, 0.85 * (1 - (t - 0.16) / 0.4)));
 
-  function layer(field, amount, dt, camera, { fall, drift, alpha }) {
+  function layer(field, amount, dt, fall, drift, alpha) {
     const on = amount > 0.002 && !reduced.matches;
     field.mesh.visible = on;
     if (!on) { field.mesh.geometry.instanceCount = 0; return; }
@@ -319,8 +319,8 @@ export function createWeatherFx({ stage, world, quality, sound }) {
     snowU.uColor.value.setRGB(0.92, 0.94, 0.96).multiplyScalar(0.35 + 0.65 * light);
     rainU.uLen.value = 0.55 + 0.35 * now.rain;
     rainU.uSplash.value = Math.min(1, now.rain * 1.2);
-    layer(snow, now.snow, dt, camera, { fall: 1.15, drift: now.wind * 1.6, alpha: 0.9 });
-    layer(rain, now.rain, dt, camera, { fall: 9 + 2 * now.storm, drift: now.wind * 5, alpha: 0.4 + 0.3 * now.rain });
+    layer(snow, now.snow, dt, 1.15, now.wind * 1.6, 0.9);
+    layer(rain, now.rain, dt, 9 + 2 * now.storm, now.wind * 5, 0.4 + 0.3 * now.rain);
 
     if (reduced.matches || target.storm <= 0) {
       if (flashAge >= 0) { flashAge = -1; bolt.mesh.visible = false; stage.setLightning(0); }
@@ -344,9 +344,16 @@ export function createWeatherFx({ stage, world, quality, sound }) {
     update(0, stage.camera);
   }
 
+  function readState(out) {
+    for (const key in now) out[key] = now[key];
+    out.wet = wet; out.cover = cover;
+    return out;
+  }
+
   return {
     shelter, rain: rain.mesh, snow: snow.mesh, lightning: bolt.mesh, setWeather, update, settle,
     get state() { return { ...now, wet, cover }; },
+    readState,
     // Draw every layer once under the loading screen so no weather choice
     // compiles a shader or uploads a buffer later.
     warmup(on) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { launchBrowser, finishOpening } from './browser.mjs';
+import { launchBrowser, finishOpening, activateSceneControl } from './browser.mjs';
 
 const base=process.argv[2]||'http://127.0.0.1:8765/';
 const out='tools/.check/netrunner';mkdirSync(out,{recursive:true});
@@ -18,7 +18,9 @@ try {
     const aim=async(id,stand=null)=>page.evaluate(({id,stand})=>{
       const h=__home,w=h.world.workstation;
       if(stand){const p=w.at(stand[0]-13.3,stand[1]+12.6);h.player.teleport(p.x,p.z);}
-      const f=w.fixtures.find(f=>f.id===id),p=f.box.getCenter(new h.stage.camera.position.constructor());
+      const f=w.fixtures.find(f=>f.id===id),s=w.screens.find(s=>s.id===id);
+      const rack=w.at(w.layout.rack.dx,w.layout.rack.dz);
+      const p=f?f.box.getCenter(new h.stage.camera.position.constructor()):s?s.position.clone():new h.stage.camera.position.constructor(rack.x,.6,rack.z);
       const height=w.controls.seated?1.28:1.62;
       const heading=Math.atan2(p.x-h.player.pos.x,p.z-h.player.pos.z);
       h.rig.skipIntro();h.rig.setFirstPerson(true,heading,{eyeHeight:height});
@@ -44,26 +46,19 @@ try {
     assert.equal(popups,1,'a main-screen tap opens exactly one tab');
     assert.deepEqual(await page.evaluate(()=>[location.href,__home.player.pos.x,__home.player.pos.z]),before);
 
-    await open('terminal',[13.3,-10.5]);
-    await page.locator('#panel [data-term-in]').click();
-    assert.equal(await page.locator('#panel').evaluate(p=>p.open),true,'touching the command field keeps the modal open');
-    for(const command of ['help','about','projects','whoami']) {
-      await page.locator('#panel [data-term-in]').fill(command);
-      if(mobile)await page.locator('#panel [data-term-form] button').click();else await page.keyboard.press('Enter');
+    // Decorative equipment remains visible without hints, cards or links.
+    for(const id of ['terminal','rack']) {
+      const point=await aim(id,id==='rack'?[11.3,-10.8]:[13.3,-10.5]);
+      if(!mobile)await page.mouse.move(point.x,point.y);
+      await page.waitForTimeout(180);
+      assert.equal(await page.locator('#tooltip').isVisible(),false,`${id} offers no hover hint`);
+      if(!mobile)assert.notEqual(await page.locator('canvas').first().evaluate(c=>c.style.cursor),'pointer');
+      await tap(point);await page.waitForTimeout(180);
+      assert.equal(await page.locator('#panel').evaluate(p=>p.open),false,`${id} opens no card`);
+      assert.equal(popups,1,`${id} opens no external page`);
+      assert.equal(await page.locator(`[data-station="${id}"], [data-open="${id}"]`).count(),0,`${id} has no hidden page entry`);
+      await page.screenshot({path:`${out}/${mobile?'touch':'desktop'}-${id}-decorative.png`});
     }
-    assert.match(await page.locator('#panel [data-term-out]').innerText(),/unknown command: whoami/);
-    assert.equal(await page.locator('#panel [data-term-out] .cmd').count(),4);
-    await page.locator('#panel [data-term-in]').fill('github');
-    const termPopupPromise=page.waitForEvent('popup');await page.locator('#panel [data-term-form] button').click();
-    const termPopup=await termPopupPromise;await termPopup.close();assert.equal(popups,2);
-    await page.screenshot({path:`${out}/${mobile?'touch':'desktop'}-terminal.png`});
-    await page.locator('#panel [data-term-in]').fill('clear');await page.locator('#panel [data-term-form] button').click();
-    assert.equal(await page.locator('#panel [data-term-out]').innerText(),'');await close();
-    // Reopen: a command must have one handler and a fresh log.
-    await open('terminal',[13.3,-10.5]);
-    await page.locator('#panel [data-term-in]').fill('help');await page.keyboard.press('Enter');
-    assert.equal(await page.locator('#panel [data-term-out] .cmd').count(),1);await close();
-    assert.equal(popups,2,'terminal clicks never activate the GitHub screen behind the modal');
 
     await open('status',[13.3,-10.5]);
     await page.waitForFunction(()=>/^\d/.test(document.querySelector('#panel [data-k="fps"]').textContent));
@@ -75,24 +70,6 @@ try {
     assert.ok(Number(telemetry.calls)>0&&Number(telemetry.tris.replaceAll(',',''))>0);
     await page.screenshot({path:`${out}/${mobile?'touch':'desktop'}-status.png`});await close();
 
-    await open('rack',[11.3,-10.8]);
-    await page.locator('#panel [data-rack-boot]').click();
-    assert.equal(await page.locator('#panel [data-rack-boot]').isDisabled(),true);
-    assert.equal(await page.evaluate(()=>__home.world.workstation.booting),true);
-    await page.waitForFunction(()=>!__home.world.workstation.booting,null,{timeout:6000});
-    assert.match(await page.locator('#panel [data-rack-log]').innerText(),/decorative node online/);
-    await close();
-    // A turned front can be viewed with a ray pointing towards positive world
-    // Z. A global-Z back-face guard would wrongly reject this valid rack tap.
-    await page.evaluate(()=>{
-      const h=__home,w=h.world.workstation,p=w.at(-3.1,1.4),f=w.fixtures.find(f=>f.id==='rack');
-      const c=f.box.getCenter(new h.stage.camera.position.constructor());
-      h.player.teleport(p.x,p.z);h.rig.showcase([c.x-1.3,1.62,c.z-.2],c.toArray());
-      for(let i=0;i<150;i++)h.rig.update(1/60,h.player);
-    });
-    await tap({x:mobile?195:720,y:mobile?422:475});
-    await page.waitForFunction(()=>document.querySelector('#panel').open&&document.querySelector('#panel').dataset.station==='rack');
-    await close();
     for(const id of ['poster-pyramid','poster-v']) {
       await open(id,id==='poster-v'?[11.1,-11]:[12.1,-11.1]);
       await page.waitForFunction(()=>document.querySelector('#panel img.nr-poster')?.naturalWidth>0);
@@ -110,7 +87,7 @@ try {
     await aim('main',[13.3,-10.5]);
     await page.evaluate(()=>__home.player.startFlying());
     await tap(await aim('main'));await page.waitForTimeout(180);
-    assert.equal(popups,2,'flying visitors cannot bypass the workstation reach check through the old GitHub hotspot');
+    assert.equal(popups,1,'flying visitors cannot bypass the workstation reach check through the old GitHub hotspot');
     await page.evaluate(()=>{const p=__home.world.workstation.at(0,2.2);__home.player.teleport(p.x,p.z);});
 
     // Keyboard sitting preserves first/third person; modal Escape closes first.
@@ -133,18 +110,28 @@ try {
       assert.equal(await page.locator('#panel').evaluate(p=>p.open),false,'pinch never activates the underlying display');
       await client.detach();
     }
-    await page.locator('#moodButton').click();
+    await activateSceneControl(page, '#moodButton');
     await page.keyboard.press('f');
     assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),true,'weather controls block chair shortcuts');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#weatherMenu').evaluate(m=>m.hidden),true,'Escape dismisses weather before leaving the chair');
     assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),true);
+    await page.keyboard.press('f');
+    assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),true,'exploration tools also block chair shortcuts');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#scene-tools').evaluate(m=>m.open),false);
     await page.keyboard.press('Space');await page.keyboard.press('Space');await page.keyboard.press('v');
     await page.keyboard.down('w');await page.waitForTimeout(250);await page.keyboard.up('w');
     assert.equal(await page.evaluate(()=>__home.player.flying),false);
     assert.equal(await page.evaluate(()=>__home.rig.firstPerson),true);
     assert.deepEqual(await page.evaluate(()=>__home.player.pos.toArray()),seated.pos);
-    await open('terminal');await page.keyboard.press('Escape');
+    for(const id of ['terminal','rack']) {
+      await tap(await aim(id));await page.waitForTimeout(180);
+      assert.equal(await page.locator('#panel').evaluate(p=>p.open),false,`${id} stays decorative while seated`);
+      assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),true);
+      assert.equal(popups,1,`${id} never activates the main display behind it`);
+    }
+    await open('status');await page.keyboard.press('Escape');
     await page.waitForFunction(()=>!document.querySelector('#panel').open);
     assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),true);
     await page.screenshot({path:`${out}/${mobile?'touch':'desktop'}-seated.png`});
@@ -161,9 +148,9 @@ try {
     await page.keyboard.press('f');
     assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),false);
     assert.equal(await page.evaluate(()=>__home.rig.firstPerson),true);
-    // Escape must remain usable after a focused terminal is dismissed, and it
+    // Escape must remain usable after a status card is dismissed, and it
     // must never be the thing that stands the visitor up.
-    await page.keyboard.press('f');await open('terminal');
+    await page.keyboard.press('f');await open('status');
     await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('#panel').open);
     await page.keyboard.press('Escape');
     assert.equal(await page.evaluate(()=>__home.world.workstation.controls.seated),true);
@@ -172,9 +159,9 @@ try {
     await page.keyboard.press('Space');await page.keyboard.press('Space');
     assert.equal(await page.evaluate(()=>__home.player.flying),true,`flight still works after leaving the seat: ${await page.evaluate(()=>JSON.stringify({mode:__home.player.mode,focus:document.activeElement?.outerHTML.slice(0,200)}))}`);
     await page.evaluate(()=>{const p=__home.world.workstation.at(0,2.2);__home.player.teleport(p.x,p.z);});
-    assert.equal(popups,2,'no other fixture opens an external page');
+    assert.equal(popups,1,'no other fixture opens an external page');
     if(!mobile) {
-      const p=await aim('terminal',[13.3,-10.5]);
+      const p=await aim('status',[13.3,-10.5]);
       await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+30,p.y+15,{steps:5});await page.mouse.up();
       assert.equal(await page.locator('#panel').evaluate(p=>p.open),false,'dragging to look does not activate a fixture');
     }
@@ -184,4 +171,4 @@ try {
     assert.deepEqual(errors,[]);report.push({mobile,telemetry,seated,stats,errors});await context.close();
   }
 } finally {await browser.close();writeFileSync(`${out}/report.json`,JSON.stringify(report,null,2));}
-console.log('Netrunner: desktop and real touch taps, terminal commands, telemetry, rack boot, posters, light modes, seat controls and view restoration passed.');
+console.log('Netrunner: desktop and touch decorative equipment, telemetry, posters, light modes, seat controls and view restoration passed.');

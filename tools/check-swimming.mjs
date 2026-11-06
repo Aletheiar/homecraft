@@ -1,4 +1,4 @@
-import { launchBrowser } from './browser.mjs';
+import { launchBrowser, activateSceneControl } from './browser.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
 const browser = await launchBrowser();
@@ -8,7 +8,7 @@ page.on('pageerror', e => errors.push(e.message));
 await page.goto(process.argv[2] || 'http://127.0.0.1:8765/');
 await page.waitForFunction(() => window.__home?.world.pyramid.sceneryReady || window.__home?.world.pyramid.error || window.__homeStartupError, null, { timeout: 60000 });
 assert.equal(await page.evaluate(() => window.__home?.world.pyramid.error || window.__homeStartupError || null), null);
-await page.locator('#return-button').click();
+await activateSceneControl(page, '#return-button');
 const result = await page.evaluate(async () => {
   const h = __home, { POOL, SPAWN } = await import('/world/layout.js');
   const { poolContains, poolRegion, poolShores } = await import('/engine/world/pool-regions.js');

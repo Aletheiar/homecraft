@@ -2,14 +2,14 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {launchBrowser,finishOpening} from './browser.mjs';
+import { launchBrowser,finishOpening, activateSceneControl } from './browser.mjs';
 const {COURTYARD_TRACKS}=await import('../world/music-library.js');
 const PUBLIC_COUNT=COURTYARD_TRACKS.length,FIRST_TITLE=COURTYARD_TRACKS[0].title;
 const base=process.argv[2]||'http://127.0.0.1:8765/',out='tools/.check/music';mkdirSync(out,{recursive:true});
 function toneWav(seconds,freq){const bytes=Buffer.alloc(44+16000*2*seconds);bytes.write('RIFF');bytes.writeUInt32LE(bytes.length-8,4);bytes.write('WAVEfmt ',8);bytes.writeUInt32LE(16,16);bytes.writeUInt16LE(1,20);bytes.writeUInt16LE(1,22);bytes.writeUInt32LE(16000,24);bytes.writeUInt32LE(32000,28);bytes.writeUInt16LE(2,32);bytes.writeUInt16LE(16,34);bytes.write('data',36);bytes.writeUInt32LE(bytes.length-44,40);for(let n=0;n<16000*seconds;n++)bytes.writeInt16LE(Math.round(900*Math.sin(n*2*Math.PI*freq/16000)),44+n*2);return bytes;}
 const first=toneWav(12,220),second=readFileSync(new URL('./fixtures/audio-tone.mp3',import.meta.url));
 async function openPlaza(page){
- await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await page.locator('#return-button').click();
+ await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await activateSceneControl(page, '#return-button');
  await page.evaluate(async()=>{const {STATIONS}=await import('/world/layout.js');const s=STATIONS.find(s=>s.id==='plaza');__home.player.teleport(...s.at,s);__home.rig.recenter(__home.player);__home.openPage('plaza');});
  await page.locator('#panel .music-station').waitFor({state:'visible'});
 }
@@ -23,7 +23,7 @@ try {
   await page.route('https://music.163.com/**',route=>{netease++;return route.abort();});
   // Stub the collection with the short fixture so checks never stream 133MB.
   await page.route('**/assets/music/*.mp3',route=>{publicAudio++;return route.fulfill({status:200,contentType:'audio/mpeg',body:second});});
-  await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await page.locator('#return-button').click();
+  await page.goto(base);await page.waitForFunction(()=>window.__home?.world.pyramid?.sceneryReady,null,{timeout:60000});await finishOpening(page);await activateSceneControl(page, '#return-button');
   assert.equal(netease,0,'No NetEase request on arrival');
   assert.ok(publicAudio>0,'Arrival prepares the randomly chosen public track');
   await page.evaluate(async()=>{const {STATIONS}=await import('/world/layout.js');const s=STATIONS.find(s=>s.id==='plaza');__home.player.teleport(...s.at,s);__home.rig.showcase([-22,4,-3],[-28,1,-8]);for(let i=0;i<90;i++)__home.rig.update(1/60,__home.player);});
@@ -51,10 +51,10 @@ try {
   await page.waitForFunction(before=>__home.world.foyer.record.rotation.y>before+.05,angle);
   await page.locator('#panel .close').click();
   const time=await audio.evaluate(a=>a.currentTime);await page.waitForFunction(t=>document.querySelector('#courtyard-audio').currentTime>t+.2,time);
-  const floater=page.locator('[data-music-stop-float]');
+  const floater=page.locator('[data-music-mini]');
   assert.equal(await floater.isVisible(),true,'Playback continues behind the card');
   assert.equal(await page.evaluate(()=>{
-   const a=document.querySelector('[data-music-stop-float]').getBoundingClientRect(),b=document.querySelector('.pyramid-actions').getBoundingClientRect();
+   const a=document.querySelector('[data-music-mini]').getBoundingClientRect(),b=document.querySelector('.pyramid-actions').getBoundingClientRect();
    return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;
   }),true,'The playing indicator leaves scene controls accessible');
   assert.ok((await floater.textContent()).includes(FIRST_TITLE));
@@ -111,8 +111,8 @@ try {
   // A public record still plays from its manifest entry.
   await page.locator('#panel [data-music-queue] .music-row').nth(0).click();
   await page.waitForFunction(()=>document.querySelector('#courtyard-audio').currentTime>.2);
-  await page.locator('#panel .close').click();await page.locator('[data-music-stop-float]').click();
-  assert.equal(await audio.evaluate(a=>a.paused),true,'The floating pill stops playback');
+  await page.locator('#panel .close').click();await page.locator('[data-music-mini] [data-music-mini-toggle]').click();
+  assert.equal(await audio.evaluate(a=>a.paused),true,'The floating capsule pauses playback');
   assert.equal(await page.locator('#panel').evaluate(e=>e.scrollWidth<=e.clientWidth),true,'Card does not overflow horizontally');
   await page.evaluate(()=>{__home.rig.showcase([-23,4,-3],[-28,1,-8]);for(let i=0;i<90;i++)__home.rig.update(1/60,__home.player);});
   await page.screenshot({path:`${out}/${viewport.width}-station.png`});

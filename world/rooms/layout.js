@@ -14,8 +14,9 @@ export const SHELTER = { x0: -13, z0: -11, w: 26, d: 22 };
 // "return to the hall" sign, so no second guide sign sits in the room.
 const stations = {
   library: [
-    { id: 'blog', name: '文章书架', en: 'Articles', icon: 'blog', at: [-6, -3], look: [-6, -5.5] },
-    { id: 'writing', name: '随笔手帐', en: 'Journal', icon: 'writing', at: [6, -3], look: [6, -5.5] },
+    // 左半「我的收藏」，右半「我的原创」：at 站在两区各自的主件前。
+    { id: 'collected', name: '我的收藏', en: 'Collected', icon: 'blog', at: [-4, -1.2], look: [-4, -3] },
+    { id: 'written', name: '我的原创', en: 'Written', icon: 'writing', at: [4, -1.2], look: [4, -3] },
   ],
   studio: [
     { id: 'works', name: '项目工作台', en: 'Projects', icon: 'works', at: [0, -3], look: [0, -5.5] },

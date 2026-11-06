@@ -1,4 +1,4 @@
-import { launchBrowser } from './browser.mjs';
+import { launchBrowser, activateSceneControl } from './browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -61,7 +61,7 @@ try {
       await page.goto(url);
       await page.waitForFunction(() => window.__home?.world.pyramid.sceneryReady || window.__home?.world.pyramid.error || window.__homeStartupError, null, { timeout: 60000 });
       assert.equal(await page.evaluate(() => window.__home?.world.pyramid.error || window.__homeStartupError || null), null);
-      await page.locator('#return-button').click();
+      await activateSceneControl(page, '#return-button');
       await check('native upward drag looks up without entering the ground', async () => {
         await prepare(); await drag(true);
         await page.waitForFunction(() => {

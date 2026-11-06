@@ -56,11 +56,12 @@ test('the composition has a large central hero image and a separate angled side 
   const heroLocal=ws.toLocal(hero.getWorldPosition(new THREE.Vector3())),screenLocal=ws.toLocal(ws.screens[0].position);
   assert.ok(Math.abs(heroLocal.x-screenLocal.x)<.2,'hero and desk share the frontal centre');
   assert.ok(screenLocal.z-heroLocal.z>.85,'the working layer is separated from the background');
-  assert.ok(ws.toLocal(fixture('rack').box.getCenter(new THREE.Vector3())).z>.4,'equipment projects forward at the side');
+  const rackBounds=new THREE.Box3().setFromObject(ws.mesh.getObjectByName('workstation-status-leds'));
+  assert.ok(ws.toLocal(rackBounds.getCenter(new THREE.Vector3())).z>.4,'equipment projects forward at the side');
 });
 
 test('screen selection follows its real tilted face and rejects the rear', () => {
-  for (const s of ws.screens) {
+  for (const s of ws.screens.filter(s=>s.id!=='terminal')) {
     const normal=new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(0,1,0),s.yaw);
     const origin=s.position.clone().addScaledVector(normal,2),out=new THREE.Vector3();
     assert.equal(fixture(s.id).intersect(new THREE.Ray(origin,normal.clone().negate()),out),true);
@@ -116,15 +117,15 @@ test('the relocated bookshelf is clear of the deeper industrial backdrop', () =>
   }
 });
 
-test('the two planters behind the workstation are removed with their footprints', () => {
+test('obsolete corner planters are removed with their footprints while the library remains furnished', () => {
   const items=hall.batches.hall.items.opaque;
-  const removed=[ws.at(-4,-1.4),{x:11.6,z:-15.3}];
+  const removed=[ws.at(-4,-1.4),{x:11.6,z:-15.3},{x:15.3,z:13.4}];
   for(const p of removed){
-    assert.equal(items.filter(i=>Math.abs(i.matrix.elements[12]-p.x)<1e-6&&Math.abs(i.matrix.elements[14]-p.z)<1e-6).length,0,'no pot or foliage remains behind the screen');
+    assert.equal(items.filter(i=>Math.abs(i.matrix.elements[12]-p.x)<1e-6&&Math.abs(i.matrix.elements[14]-p.z)<1e-6).length,0,'no pot or foliage remains in a replaced corner');
     assert.equal(hall.obstacles.some(o=>Math.abs((o.x0+o.x1)/2-p.x)<1e-6&&Math.abs((o.z0+o.z1)/2-p.z)<1e-6),false,'the removed planter leaves no collision footprint');
   }
-  for(const [x,z] of [[15.3,13.4],[11,-2.9],[11,2.9]])
-    assert.equal(items.filter(i=>Math.abs(i.matrix.elements[12]-x)<1e-6&&Math.abs(i.matrix.elements[14]-z)<1e-6).length,2,'the lounge and library planters stay in place');
+  for(const [x,z] of [[11,-2.9],[11,2.9]])
+    assert.equal(items.filter(i=>Math.abs(i.matrix.elements[12]-x)<1e-6&&Math.abs(i.matrix.elements[14]-z)<1e-6).length,2,'the library planters stay in place');
 });
 
 test('the corner is one walkable room with the desk where the hall expects it', () => {
@@ -142,7 +143,7 @@ test('the corner is one walkable room with the desk where the hall expects it', 
     assert.ok(f.box.min.x < f.box.max.x && f.box.min.y < f.box.max.y && f.box.min.z < f.box.max.z, `${f.id} box is positive`);
     if (f.id !== 'lights') assert.ok(f.label.length > 0, `${f.id} has a hint`);
   }
-  assert.deepEqual(ws.fixtures.map(f => f.id), ['main', 'terminal', 'status', 'rack', 'poster-pyramid', 'poster-v', 'lights', 'seat']);
+  assert.deepEqual(ws.fixtures.map(f => f.id), ['main', 'status', 'poster-pyramid', 'poster-v', 'lights', 'seat']);
   // The seat sits behind the desk and the stand spot is clear of the chair.
   assert.ok(ws.seat.z > HALL_SPOTS.workbench.deskZ, 'the seat is south of the desk');
   assert.ok(ws.stand.z > ws.seat.z, 'the standing spot is behind the seat');
@@ -167,14 +168,19 @@ test('both official posters are real image planes on the wall', () => {
   assert.ok(byName['poster-pyramid'].geometry.parameters.width > byName['poster-v'].geometry.parameters.width * 1.8);
 });
 
-test('the room owns five pages, one light switch and no extra lights', () => {
-  for (const id of ['terminal', 'status', 'rack', 'poster-pyramid', 'poster-v']) {
+test('the terminal and rack remain decorative without interaction targets or pages', () => {
+  assert.ok(ws.screens.find(s=>s.id==='terminal'),'the terminal screen stays in the scene');
+  assert.ok(ws.mesh.getObjectByName('workstation-status-leds'),'the rack indicators stay in the scene');
+  for(const id of ['terminal','rack']) {
+    assert.equal(fixture(id),undefined,`${id} has no hover or click target`);
+    assert.doesNotMatch(index,new RegExp(`data-station="${id}"`),`${id} has no page card`);
+  }
+});
+
+test('the room owns three pages, one light switch and no extra lights', () => {
+  for (const id of ['status', 'poster-pyramid', 'poster-v']) {
     assert.match(index, new RegExp(`data-station="${id}"`), `${id} has a page card`);
   }
-  // The terminal must say it is a simulation, and the rack must deny networking.
-  assert.match(index, /模拟终端/);
-  assert.match(index, /不执行系统命令/);
-  assert.match(index, /没有网络连接/);
   assert.match(index, /CD PROJEKT RED/);
   assert.deepEqual(LIGHT_MODES.map(m => m.id), ['warm', 'night', 'off']);
   // The switch cycles the room's own material, never the pyramid's daylight.

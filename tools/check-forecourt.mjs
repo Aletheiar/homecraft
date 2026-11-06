@@ -1,7 +1,7 @@
 // Check the real ground overlay, navigation, rendering cost and saved views.
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { launchBrowser, finishOpening } from './browser.mjs';
+import { launchBrowser, finishOpening, activateSceneControl } from './browser.mjs';
 
 const base = process.argv[2] || 'http://127.0.0.1:8765/';
 const out = 'tools/.check/forecourt'; mkdirSync(out, { recursive: true });
@@ -13,7 +13,7 @@ try {
     await page.goto(base);
     await page.waitForFunction(() => window.__home?.world.pyramid.sceneryReady, null, { timeout: 60000 });
     await finishOpening(page);
-    await page.locator('#return-button').click();
+    await activateSceneControl(page, '#return-button');
     const details = await page.evaluate(async () => {
       const h = __home, mesh = h.stage.scene.getObjectByName('e8-forecourt');
       if (!mesh) return null;
