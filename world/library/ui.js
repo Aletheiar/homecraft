@@ -10,11 +10,11 @@ import { loadWritten } from './written.js';
 const VIEWS = {
   collected: {
     title: '我的收藏',
-    lead: '从外部发现、读过、愿意推荐的内容。点开原始链接回到原文。',
+    lead: '这里放收藏的文章、书籍、开源项目和论文。点击链接可查看原文。',
   },
   written: {
     title: '我的原创',
-    lead: '自己写下的随笔、笔记与记录。点开标题就在这一层读全文。',
+    lead: '我的文章和笔记，点击标题阅读全文。目前收录的都是示例文章。',
   },
 };
 

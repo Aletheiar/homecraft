@@ -63,14 +63,13 @@ function home() {
   return `${heading('ALETHEIA / NOTES & COLLECTIONS', '文字、收藏与一些记录', '在这里阅读文章，翻一翻收藏。也可以走进三维庭院，慢慢探索这个空间。')}
     <div class="text-home-links"><a class="text-button" href="${routeURL('written')}">浏览原创 <span>↗</span></a><a class="text-button is-secondary" href="${routeURL('collected')}">看看收藏</a></div>
     <div class="text-section-line"><h2>${real.length ? '最近的文字' : '文章预览'}</h2><a href="${routeURL('written')}">查看全部 →</a></div>
-    ${!real.length && ready.length ? '<p class="text-notice">正式文章还在准备中。下面保留几篇示例，方便先体验阅读。</p>' : ''}
     <div class="text-post-list">${ready.length ? (real.length ? real : ready).slice(0, 3).map(postCard).join('') : empty}</div>
     <aside class="text-home-note"><span aria-hidden="true">△</span><div><h2>玻璃之下，还有一座庭院</h2><p>想散步时，可以从右上角进入 3D。文字版随时可以回来。</p></div></aside>`;
 }
 
 function catalog(section) {
   const state = filters[section], written = section === 'written';
-  return `${heading(written ? 'WRITTEN / NOTES' : 'COLLECTED / LIBRARY', written ? '我的原创' : '我的收藏', written ? '随笔、技术笔记与开发记录。未发布的内容会标明示例。' : '外部文章、书籍、开源仓库与资料。每条收藏保留它的来源。')}
+  return `${heading(written ? 'WRITTEN / NOTES' : 'COLLECTED / LIBRARY', written ? '我的原创' : '我的收藏', written ? '随笔、技术笔记和开发记录。点击标题阅读全文。目前收录的都是示例文章。' : '这里放收藏的文章、书籍、开源项目和论文。点击链接可查看原文。')}
     <div class="text-catalog-tools"><label class="text-search"><span>搜索${written ? '文章' : '收藏'}</span><input type="search" data-text-search value="${esc(state.query)}" placeholder="${written ? '标题、摘要、分类或标签' : '标题、作者、分类或标签'}" autocomplete="off"><button type="button" data-clear-search>清空</button></label>
     <div class="text-filters" role="group" aria-label="分类筛选"></div></div>
     <p class="text-results-count" role="status" aria-live="polite"></p><div class="text-catalog-list"></div>`;
@@ -141,7 +140,7 @@ async function readPost(id, version) {
   const post = posts?.find(item => item.id === id);
   if (!posts) { content.innerHTML = heading('WRITTEN', '正在读取文章…'); return; }
   if (!post) {
-    content.innerHTML = `${heading('WRITTEN', '这篇文章还在准备中')}<div class="text-empty" data-post-unavailable><p>暂时没有找到这篇文章，可以先回目录看看。</p><a class="text-button" data-return-catalog href="${routeURL('written')}">返回原创目录</a></div>`;
+    content.innerHTML = `${heading('WRITTEN', '未找到这篇文章。')}<div class="text-empty" data-post-unavailable><p>暂时没有找到这篇文章，可以先回目录看看。</p><a class="text-button" data-return-catalog href="${routeURL('written')}">返回原创目录</a></div>`;
     return;
   }
   content.innerHTML = `<a class="text-back" data-return-catalog href="${routeURL('written')}">← 返回原创目录</a>${heading(`${esc(post.category)} / ${date(post.date)}`, esc(post.title))}
@@ -164,14 +163,14 @@ async function readPost(id, version) {
 }
 
 function profile() {
-  return `${heading('ABOUT', esc(PROFILE.displayName), PROFILE.bio ? esc(PROFILE.bio) : '个人简介待补充。')}<div class="text-account-list">${PROFILE.accounts.map(account => {
+  return `${heading('ABOUT', esc(PROFILE.displayName), PROFILE.bio ? esc(PROFILE.bio) : '这里是我的社交账号。')}<div class="text-account-list">${PROFILE.accounts.map(account => {
     const url = account.href && safeURL(account.href);
     return `<a class="text-account" ${url ? `href="${esc(url.href)}" target="_blank" rel="noopener noreferrer"` : 'aria-disabled="true"'}><span><strong>${esc(account.platform)}</strong><small>${esc(account.name)}</small></span><span aria-hidden="true">${url ? '↗' : '待添加'}</span></a>`;
   }).join('')}</div>`;
 }
 
 function friends() {
-  return `${heading('FRIENDS', '其他人的博客', '一些通往其他站点的入口。示例条目会单独标明。')}<div class="text-friends">${FRIEND_LINKS.map(friend => {
+  return `${heading('FRIENDS', '其他人的博客', '点击站点名称，在新标签页打开。示例条目会单独标明。')}<div class="text-friends">${FRIEND_LINKS.map(friend => {
     const url = safeURL(friend.url);
     return `<article class="text-friend-card"><div class="text-card-meta">${badge(friend)}</div><h2>${url ? `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${esc(friend.name)} ↗</a>` : esc(friend.name)}</h2><p>${esc(friend.note)}</p></article>`;
   }).join('') || '<p class="text-empty">友链还在整理中。</p>'}</div>`;
@@ -180,7 +179,7 @@ function friends() {
 function projects() {
   const source = document.querySelector('#pages [data-station="works"]');
   const html = source ? sanitizeArticle(source.innerHTML, { kind: 'markdown' }) : '<p>项目内容待补充。</p>';
-  return `${heading('PROJECTS', '项目与研究', '这里先保留正在搭建的个人网站，其他项目之后再补充。')}<div class="text-project-content text-prose">${html}</div>`;
+  return `${heading('PROJECTS', '项目与研究', '目前收录的项目是这个网站本身。')}<div class="text-project-content text-prose">${html}</div>`;
 }
 
 function render({ focus = true } = {}) {
